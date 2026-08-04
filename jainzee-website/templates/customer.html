@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Panel - Jainzee</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .customer-header { background: linear-gradient(135deg, #2c1810, #5a3d2b); }
+        .customer-header .brand i { color: #ffd700; }
+        .customer-content { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
+        .auth-section { max-width: 450px; margin: 40px auto; }
+        .auth-card { background: white; border-radius: 16px; padding: 35px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        .auth-card h2 { color: #2c1810; margin-bottom: 20px; text-align: center; }
+        .auth-tabs { display: flex; margin-bottom: 25px; background: #f5f0e8; border-radius: 10px; padding: 4px; }
+        .auth-tab { flex: 1; padding: 10px; text-align: center; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: inherit; color: #8a7362; }
+        .auth-tab.active { background: #b8860b; color: white; }
+        .auth-form { display: none; }
+        .auth-form.active { display: block; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; color: #2c1810; }
+        .form-group input, .form-group textarea { width: 100%; padding: 12px 15px; border: 2px solid #e8e0d5; border-radius: 10px; font-size: 0.95rem; font-family: inherit; }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #b8860b; }
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 25px; border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.3s; font-family: inherit; text-decoration: none; }
+        .btn-primary { background: #b8860b; color: white; }
+        .btn-primary:hover { background: #8b6508; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover { background: #218838; }
+        .btn-outline { background: transparent; border: 2px solid #ddd; color: #4a3728; }
+        .btn-outline:hover { border-color: #b8860b; }
+        .btn-block { width: 100%; justify-content: center; }
+        .customer-dashboard { display: none; }
+        .customer-dashboard.active { display: block; }
+        .welcome-bar { background: white; border-radius: 16px; padding: 25px 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px; }
+        .welcome-bar h2 { color: #2c1810; }
+        .welcome-bar p { color: #8a7362; }
+        .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px; }
+        .order-card { background: white; border-radius: 16px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        .order-card h3 { color: #2c1810; margin-bottom: 10px; }
+        .order-items { margin: 15px 0; }
+        .order-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0ece5; font-size: 0.9rem; }
+        .order-total { font-size: 1.2rem; font-weight: 700; color: #b8860b; margin-top: 10px; }
+        .order-status { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-confirmed { background: #d4edda; color: #155724; }
+        .status-shipped { background: #cce5ff; color: #004085; }
+        .status-delivered { background: #d4edda; color: #155724; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+        .empty-state { text-align: center; padding: 60px 20px; color: #8a7362; }
+        .empty-state i { font-size: 3rem; margin-bottom: 15px; color: #b8860b; }
+        .toast-container { position: fixed; bottom: 30px; right: 30px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { padding: 15px 25px; border-radius: 10px; color: white; font-size: 0.9rem; font-weight: 500; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .toast.success { background: #28a745; }
+        .toast.error { background: #dc3545; }
+        .back-link { display: inline-flex; align-items: center; gap: 6px; color: #8a7362; text-decoration: none; font-size: 0.85rem; margin-top: 15px; }
+        .back-link:hover { color: #b8860b; }
+    </style>
+</head>
+<body>
+    <header class="admin-header customer-header">
+        <div class="brand">
+            <i class="fas fa-user-circle"></i>
+            <span>Jainzee Customer Panel</span>
+        </div>
+        <nav class="admin-nav">
+            <a href="/"><i class="fas fa-home"></i> Home</a>
+            <a href="/#products"><i class="fas fa-box-open"></i> Products</a>
+            <a href="/admin"><i class="fas fa-lock"></i> Admin</a>
+        </nav>
+    </header>
+
+    <main class="customer-content">
+        <!-- ===== LOGIN / REGISTER ===== -->
+        <div class="auth-section" id="authSection">
+            <div class="auth-card">
+                <h2><i class="fas fa-user-circle"></i> Customer Login</h2>
+                <div class="auth-tabs">
+                    <button class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
+                    <button class="auth-tab" onclick="switchAuthTab('register')">Register</button>
+                </div>
+
+                <!-- Login Form -->
+                <div class="auth-form active" id="loginForm">
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="text" id="loginPhone" placeholder="e.g. 9826000000">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" placeholder="Enter password">
+                    </div>
+                    <button class="btn btn-primary btn-block" onclick="customerLogin()">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </button>
+                </div>
+
+                <!-- Register Form -->
+                <div class="auth-form" id="registerForm">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="regName" placeholder="Your name">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="text" id="regPhone" placeholder="e.g. 9826000000">
+                    </div>
+                    <div class="form-group">
+                        <label>Email (optional)</label>
+                        <input type="email" id="regEmail" placeholder="you@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Address</label>
+                        <textarea id="regAddress" placeholder="Your delivery address"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="regPassword" placeholder="Create password (min 4 chars)">
+                    </div>
+                    <button class="btn btn-success btn-block" onclick="customerRegister()">
+                        <i class="fas fa-user-plus"></i> Register
+                    </button>
+                </div>
+            </div>
+            <div style="text-align: center;">
+                <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Website</a>
+            </div>
+        </div>
+
+        <!-- ===== CUSTOMER DASHBOARD ===== -->
+        <div class="customer-dashboard" id="customerDashboard">
+            <div class="welcome-bar">
+                <div>
+                    <h2>Welcome, <span id="customerName"></span>! 👋</h2>
+                    <p>View your order history and track your orders</p>
+                </div>
+                <button class="btn btn-outline" onclick="customerLogout()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+
+            <h2 style="color: #2c1810; margin-bottom: 20px;"><i class="fas fa-shopping-bag"></i> My Orders</h2>
+            <div class="orders-grid" id="ordersGrid">
+                <div class="empty-state">
+                    <i class="fas fa-shopping-bag"></i>
+                    <h3>No orders yet</h3>
+                    <p>Browse our products and place your first order!</p>
+                    <a href="/#products" class="btn btn-primary" style="margin-top: 15px;">
+                        <i class="fas fa-box-open"></i> Browse Products
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // ==================== TOAST ====================
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // ==================== AUTH TABS ====================
+        function switchAuthTab(tab) {
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+            if (tab === 'login') {
+                document.querySelectorAll('.auth-tab')[0].classList.add('active');
+                document.getElementById('loginForm').classList.add('active');
+            } else {
+                document.querySelectorAll('.auth-tab')[1].classList.add('active');
+                document.getElementById('registerForm').classList.add('active');
+            }
+        }
+
+        // ==================== AUTH ====================
+        async function customerRegister() {
+            const data = {
+                name: document.getElementById('regName').value.trim(),
+                phone: document.getElementById('regPhone').value.trim(),
+                email: document.getElementById('regEmail').value.trim(),
+                address: document.getElementById('regAddress').value.trim(),
+                password: document.getElementById('regPassword').value
+            };
+            if (!data.name || !data.phone || !data.password) {
+                showToast('Name, phone and password are required!', 'error');
+                return;
+            }
+            try {
+                const res = await fetch('/api/customer/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.error || 'Registration failed');
+                showToast('Registration successful! Welcome ' + result.name + '!');
+                loadCustomerDashboard();
+            } catch (e) {
+                showToast(e.message, 'error');
+            }
+        }
+
+        async function customerLogin() {
+            const data = {
+                phone: document.getElementById('loginPhone').value.trim(),
+                password: document.getElementById('loginPassword').value
+            };
+            if (!data.phone || !data.password) {
+                showToast('Phone and password are required!', 'error');
+                return;
+            }
+            try {
+                const res = await fetch('/api/customer/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.error || 'Login failed');
+                showToast('Welcome back, ' + result.name + '!');
+                loadCustomerDashboard();
+            } catch (e) {
+                showToast(e.message, 'error');
+            }
+        }
+
+        async function customerLogout() {
+            await fetch('/api/customer/logout', { method: 'POST' });
+            showToast('Logged out successfully');
+            location.reload();
+        }
+
+        // ==================== DASHBOARD ====================
+        async function loadCustomerDashboard() {
+            try {
+                const res = await fetch('/api/customer/me');
+                const data = await res.json();
+                if (data.logged_in) {
+                    document.getElementById('authSection').style.display = 'none';
+                    document.getElementById('customerDashboard').classList.add('active');
+                    document.getElementById('customerName').textContent = data.customer.name;
+                    loadOrders();
+                }
+            } catch (e) {
+                console.error('Failed to load dashboard:', e);
+            }
+        }
+
+        async function loadOrders() {
+            try {
+                const res = await fetch('/api/customer/orders');
+                const orders = await res.json();
+                const grid = document.getElementById('ordersGrid');
+                if (!orders.length) {
+                    grid.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-shopping-bag"></i>
+                            <h3>No orders yet</h3>
+                            <p>Browse our products and place your first order!</p>
+                            <a href="/#products" class="btn btn-primary" style="margin-top: 15px;">
+                                <i class="fas fa-box-open"></i> Browse Products
+                            </a>
+                        </div>`;
+                    return;
+                }
+                grid.innerHTML = '';
+                orders.forEach(order => {
+                    let items = [];
+                    try { items = JSON.parse(order.items); } catch(e) {}
+                    const statusClass = 'status-' + (order.status || 'pending');
+                    const statusText = (order.status || 'pending').toUpperCase();
+                    const card = document.createElement('div');
+                    card.className = 'order-card';
+                    card.innerHTML = `
+                        <h3>Order #${order.id}</h3>
+                        <span class="order-status ${statusClass}">${statusText}</span>
+                        <div class="order-items">
+                            ${items.map(item => `
+                                <div class="order-item">
+                                    <span>${item.name} (${item.grade || 'Standard'}) x${item.qty}</span>
+                                    <span>${item.price}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="order-total">Total: ${order.total}</div>
+                        <p style="font-size: 0.8rem; color: #8a7362; margin-top: 10px;">
+                            <i class="fas fa-calendar"></i> ${order.created_at}
+                        </p>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (e) {
+                console.error('Failed to load orders:', e);
+            }
+        }
+
+        // ==================== INIT ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCustomerDashboard();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jainzee Food Processing Industries</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Mukta:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <!-- ===== NAVBAR ===== -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <img id="navLogo" src="" alt="Logo" class="nav-logo-img" onerror="this.style.display='none'">
+                <span id="navShopName" class="nav-shop-name">Jainzee Food Processing Industries</span>
+            </div>
+            <div class="nav-right">
+                <div class="lang-toggle" id="langToggle">
+                    <button class="lang-btn active" data-lang="en">🇬🇧 English</button>
+                    <button class="lang-btn" data-lang="hi">🇮🇳 हिन्दी</button>
+                </div>
+                <a href="#" class="whatsapp-share-btn" onclick="shareOnWhatsApp(event)">
+                    <i class="fab fa-whatsapp"></i> <span data-i18n="share_whatsapp">Share</span>
+                </a>
+                <a href="/customer" class="customer-panel-btn">
+                    <i class="fas fa-user"></i> <span data-i18n="customer_login">Customer Login</span>
+                </a>
+                <a href="/admin" class="admin-panel-btn" id="adminPanelBtn" style="display:none;">
+                    <i class="fas fa-edit"></i> <span data-i18n="edit_website">Edit Website</span>
+                </a>
+                <button class="hamburger" id="hamburger" aria-label="Menu">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </div>
+        <div class="mobile-menu" id="mobileMenu">
+            <a href="#home" data-i18n="nav_home">Home</a>
+            <a href="#products" data-i18n="nav_products">Products</a>
+            <a href="#about" data-i18n="nav_about">About Us</a>
+            <a href="#contact" data-i18n="nav_contact">Contact</a>
+            <a href="#" class="mobile-whatsapp-link" onclick="shareOnWhatsApp(event)"><i class="fab fa-whatsapp"></i> <span data-i18n="share_whatsapp">Share</span></a>
+            <a href="/customer" class="mobile-customer-link"><i class="fas fa-user"></i> <span data-i18n="customer_login">Customer Login</span></a>
+            <a href="/admin" class="mobile-admin-link" id="mobileAdminLink" style="display:none;"><i class="fas fa-edit"></i> <span data-i18n="edit_website">Edit Website</span></a>
+        </div>
+    </nav>
+
+    <!-- ===== HERO SECTION ===== -->
+    <section class="hero" id="home">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <img id="heroLogo" src="" alt="Jainzee Logo" class="hero-logo" onerror="this.style.display='none'">
+            <h1 id="heroShopName">Jainzee Food Processing Industries</h1>
+            <p id="heroTagline">Pure & Premium Dry Fruits</p>
+            <div class="hero-buttons">
+                <a href="#products" class="btn btn-primary" data-i18n="explore_products">Explore Products</a>
+                <a href="#contact" class="btn btn-outline" data-i18n="contact_us">Contact Us</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== PRODUCTS SECTION ===== -->
+    <section class="products-section" id="products">
+        <div class="container">
+            <div class="section-header">
+                <h2 data-i18n="our_products">Our Premium Products</h2>
+                <p data-i18n="products_subtitle">Handpicked, hygienically processed & premium quality dry fruits</p>
+            </div>
+            <div class="products-grid" id="productsGrid">
+                <!-- Products loaded from API -->
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== WHY CHOOSE US ===== -->
+    <section class="features-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 data-i18n="why_choose">Why Choose Jainzee?</h2>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <i class="fas fa-leaf"></i>
+                    <h3 data-i18n="feature_pure">100% Pure</h3>
+                    <p data-i18n="feature_pure_desc">No adulteration, only pure & natural dry fruits</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-shield-alt"></i>
+                    <h3 data-i18n="feature_hygienic">Hygienic Processing</h3>
+                    <p data-i18n="feature_hygienic_desc">Modern food-grade processing facility</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-tag"></i>
+                    <h3 data-i18n="feature_price">Best Prices</h3>
+                    <p data-i18n="feature_price_desc">Direct from processor, no middlemen</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-truck"></i>
+                    <h3 data-i18n="feature_delivery">Bulk & Retail</h3>
+                    <p data-i18n="feature_delivery_desc">Available for home, business & bulk orders</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== ABOUT SECTION ===== -->
+    <section class="about-section" id="about">
+        <div class="container">
+            <div class="about-grid">
+                <div class="about-image">
+                    <i class="fas fa-seedling"></i>
+                </div>
+                <div class="about-content">
+                    <h2 data-i18n="about_us">About Jainzee</h2>
+                    <p id="aboutText">Jainzee Food Processing Industries is a trusted name for pure, hygienic and premium quality dry fruits. We source the finest cashews, pistachios, almonds, walnuts and raisins so you can enjoy nature's best, every single day.</p>
+                    <ul class="about-list">
+                        <li><i class="fas fa-check-circle"></i> <span data-i18n="about_li1">Premium quality dry fruits</span></li>
+                        <li><i class="fas fa-check-circle"></i> <span data-i18n="about_li2">Hygienic food processing</span></li>
+                        <li><i class="fas fa-check-circle"></i> <span data-i18n="about_li3">Trusted by thousands of customers</span></li>
+                        <li><i class="fas fa-check-circle"></i> <span data-i18n="about_li4">Wholesale & retail available</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== CONTACT SECTION ===== -->
+    <section class="contact-section" id="contact">
+        <div class="container">
+            <div class="section-header">
+                <h2 data-i18n="contact_us_title">Contact Us</h2>
+                <p data-i18n="contact_subtitle">Visit our store or get in touch with us</p>
+            </div>
+            <div class="contact-grid">
+                <div class="contact-card">
+                    <i class="fas fa-store"></i>
+                    <h3 data-i18n="our_address">Our Address</h3>
+                    <p id="contactAddress">Siyaganj, Indore, Madhya Pradesh 452001</p>
+                    <a href="https://maps.google.com/?q=Siyaganj,Indore" target="_blank" class="map-link">
+                        <i class="fas fa-map-marker-alt"></i> <span data-i18n="view_map">View on Map</span>
+                    </a>
+                </div>
+                <div class="contact-card">
+                    <i class="fas fa-phone-alt"></i>
+                    <h3 data-i18n="call_us">Call Us</h3>
+                    <p id="contactPhone">+91 98260 00000</p>
+                    <a id="whatsappLink" href="https://wa.me/919826000000" target="_blank" class="btn btn-whatsapp">
+                        <i class="fab fa-whatsapp"></i> <span data-i18n="whatsapp_us">WhatsApp Us</span>
+                    </a>
+                </div>
+                <div class="contact-card">
+                    <i class="fas fa-clock"></i>
+                    <h3 data-i18n="opening_hours">Opening Hours</h3>
+                    <p id="contactHours">Mon - Sun: 10:00 AM - 9:00 PM</p>
+                </div>
+                <div class="contact-card">
+                    <i class="fas fa-envelope"></i>
+                    <h3 data-i18n="email_us">Email Us</h3>
+                    <p id="contactEmail">info@jainzee.in</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-about">
+                    <h3 id="footerShopName">Jainzee Food Processing Industries</h3>
+                    <p id="footerAbout">Pure & Premium Dry Fruits - Siyaganj, Indore</p>
+                </div>
+                <div class="footer-links">
+                    <h4 data-i18n="quick_links">Quick Links</h4>
+                    <a href="#home" data-i18n="nav_home">Home</a>
+                    <a href="#products" data-i18n="nav_products">Products</a>
+                    <a href="#about" data-i18n="nav_about">About Us</a>
+                    <a href="#contact" data-i18n="nav_contact">Contact</a>
+                </div>
+                <div class="footer-contact">
+                    <h4 data-i18n="contact_info">Contact Info</h4>
+                    <p id="footerAddress">Siyaganj, Indore, Madhya Pradesh 452001</p>
+                    <p id="footerPhone">+91 98260 00000</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>© <span id="currentYear"></span> <span id="footerName">Jainzee Food Processing Industries</span>. <span data-i18n="all_rights">All Rights Reserved.</span></p>
+                <a href="/admin" class="admin-link" id="footerAdminLink" style="display:none;"><i class="fas fa-lock"></i> <span data-i18n="admin_login">Admin</span></a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ===== FLOATING EDIT BUTTON (admin only) ===== -->
+    <a href="/admin" class="floating-edit-btn" title="Edit Website" id="floatingEditBtn" style="display:none;">
+        <i class="fas fa-edit"></i>
+        <span data-i18n="edit_website">Edit Website</span>
+    </a>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

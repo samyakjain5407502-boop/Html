@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orders - Jainzee Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .order-status-select { padding: 8px 12px; border-radius: 8px; border: 2px solid #e8e0d5; font-family: inherit; font-size: 0.85rem; }
+        .order-items-list { font-size: 0.85rem; }
+        .order-items-list div { padding: 3px 0; }
+        .order-customer { font-size: 0.9rem; }
+        .order-customer strong { color: #2c1810; }
+    </style>
+</head>
+<body>
+    <header class="admin-header">
+        <div class="brand">
+            <i class="fas fa-seedling"></i>
+            <span>Jainzee Admin Panel</span>
+        </div>
+        <nav class="admin-nav">
+            <a href="{{ url_for('admin_dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="{{ url_for('admin_products_page') }}"><i class="fas fa-box-open"></i> Products & Stock</a>
+            <a href="{{ url_for('admin_orders_page') }}" class="active"><i class="fas fa-shopping-cart"></i> Orders</a>
+            <a href="{{ url_for('admin_settings_page') }}"><i class="fas fa-cog"></i> Settings</a>
+            <a href="/" target="_blank"><i class="fas fa-external-link-alt"></i> View Site</a>
+            <a href="{{ url_for('admin_logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </nav>
+    </header>
+
+    <main class="admin-content">
+        <h1 class="page-title"><i class="fas fa-shopping-cart"></i> Customer Orders</h1>
+
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h2>All Orders</h2>
+                <button class="btn btn-outline" onclick="loadOrders()"><i class="fas fa-sync-alt"></i> Refresh</button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="admin-table" id="ordersTable">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Customer</th>
+                            <th>Phone</th>
+                            <th>Address</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersTableBody">
+                        <tr><td colspan="8" style="text-align: center; padding: 40px; color: #8a7362;">Loading orders...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        async function loadOrders() {
+            try {
+                const res = await fetch('/admin/api/orders');
+                const orders = await res.json();
+                const tbody = document.getElementById('ordersTableBody');
+                if (!orders.length) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #8a7362;">No orders yet</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = '';
+                orders.forEach(order => {
+                    let items = [];
+                    try { items = JSON.parse(order.items); } catch(e) {}
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>#${order.id}</strong></td>
+                        <td class="order-customer"><strong>${order.customer_name || '-'}</strong></td>
+                        <td>${order.customer_phone || '-'}</td>
+                        <td style="max-width: 200px; font-size: 0.85rem;">${order.customer_address || '-'}</td>
+                        <td class="order-items-list">
+                            ${items.map(item => `<div>• ${item.name} (${item.grade || 'Standard'}) x${item.qty} - ${item.price}</div>`).join('')}
+                        </td>
+                        <td><strong style="color: #b8860b;">${order.total}</strong></td>
+                        <td style="font-size: 0.8rem;">${order.created_at}</td>
+                        <td>
+                            <select class="order-status-select" onchange="updateOrderStatus(${order.id}, this.value)">
+                                <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                <option value="confirmed" ${order.status === 'confirmed' ? 'selected' : ''}>Confirmed</option>
+                                <option value="shipped" ${order.status === 'shipped' ? 'selected' : ''}>Shipped</option>
+                                <option value="delivered" ${order.status === 'delivered' ? 'selected' : ''}>Delivered</option>
+                                <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                            </select>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                showToast('Failed to load orders', 'error');
+            }
+        }
+
+        async function updateOrderStatus(orderId, status) {
+            try {
+                const res = await fetch(`/admin/api/orders/${orderId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status })
+                });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.error || 'Failed to update');
+                showToast('Order status updated to ' + status);
+            } catch (e) {
+                showToast(e.message, 'error');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadOrders);
+    </script>
+</body>
+</html>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products & Stock - Jainzee Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <header class="admin-header">
+        <div class="brand">
+            <i class="fas fa-seedling"></i>
+            <span>Jainzee Admin Panel</span>
+        </div>
+        <nav class="admin-nav">
+            <a href="{{ url_for('admin_dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="{{ url_for('admin_products_page') }}" class="active"><i class="fas fa-box-open"></i> Products & Stock</a>
+            <a href="{{ url_for('admin_settings_page') }}"><i class="fas fa-cog"></i> Settings</a>
+            <a href="/" target="_blank"><i class="fas fa-external-link-alt"></i> View Site</a>
+            <a href="{{ url_for('admin_logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </nav>
+    </header>
+
+    <main class="admin-content">
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h2><i class="fas fa-box-open"></i> Products Management (Stock & Rates)</h2>
+                <button class="btn btn-primary" onclick="openProductModal()">
+                    <i class="fas fa-plus"></i> Add Product
+                </button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="admin-table" id="productsTable">
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>Product (EN)</th>
+                            <th>Product (HI)</th>
+                            <th>SKU</th>
+                            <th>Rate (Price)</th>
+                            <th>Old Price</th>
+                            <th>Weight</th>
+                            <th>Stock</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsTableBody">
+                        <!-- Products loaded via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- ===== ADD / EDIT PRODUCT MODAL ===== -->
+    <div class="modal-overlay" id="productModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add Product</h2>
+                <button class="modal-close" onclick="closeModal('productModal')">&times;</button>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Product Name (English) *</label>
+                    <input type="text" id="pNameEn" placeholder="e.g. Premium Cashew" required>
+                </div>
+                <div class="form-group">
+                    <label>Product Name (Hindi) *</label>
+                    <input type="text" id="pNameHi" placeholder="e.g. प्रीमियम काजू" required>
+                </div>
+                <div class="form-group">
+                    <label>Rate / Price (₹)</label>
+                    <input type="text" id="pPrice" placeholder="e.g. ₹1,200">
+                </div>
+                <div class="form-group">
+                    <label>Old Price (₹) - optional</label>
+                    <input type="text" id="pOldPrice" placeholder="e.g. ₹1,500">
+                </div>
+                <div class="form-group">
+                    <label>Weight / Pack Size</label>
+                    <input type="text" id="pWeight" placeholder="e.g. 500g / 1kg">
+                </div>
+                <div class="form-group">
+                    <label>SKU Code</label>
+                    <input type="text" id="pSku" placeholder="e.g. CAS-001">
+                </div>
+                <div class="form-group">
+                    <label>Stock Quantity</label>
+                    <input type="number" id="pStock" placeholder="e.g. 100" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Stock Status</label>
+                    <select id="pStatus">
+                        <option value="in_stock">In Stock</option>
+                        <option value="low_stock">Low Stock</option>
+                        <option value="out_of_stock">Out of Stock</option>
+                    </select>
+                </div>
+                <div class="form-group full-width">
+                    <label>Description (English)</label>
+                    <textarea id="pDescEn" placeholder="Product description in English..."></textarea>
+                </div>
+                <div class="form-group full-width">
+                    <label>Description (Hindi)</label>
+                    <textarea id="pDescHi" placeholder="हिंदी में उत्पाद विवरण..."></textarea>
+                </div>
+                <div class="form-group full-width">
+                    <label>Product Image</label>
+                    <div class="image-upload" onclick="document.getElementById('pImageInput').click()">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Click to upload product image</p>
+                    </div>
+                    <input type="file" id="pImageInput" accept="image/*" style="display: none;" onchange="handleImageUpload(this, 'pImageUrl', 'pImagePreview')">
+                    <div class="image-preview" id="pImagePreview">
+                        <img src="" alt="Product Image Preview">
+                    </div>
+                    <div class="image-url-field">
+                        <label style="font-size: 0.75rem;">or paste image URL:</label>
+                        <input type="text" id="pImageUrl" placeholder="/static/uploads/product.jpg">
+                    </div>
+                </div>
+                <div class="form-group full-width">
+                    <label>Product Video (MP4/WebM)</label>
+                    <div class="image-upload" onclick="document.getElementById('pVideoInput').click()">
+                        <i class="fas fa-video"></i>
+                        <p>Click to upload product video</p>
+                    </div>
+                    <input type="file" id="pVideoInput" accept="video/*" style="display: none;" onchange="handleVideoUpload(this, 'pVideoUrl')">
+                    <div class="image-url-field">
+                        <label style="font-size: 0.75rem;">or paste video URL:</label>
+                        <input type="text" id="pVideoUrl" placeholder="/static/uploads/product.mp4">
+                    </div>
+                </div>
+                <div class="form-group full-width">
+                    <label>Grading Options (Premium / Standard / Budget with prices)</label>
+                    <div id="gradesContainer">
+                        <div class="grade-row" style="display: flex; gap: 10px; margin-bottom: 8px;">
+                            <input type="text" class="grade-name" placeholder="Grade name (e.g. Premium)" style="flex: 1;">
+                            <input type="text" class="grade-price" placeholder="Price (e.g. ₹1,500)" style="flex: 1;">
+                            <button type="button" class="btn-sm btn-sm-delete" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-outline" style="margin-top: 5px; font-size: 0.8rem; padding: 8px 15px;" onclick="addGradeRow()">
+                        <i class="fas fa-plus"></i> Add Grade
+                    </button>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-success btn-lg" onclick="saveProduct()">
+                        <i class="fas fa-save"></i> Save Product
+                    </button>
+                    <button class="btn btn-outline btn-lg" onclick="closeModal('productModal')">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== QUICK STOCK UPDATE MODAL ===== -->
+    <div class="modal-overlay" id="stockModal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-boxes"></i> Update Stock</h2>
+                <button class="modal-close" onclick="closeModal('stockModal')">&times;</button>
+            </div>
+            <p style="margin-bottom: 15px; color: #666;">
+                Product: <strong id="stockModalProductName"></strong>
+            </p>
+            <div class="form-group">
+                <label>Current Stock</label>
+                <input type="number" id="stockCurrent" readonly style="background: #f5f0e8;">
+            </div>
+            <div class="form-group">
+                <label>Add / Remove Stock (+/-)</label>
+                <input type="number" id="stockChange" placeholder="e.g. 50 to add, -10 to remove">
+            </div>
+            <div class="form-group">
+                <label>New Stock Quantity</label>
+                <input type="number" id="stockNew" min="0" placeholder="Or set directly...">
+            </div>
+            <div class="form-group">
+                <label>Update Rate (₹)</label>
+                <input type="text" id="stockRate" placeholder="e.g. ₹1,250">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="btn btn-success" style="flex: 1;" onclick="saveQuickStock()">
+                    <i class="fas fa-check"></i> Update
+                </button>
+                <button class="btn btn-outline" onclick="closeModal('stockModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>

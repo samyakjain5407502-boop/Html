@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Jainzee Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <header class="admin-header">
+        <div class="brand">
+            <i class="fas fa-seedling"></i>
+            <span>Jainzee Admin Panel</span>
+        </div>
+        <nav class="admin-nav">
+            <a href="{{ url_for('admin_dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="{{ url_for('admin_products_page') }}"><i class="fas fa-box-open"></i> Products & Stock</a>
+            <a href="{{ url_for('admin_settings_page') }}" class="active"><i class="fas fa-cog"></i> Settings</a>
+            <a href="/" target="_blank"><i class="fas fa-external-link-alt"></i> View Site</a>
+            <a href="{{ url_for('admin_logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </nav>
+    </header>
+
+    <main class="admin-content">
+        <h1 class="page-title">Website Settings</h1>
+
+        <!-- ===== SHOP INFO ===== -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h2><i class="fas fa-store"></i> Shop Information</h2>
+            </div>
+            <div style="padding: 30px;">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Shop Name (English)</label>
+                        <input type="text" id="sShopNameEn" placeholder="Shop name in English">
+                    </div>
+                    <div class="form-group">
+                        <label>Shop Name (Hindi)</label>
+                        <input type="text" id="sShopNameHi" placeholder="दुकान का नाम हिंदी में">
+                    </div>
+                    <div class="form-group">
+                        <label>Tagline (English)</label>
+                        <input type="text" id="sTaglineEn" placeholder="Tagline in English">
+                    </div>
+                    <div class="form-group">
+                        <label>Tagline (Hindi)</label>
+                        <input type="text" id="sTaglineHi" placeholder="टैगलाइन हिंदी में">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>About Us (English)</label>
+                        <textarea id="sAboutEn" placeholder="About the company in English"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>About Us (Hindi)</label>
+                        <textarea id="sAboutHi" placeholder="कंपनी के बारे में हिंदी में"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== CONTACT INFO ===== -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h2><i class="fas fa-address-card"></i> Contact & Address</h2>
+            </div>
+            <div style="padding: 30px;">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>Address (English)</label>
+                        <input type="text" id="sAddressEn" placeholder="Address in English">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Address (Hindi)</label>
+                        <input type="text" id="sAddressHi" placeholder="पता हिंदी में">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="text" id="sPhone" placeholder="+91 98260 00000">
+                    </div>
+                    <div class="form-group">
+                        <label>WhatsApp Number (with country code, no +)</label>
+                        <input type="text" id="sWhatsapp" placeholder="919826000000">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="sEmail" placeholder="info@jainzee.in">
+                    </div>
+                    <div class="form-group">
+                        <label>Opening Hours (English)</label>
+                        <input type="text" id="sHoursEn" placeholder="Mon - Sun: 10:00 AM - 9:00 PM">
+                    </div>
+                    <div class="form-group">
+                        <label>Opening Hours (Hindi)</label>
+                        <input type="text" id="sHoursHi" placeholder="सोम - रवि: सुबह 10:00 - रात 9:00">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== LOGO ===== -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h2><i class="fas fa-image"></i> Company Logo</h2>
+            </div>
+            <div style="padding: 30px;">
+                <div class="form-group">
+                    <label>Upload Logo</label>
+                    <div class="image-upload" onclick="document.getElementById('sLogoInput').click()">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Click to upload company logo</p>
+                    </div>
+                    <input type="file" id="sLogoInput" accept="image/*" style="display: none;" onchange="handleImageUpload(this, 'sLogoUrl', 'sLogoPreview')">
+                    <div class="image-preview" id="sLogoPreview">
+                        <img src="" alt="Logo Preview">
+                    </div>
+                    <div class="image-url-field">
+                        <label style="font-size: 0.75rem;">or paste logo URL:</label>
+                        <input type="text" id="sLogoUrl" placeholder="/static/uploads/logo.png">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== CHANGE PASSWORD ===== -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h2><i class="fas fa-key"></i> Change Admin Password</h2>
+            </div>
+            <div style="padding: 30px;">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Old Password</label>
+                        <input type="password" id="sOldPassword" placeholder="Current password">
+                    </div>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" id="sNewPassword" placeholder="New password (min 6 chars)">
+                    </div>
+                </div>
+                <button class="btn btn-primary" style="margin-top: 20px;" onclick="changePassword()">
+                    <i class="fas fa-key"></i> Change Password
+                </button>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 15px; margin-bottom: 40px;">
+            <button class="btn btn-success btn-lg" onclick="saveSettings()">
+                <i class="fas fa-save"></i> Save All Settings
+            </button>
+            <button class="btn btn-outline btn-lg" onclick="loadSettings()">
+                <i class="fas fa-sync-alt"></i> Reload
+            </button>
+        </div>
+    </main>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Jainzee</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <header class="admin-header">
+        <div class="brand">
+            <i class="fas fa-seedling"></i>
+            <span>Jainzee Admin Panel</span>
+        </div>
+        <nav class="admin-nav">
+            <a href="{{ url_for('admin_dashboard') }}" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="{{ url_for('admin_products_page') }}"><i class="fas fa-box-open"></i> Products & Stock</a>
+            <a href="{{ url_for('admin_settings_page') }}"><i class="fas fa-cog"></i> Settings</a>
+            <a href="/" target="_blank"><i class="fas fa-external-link-alt"></i> View Site</a>
+            <a href="{{ url_for('admin_logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </nav>
+    </header>
+
+    <main class="admin-content">
+        <h1 class="page-title">Dashboard</h1>
+
+        <div class="dashboard-stats">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-box-open"></i></div>
+                <div class="stat-info">
+                    <h3>Total Products</h3>
+                    <div class="number" id="statProducts">{{ product_count }}</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="fas fa-boxes"></i></div>
+                <div class="stat-info">
+                    <h3>Total Stock (units)</h3>
+                    <div class="number" id="statStock">-</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon blue"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="stat-info">
+                    <h3>Low Stock Items</h3>
+                    <div class="number" id="statLowStock">-</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-actions">
+            <a href="{{ url_for('admin_products_page') }}" class="action-card">
+                <i class="fas fa-box-open"></i>
+                <h3>Manage Products</h3>
+                <p>Add, edit, delete products, update stock & rates</p>
+            </a>
+            <a href="{{ url_for('admin_settings_page') }}" class="action-card">
+                <i class="fas fa-cog"></i>
+                <h3>Website Settings</h3>
+                <p>Edit shop name, address, contact details & logo</p>
+            </a>
+            <a href="/" target="_blank" class="action-card">
+                <i class="fas fa-globe"></i>
+                <h3>View Website</h3>
+                <p>Preview your live website</p>
+            </a>
+        </div>
+    </main>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>
