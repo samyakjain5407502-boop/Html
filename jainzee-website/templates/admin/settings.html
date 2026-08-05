@@ -3,126 +3,221 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jainzee Food Processing Industries - Premium Dry Fruits</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>Settings - Jainzee Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-
-    <!-- NAVBAR -->
-    <header class="site-header">
-        <div class="container header-container">
-            <div class="logo-area">
-                <img src="{{ logo_url or url_for('static', filename='uploads/logo.png') }}" alt="Jainzee Logo" class="site-logo" onerror="this.style.display='none'">
-                <span class="shop-name">{{ shop_name or 'Jainzee Food Processing Industries' }}</span>
-            </div>
-            <div class="header-actions">
-                <div class="lang-switch">
-                    <button class="lang-btn active" id="btnEn">🇬🇧 English</button>
-                    <button class="lang-btn" id="btnHi">🇮🇳 हिन्दी</button>
-                </div>
-                <a href="https://wa.me/{{ whatsapp_no or '919826000000' }}" target="_blank" class="btn btn-whatsapp">
-                    <i class="fab fa-whatsapp"></i> Share
-                </a>
-                <a href="/customer/login" class="btn btn-customer">
-                    <i class="fas fa-user"></i> Customer Login
-                </a>
-                <a href="/admin/login" class="btn btn-admin">
-                    <i class="fas fa-edit"></i> Edit Website
-                </a>
-            </div>
+    <header class="admin-header">
+        <div class="brand">
+            <i class="fas fa-seedling"></i>
+            <span>Jainzee Admin Panel</span>
         </div>
+        <nav class="admin-nav">
+            <a href="{{ url_for('admin_dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="{{ url_for('admin_products_page') }}"><i class="fas fa-box-open"></i> Products & Stock</a>
+            <a href="{{ url_for('admin_settings_page') }}" class="active"><i class="fas fa-cog"></i> Settings</a>
+            <a href="/" target="_blank"><i class="fas fa-external-link-alt"></i> View Site</a>
+            <a href="{{ url_for('admin_logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </nav>
     </header>
 
-    <!-- HERO / BANNER SECTION -->
-    <section class="hero-section">
-        <div class="container hero-container">
-            <div class="hero-content">
-                <h1 class="hero-title">{{ tagline or 'Pure & Premium Dry Fruits' }}</h1>
-                <p class="hero-sub">{{ about_us or 'Jainzee Food Processing Industries is a trusted name for pure, hygienic and premium dry fruits direct from processing facility.' }}</p>
-                <a href="#products-section" class="btn btn-primary btn-lg">Explore Products</a>
+    <main class="admin-content">
+        <h1 class="page-title">Website Settings</h1>
+
+        <!-- ===== SHOP INFO ===== -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h2><i class="fas fa-store"></i> Shop Information</h2>
             </div>
-        </div>
-    </section>
-
-    <!-- WHY CHOOSE JAINZEE SECTION -->
-    <section class="why-us-section" style="padding: 60px 20px; background-color: #3b2012; color: #ffffff; text-align: center;">
-        <div class="container">
-            <h2 style="font-size: 32px; font-weight: 700; margin-bottom: 40px; color: #ffffff;">Why Choose Jainzee?</h2>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; max-width: 1100px; margin: 0 auto;">
-                <div style="background: rgba(255, 255, 255, 0.08); padding: 30px 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);">
-                    <i class="fas fa-leaf" style="font-size: 36px; color: #f39c12; margin-bottom: 15px;"></i>
-                    <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 10px;">100% Pure</h3>
-                    <p style="font-size: 14px; opacity: 0.85;">No adulteration, only pure & natural dry fruits</p>
-                </div>
-
-                <div style="background: rgba(255, 255, 255, 0.08); padding: 30px 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);">
-                    <i class="fas fa-shield-alt" style="font-size: 36px; color: #f39c12; margin-bottom: 15px;"></i>
-                    <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 10px;">Hygienic Processing</h3>
-                    <p style="font-size: 14px; opacity: 0.85;">Modern food-grade processing facility</p>
-                </div>
-
-                <div style="background: rgba(255, 255, 255, 0.08); padding: 30px 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);">
-                    <i class="fas fa-tag" style="font-size: 36px; color: #f39c12; margin-bottom: 15px;"></i>
-                    <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 10px;">Best Prices</h3>
-                    <p style="font-size: 14px; opacity: 0.85;">Direct from processor, no middlemen</p>
-                </div>
-
-                <div style="background: rgba(255, 255, 255, 0.08); padding: 30px 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);">
-                    <i class="fas fa-truck" style="font-size: 36px; color: #f39c12; margin-bottom: 15px;"></i>
-                    <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 10px;">Bulk & Retail</h3>
-                    <p style="font-size: 14px; opacity: 0.85;">Available for home, business & bulk orders</p>
+            <div style="padding: 30px;">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Shop Name (English)</label>
+                        <input type="text" id="sShopNameEn" placeholder="Shop name in English">
+                    </div>
+                    <div class="form-group">
+                        <label>Shop Name (Hindi)</label>
+                        <input type="text" id="sShopNameHi" placeholder="दुकान का नाम हिंदी में">
+                    </div>
+                    <div class="form-group">
+                        <label>Tagline (English)</label>
+                        <input type="text" id="sTaglineEn" placeholder="Tagline in English">
+                    </div>
+                    <div class="form-group">
+                        <label>Tagline (Hindi)</label>
+                        <input type="text" id="sTaglineHi" placeholder="टैगलाइन हिंदी में">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>About Us (English)</label>
+                        <textarea id="sAboutEn" placeholder="About the company in English"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>About Us (Hindi)</label>
+                        <textarea id="sAboutHi" placeholder="कंपनी के बारे में हिंदी में"></textarea>
+                    </div>
                 </div>
             </div>
         </div>
-    </section>
 
-    <!-- MAIN PAGE VIDEO BANNER (EXACT PLACEMENT BETWEEN WHY CHOOSE US & PRODUCTS) -->
-    <section class="main-video-section" style="padding: 50px 20px; background-color: #fff8f0; text-align: center;">
-        <div class="container" style="max-width: 950px; margin: 0 auto;">
-            <h2 style="font-family: 'Poppins', sans-serif; font-size: 30px; font-weight: 700; color: #4a2c11; margin-bottom: 20px;">
-                Watch Our Processing & Quality
-            </h2>
-            <div style="position: relative; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2); background: #000;">
-                <video controls autoplay muted loop playsinline width="100%" style="display: block; border-radius: 16px;">
-                    <source src="{{ url_for('static', filename='uploads/main_banner_video.mp4') }}" type="video/mp4">
-                    Your browser does not support HTML5 video.
-                </video>
+        <!-- ===== CONTACT INFO ===== -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h2><i class="fas fa-address-card"></i> Contact & Address</h2>
+            </div>
+            <div style="padding: 30px;">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>Address (English)</label>
+                        <input type="text" id="sAddressEn" placeholder="Address in English">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Address (Hindi)</label>
+                        <input type="text" id="sAddressHi" placeholder="पता हिंदी में">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="text" id="sPhone" placeholder="+91 98260 00000">
+                    </div>
+                    <div class="form-group">
+                        <label>WhatsApp Number (with country code, no +)</label>
+                        <input type="text" id="sWhatsapp" placeholder="919826000000">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="sEmail" placeholder="info@jainzee.in">
+                    </div>
+                    <div class="form-group">
+                        <label>Opening Hours (English)</label>
+                        <input type="text" id="sHoursEn" placeholder="Mon - Sun: 10:00 AM - 9:00 PM">
+                    </div>
+                    <div class="form-group">
+                        <label>Opening Hours (Hindi)</label>
+                        <input type="text" id="sHoursHi" placeholder="सोम - रवि: सुबह 10:00 - रात 9:00">
+                    </div>
+                </div>
             </div>
         </div>
-    </section>
 
-    <!-- PRODUCTS SECTION -->
-    <section class="products-section" id="products-section" style="padding: 60px 20px;">
-        <div class="container">
-            <h2 class="section-title" style="text-align: center; margin-bottom: 40px; color: #3b2012; font-size: 32px; font-weight: 700;">
-                Our Premium Products
-            </h2>
-            
-            <div id="products-grid" class="products-grid">
-                <!-- Products dynamically loaded via Flask API -->
+        <!-- ===== LOGO ===== -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h2><i class="fas fa-image"></i> Company Logo</h2>
+            </div>
+            <div style="padding: 30px;">
+                <div class="form-group">
+                    <label>Upload Logo</label>
+                    <div class="image-upload" onclick="document.getElementById('sLogoInput').click()">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Click to upload company logo</p>
+                    </div>
+                    <input type="file" id="sLogoInput" accept="image/*" style="display: none;" onchange="handleImageUpload(this, 'sLogoUrl', 'sLogoPreview')">
+                    <div class="image-preview" id="sLogoPreview">
+                        <img src="" alt="Logo Preview">
+                    </div>
+                    <div class="image-url-field">
+                        <label style="font-size: 0.75rem;">or paste logo URL:</label>
+                        <input type="text" id="sLogoUrl" placeholder="/static/uploads/logo.png">
+                    </div>
+                </div>
             </div>
         </div>
-    </section>
 
-    <!-- FOOTER -->
-    <footer class="site-footer">
-        <div class="container footer-container">
-            <div class="footer-info">
-                <h3>{{ shop_name or 'Jainzee Food Processing Industries' }}</h3>
-                <p><i class="fas fa-map-marker-alt"></i> {{ address or 'Siyaganj, Indore, Madhya Pradesh 452001' }}</p>
-                <p><i class="fas fa-phone"></i> {{ phone or '+91 98260 00000' }}</p>
-                <p><i class="fas fa-envelope"></i> {{ email or 'info@jainzee.in' }}</p>
+        <!-- ===== MAIN PAGE VIDEO UPLOAD ===== -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h2><i class="fas fa-video"></i> Main Page Video Banner</h2>
             </div>
-            <div class="footer-copy">
-                <p>&copy; 2026 {{ shop_name or 'Jainzee Food Processing Industries' }}. All Rights Reserved.</p>
+            <div style="padding: 30px;">
+                <form id="mainVideoUploadForm">
+                    <div class="form-group">
+                        <label>Select Main Page Video (MP4 / WEBM)</label>
+                        <input type="file" id="mainVideoInput" accept="video/mp4,video/webm" style="padding: 10px; border: 1px solid #ccc; border-radius: 6px; width: 100%;" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="uploadVideoBtn" style="margin-top: 15px;">
+                        <i class="fas fa-cloud-upload-alt"></i> Upload & Replace Main Video
+                    </button>
+                </form>
+                <div id="videoUploadMsg" style="margin-top: 15px; font-weight: 600;"></div>
             </div>
         </div>
-    </footer>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+        <!-- ===== CHANGE PASSWORD ===== -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h2><i class="fas fa-key"></i> Change Admin Password</h2>
+            </div>
+            <div style="padding: 30px;">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Old Password</label>
+                        <input type="password" id="sOldPassword" placeholder="Current password">
+                    </div>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" id="sNewPassword" placeholder="New password (min 6 chars)">
+                    </div>
+                </div>
+                <button class="btn btn-primary" style="margin-top: 20px;" onclick="changePassword()">
+                    <i class="fas fa-key"></i> Change Password
+                </button>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 15px; margin-bottom: 40px;">
+            <button class="btn btn-success btn-lg" onclick="saveSettings()">
+                <i class="fas fa-save"></i> Save All Settings
+            </button>
+            <button class="btn btn-outline btn-lg" onclick="loadSettings()">
+                <i class="fas fa-sync-alt"></i> Reload
+            </button>
+        </div>
+    </main>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+
+    <script>
+    document.getElementById('mainVideoUploadForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fileInput = document.getElementById('mainVideoInput');
+        const msgDiv = document.getElementById('videoUploadMsg');
+        const btn = document.getElementById('uploadVideoBtn');
+
+        if (!fileInput.files[0]) return;
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        msgDiv.style.color = "#007bff";
+        msgDiv.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Uploading video... Please wait.";
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/admin/api/upload-main-video', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                msgDiv.style.color = "#28a745";
+                msgDiv.innerHTML = "🎉 Video uploaded successfully!";
+                fileInput.value = '';
+            } else {
+                msgDiv.style.color = "#dc3545";
+                msgDiv.innerHTML = "❌ Error: " + (data.error || "Upload failed.");
+            }
+        } catch (err) {
+            msgDiv.style.color = "#dc3545";
+            msgDiv.innerHTML = "❌ Upload failed. Server issue.";
+        } finally {
+            btn.disabled = false;
+        }
+    });
+    </script>
 </body>
 </html>
