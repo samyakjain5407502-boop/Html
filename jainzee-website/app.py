@@ -464,6 +464,20 @@ def admin_api_change_password():
     conn.commit()
     conn.close()
     return jsonify({'message': 'Password changed successfully'})
+    @app.route('/admin/api/upload-main-video', methods=['POST'])
+@login_required
+def admin_api_upload_main_video():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No video file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No video selected'}), 400
+    
+    # Direct static/uploads/main_banner_video.mp4 me save hoga
+    filename = 'main_banner_video.mp4'
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(filepath)
+    return jsonify({'message': 'Main video updated successfully', 'url': '/static/uploads/main_banner_video.mp4'})
 
 # ---------------- STARTUP ----------------
 
