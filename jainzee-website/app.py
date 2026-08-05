@@ -464,7 +464,8 @@ def admin_api_change_password():
     conn.commit()
     conn.close()
     return jsonify({'message': 'Password changed successfully'})
-    @app.route('/admin/api/upload-main-video', methods=['POST'])
+
+@app.route('/admin/api/upload-main-video', methods=['POST'])
 @login_required
 def admin_api_upload_main_video():
     if 'file' not in request.files:
