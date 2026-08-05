@@ -514,6 +514,39 @@ async function changePassword() {
     }
 }
 
+// ==================== MAIN PAGE VIDEO UPLOAD ====================
+
+async function uploadMainVideo(file) {
+    const btn = document.getElementById('uploadVideoBtn');
+    const msg = document.getElementById('videoUploadMsg');
+    if (btn) btn.disabled = true;
+    if (msg) msg.textContent = 'Uploading video... This may take a few seconds for large files.';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const res = await fetch('/admin/api/upload-main-video', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Upload failed');
+
+        if (msg) {
+            msg.innerHTML = '<span style="color: #28a745;"><i class="fas fa-check-circle"></i> Video uploaded successfully! It will now show on the main page.</span>';
+        }
+        showToast('Main page video updated successfully!');
+    } catch (e) {
+        if (msg) {
+            msg.innerHTML = '<span style="color: #dc3545;"><i class="fas fa-times-circle"></i> Upload failed: ' + e.message + '</span>';
+        }
+        showToast('Upload failed: ' + e.message, 'error');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
 // ==================== INIT ====================
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -527,5 +560,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (hasSettingsForm) {
         loadSettings();
+    }
+
+    // Main video upload form handler
+    const mainVideoForm = document.getElementById('mainVideoUploadForm');
+    if (mainVideoForm) {
+        mainVideoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('mainVideoInput');
+            if (!fileInput.files || !fileInput.files[0]) {
+                showToast('Please select a video file first!', 'error');
+                return;
+            }
+            uploadMainVideo(fileInput.files[0]);
+        });
     }
 });

@@ -199,7 +199,8 @@
         try {
             const res = await fetch('/admin/api/upload-main-video', {
                 method: 'POST',
-                body: formData
+                body: formData,
+                credentials: 'same-origin'
             });
 
             const data = await res.json();

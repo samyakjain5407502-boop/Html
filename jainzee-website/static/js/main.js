@@ -117,6 +117,30 @@ async function checkAuthStatus() {
     }
 }
 
+// ==================== MAIN BANNER VIDEO ====================
+
+async function loadMainBannerVideo() {
+    try {
+        // Check if main_banner_video.mp4 exists by making a HEAD-like request
+        const res = await fetch('/static/uploads/main_banner_video.mp4', { method: 'HEAD' });
+        if (res.ok) {
+            const card = document.getElementById('videoBannerCard');
+            const video = document.getElementById('mainBannerVideo');
+            const source = document.getElementById('mainBannerVideoSource');
+            if (card && video && source) {
+                // Add cache-busting timestamp so new uploads show immediately
+                const url = '/static/uploads/main_banner_video.mp4?t=' + Date.now();
+                source.src = url;
+                video.load();
+                card.style.display = '';
+            }
+        }
+    } catch (e) {
+        // Video doesn't exist yet - keep banner hidden
+        console.log('No banner video uploaded yet');
+    }
+}
+
 // ==================== API HELPERS ====================
 
 async function fetchSiteData() {
@@ -399,6 +423,9 @@ function init() {
 
     // Check auth status first (admin edit buttons)
     checkAuthStatus();
+
+    // Load main banner video (if uploaded)
+    loadMainBannerVideo();
 
     // Load data
     fetchSiteData().then(() => fetchProducts());

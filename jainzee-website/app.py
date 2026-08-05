@@ -474,7 +474,12 @@ def admin_api_upload_main_video():
     if file.filename == '':
         return jsonify({'error': 'No video selected'}), 400
     
-    # Direct static/uploads/main_banner_video.mp4 me save hoga
+    # Validate it's a video file
+    ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+    if ext not in ALLOWED_VIDEO_EXTENSIONS:
+        return jsonify({'error': 'Only video files are allowed (MP4, WEBM, MOV, AVI)'}), 400
+    
+    # Save always as main_banner_video.mp4 (browser compatible)
     filename = 'main_banner_video.mp4'
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
