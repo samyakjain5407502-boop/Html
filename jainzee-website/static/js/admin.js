@@ -493,6 +493,7 @@ async function saveSettings() {
         const res = await fetch('/admin/api/site', {
             method: 'POST',
             body: formData
+            // NO Content-Type header - browser sets it automatically for FormData
         });
         
         // Check if response is OK before parsing JSON

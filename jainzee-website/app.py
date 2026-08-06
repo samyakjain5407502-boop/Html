@@ -454,8 +454,24 @@ def admin_api_site():
                 return jsonify({'success': False, 'error': str(e)}), 500
         else:
             try:
-                # Handle JSON data
-                data = request.get_json() or {}
+                # Handle both FormData (multipart/form-data) and JSON
+                data = {}
+                
+                # Try to get JSON data first
+                json_data = request.get_json(silent=True)
+                if json_data:
+                    data = json_data
+                else:
+                    # Fall back to form data
+                    data = request.form.to_dict()
+                    # Parse the 'data' field if it exists (JSON string in FormData)
+                    if 'data' in data:
+                        import json as json_mod
+                        try:
+                            data = json_mod.loads(data['data'])
+                        except:
+                            pass
+                
                 editable_keys = ['shop_name_en', 'shop_name_hi', 'tagline_en', 'tagline_hi',
                                  'address_en', 'address_hi', 'phone', 'whatsapp', 'email',
                                  'hours_en', 'hours_hi', 'about_en', 'about_hi', 'logo',
@@ -465,18 +481,17 @@ def admin_api_site():
                         conn.execute('UPDATE settings SET value=? WHERE key=?', (str(data[key]), key))
                 
                 # Handle UPI QR code upload - convert to Base64 for permanent storage
-                if 'upi_qr_code' in request.files:
-                    file = request.files['upi_qr_code']
-                    if file and file.filename:
-                        import base64
-                        # Read file and convert to base64
-                        file_data = file.read()
-                        base64_data = base64.b64encode(file_data).decode('utf-8')
-                        mime_type = file.content_type or 'image/png'
-                        data_url = f'data:{mime_type};base64,{base64_data}'
-                        
-                        # Store Base64 string in database (permanent, never lost)
-                        conn.execute('UPDATE settings SET value=? WHERE key=?', (data_url, 'upi_qr_data'))
+                qr_file = request.files.get('upi_qr_code')
+                if qr_file and qr_file.filename:
+                    import base64
+                    # Read file and convert to base64
+                    file_data = qr_file.read()
+                    base64_data = base64.b64encode(file_data).decode('utf-8')
+                    mime_type = qr_file.content_type or 'image/png'
+                    data_url = f'data:{mime_type};base64,{base64_data}'
+                    
+                    # Store Base64 string in database (permanent, never lost)
+                    conn.execute('UPDATE settings SET value=? WHERE key=?', (data_url, 'upi_qr_data'))
                 
                 conn.commit()
                 conn.close()
