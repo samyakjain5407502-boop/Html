@@ -367,6 +367,20 @@
         };
 
         async function placeOrder() {
+            // Check if user is logged in
+            try {
+                const authRes = await fetch('/api/auth/status');
+                const authData = await authRes.json();
+                
+                if (!authData.customer_logged_in) {
+                    alert(currentLangCheckout === 'hi' ? 'कृपया ऑर्डर देने के लिए पहले लॉगिन करें' : 'Please login to place order');
+                    window.location.href = '/customer';
+                    return;
+                }
+            } catch(e) {
+                console.error('Auth check failed:', e);
+            }
+
             const name = document.getElementById('checkoutName').value.trim();
             const phone = document.getElementById('checkoutPhone').value.trim();
             const address = document.getElementById('checkoutAddress').value.trim();

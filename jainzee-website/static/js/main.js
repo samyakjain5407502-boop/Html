@@ -120,20 +120,6 @@ async function updateCartCount() {
 
 // Universal Add to Cart function for Product Cards
 async function addToCart(productId, gradeIndex = 0, quantity = 1) {
-    // Check if user is logged in
-    try {
-        const authRes = await fetch('/api/auth/status');
-        const authData = await authRes.json();
-        
-        if (!authData.customer_logged_in) {
-            alert(currentLang === 'hi' ? 'कृपया कार्ट में आइटम जोड़ने के लिए लॉगिन करें' : 'Please login to add items to cart');
-            window.location.href = '/customer';
-            return;
-        }
-    } catch(e) {
-        console.error('Auth check failed:', e);
-    }
-    
     try {
         const res = await fetch('/api/cart', {
             method: 'POST',
