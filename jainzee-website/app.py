@@ -673,31 +673,59 @@ def api_checkout():
         return jsonify({'error': 'Cart is empty'}), 400
     if not customer_name or not customer_phone or not customer_address:
         return jsonify({'error': 'Name, phone and address are required'}), 400
+    
     conn = get_db()
     import json as json_mod
     items_json = json_mod.dumps(cart)
-    # Calculate total
-    total = 0
+    
+    # Fetch global discount from settings
+    global_discount_row = conn.execute("SELECT value FROM settings WHERE key='global_discount'").fetchone()
+    global_discount_percent = float(global_discount_row['value']) if global_discount_row else 0
+    
+    # Calculate total with discount
+    subtotal = 0
+    product_discount = 0
     for item in cart:
         row = conn.execute('SELECT * FROM products WHERE id=?', (item['product_id'],)).fetchone()
         if row:
             grades = []
             try: grades = json_mod.loads(row['grades'] or '[]')
             except: pass
-            price_str = grades[item.get('grade_index', 0)]['price'] if grades and item.get('grade_index', 0) < len(grades) else row['price']
-            price_num = float(re.sub(r'[₹,\s]', '', str(price_str)) or 0)
-            total += price_num * item['quantity']
+            grade_price_str = grades[item.get('grade_index', 0)]['price'] if grades and item.get('grade_index', 0) < len(grades) else row['price']
+            base_price_str = row['price']
+            old_price_str = row['old_price'] or base_price_str
+            
+            grade_price = float(re.sub(r'[₹,\s]', '', str(grade_price_str)) or 0)
+            base_price = float(re.sub(r'[₹,\s]', '', str(base_price_str)) or 0)
+            old_price = float(re.sub(r'[₹,\s]', '', str(old_price_str)) or 0)
+            
+            item_price = grade_price if grade_price > 0 else base_price
+            subtotal += item_price * item['quantity']
+            product_discount += (old_price - item_price) * item['quantity']
+    
+    # Apply global discount
+    global_discount_amount = (subtotal * global_discount_percent) / 100
+    total_discount = product_discount + global_discount_amount
+    final_total = subtotal - total_discount
+    
     cur = conn.execute(
         'INSERT INTO orders (customer_id, customer_name, customer_phone, customer_address, items, total, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        (session.get('customer_id'), customer_name, customer_phone, customer_address, items_json, '₹' + str(round(total, 2)), 'pending_' + payment_method)
+        (session.get('customer_id'), customer_name, customer_phone, customer_address, items_json, '₹' + str(round(final_total, 2)), 'pending_' + payment_method)
     )
     conn.commit()
     order_id = cur.lastrowid
     conn.close()
+    
     # Clear cart
     session.pop('cart', None)
     session.modified = True
-    return jsonify({'order_id': order_id, 'total': '₹' + str(round(total, 2)), 'payment_method': payment_method, 'message': 'Order placed successfully!'})
+    
+    return jsonify({
+        'order_id': order_id, 
+        'total': '₹' + str(round(final_total, 2)), 
+        'payment_method': payment_method, 
+        'message': 'Order placed successfully!'
+    })
 
 # ---------------- ADMIN PRODUCT MEDIA ----------------
 

@@ -179,6 +179,19 @@
             }
         }
 
+        let globalDiscountPercent = 0;
+
+        async function loadGlobalDiscount() {
+            try {
+                const res = await fetch('/api/site');
+                const data = await res.json();
+                globalDiscountPercent = parseFloat(data.global_discount) || 0;
+            } catch(e) {
+                console.error('Failed to load discount:', e);
+                globalDiscountPercent = 0;
+            }
+        }
+
         function renderCart() {
             const content = document.getElementById('cartContent');
             const summary = document.getElementById('cartSummary');
@@ -191,15 +204,28 @@
 
             let html = '';
             let subtotal = 0;
-            let totalSavings = 0;
+            let productDiscount = 0;
+            let globalDiscountAmount = 0;
 
             cartItems.forEach((item, index) => {
-                const itemPrice = parseFloat(String(item.grade_price || item.base_price || '0').replace(/[₹,\s]/g, '')) || 0;
+                // Use base_price (MRP) as the starting point
+                const basePrice = parseFloat(String(item.base_price || '0').replace(/[₹,\s]/g, '')) || 0;
                 const oldPrice = parseFloat(String(item.old_price || '0').replace(/[₹,\s]/g, '')) || 0;
-                const itemTotal = itemPrice * item.quantity;
-                const itemSavings = (oldPrice - itemPrice) * item.quantity;
-                subtotal += itemTotal;
-                totalSavings += itemSavings > 0 ? itemSavings : 0;
+                const gradePrice = parseFloat(String(item.grade_price || '0').replace(/[₹,\s]/g, '')) || 0;
+                
+                // Use grade_price if available, otherwise base_price
+                const itemPrice = gradePrice > 0 ? gradePrice : basePrice;
+                
+                // Product-level discount (old_price vs base/grade price)
+                const itemProductDiscount = (oldPrice - itemPrice) * item.quantity;
+                
+                // Calculate global discount on this item
+                const itemSubtotal = itemPrice * item.quantity;
+                const itemGlobalDiscount = (itemSubtotal * globalDiscountPercent) / 100;
+                
+                subtotal += itemSubtotal;
+                productDiscount += itemProductDiscount > 0 ? itemProductDiscount : 0;
+                globalDiscountAmount += itemGlobalDiscount;
 
                 const name = currentLangCart === 'hi' ? (item.name_hi || item.name_en) : item.name_en;
                 const image = item.image ? '<img src="' + item.image + '" alt="' + name + '" style="width:80px;height:80px;object-fit:cover;border-radius:10px;">' : '<div style="width:80px;height:80px;background:var(--card-bg);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:2rem;">📦</div>';
@@ -226,12 +252,12 @@
             content.innerHTML = html;
             summary.style.display = '';
 
-            // Update summary
-            const discount = totalSavings;
-            const total = subtotal - discount;
+            // Update summary with proper discount calculation
+            const totalDiscount = productDiscount + globalDiscountAmount;
+            const total = subtotal - totalDiscount;
             document.getElementById('cartSubtotal').textContent = formatPriceCart('₹' + subtotal.toFixed(2));
-            document.getElementById('cartDiscount').textContent = '-' + formatPriceCart('₹' + discount.toFixed(2));
-            document.getElementById('cartYouSave').textContent = formatPriceCart('₹' + totalSavings.toFixed(2));
+            document.getElementById('cartDiscount').textContent = '-' + formatPriceCart('₹' + totalDiscount.toFixed(2));
+            document.getElementById('cartYouSave').textContent = formatPriceCart('₹' + totalDiscount.toFixed(2));
             document.getElementById('cartTotal').textContent = formatPriceCart('₹' + total.toFixed(2));
         }
 

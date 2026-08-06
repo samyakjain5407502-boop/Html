@@ -314,18 +314,24 @@
             }
         }
 
+        let globalDiscountPercent = 0;
+
+        async function loadGlobalDiscount() {
+            try {
+                const res = await fetch('/api/site');
+                const data = await res.json();
+                globalDiscountPercent = parseFloat(data.global_discount) || 0;
+            } catch(e) {
+                console.error('Failed to load discount:', e);
+                globalDiscountPercent = 0;
+            }
+        }
+
         // Override renderCheckoutItems to apply global discount
         const originalRenderCheckoutItems = renderCheckoutItems;
         renderCheckoutItems = async function() {
             // Load settings to get global discount
-            let globalDiscount = 0;
-            try {
-                const res = await fetch('/api/site');
-                const data = await res.json();
-                globalDiscount = parseFloat(data.global_discount) || 0;
-            } catch(e) {
-                console.error('Failed to load settings:', e);
-            }
+            await loadGlobalDiscount();
             
             const itemsEl = document.getElementById('checkoutItems');
             let html = '';
@@ -334,12 +340,24 @@
             let globalDiscountAmount = 0;
 
             checkoutItems.forEach(item => {
-                const itemPrice = parseFloat(String(item.grade_price || item.base_price || '0').replace(/[₹,\s]/g, '')) || 0;
+                // Use base_price (MRP) as the starting point
+                const basePrice = parseFloat(String(item.base_price || '0').replace(/[₹,\s]/g, '')) || 0;
                 const oldPrice = parseFloat(String(item.old_price || '0').replace(/[₹,\s]/g, '')) || 0;
-                const itemTotal = itemPrice * item.quantity;
+                const gradePrice = parseFloat(String(item.grade_price || '0').replace(/[₹,\s]/g, '')) || 0;
+                
+                // Use grade_price if available, otherwise base_price
+                const itemPrice = gradePrice > 0 ? gradePrice : basePrice;
+                
+                // Product-level discount (old_price vs base/grade price)
                 const itemProductDiscount = (oldPrice - itemPrice) * item.quantity;
-                subtotal += itemTotal;
+                
+                // Calculate global discount on this item
+                const itemSubtotal = itemPrice * item.quantity;
+                const itemGlobalDiscount = (itemSubtotal * globalDiscountPercent) / 100;
+                
+                subtotal += itemSubtotal;
                 productDiscount += itemProductDiscount > 0 ? itemProductDiscount : 0;
+                globalDiscountAmount += itemGlobalDiscount;
 
                 const name = currentLangCheckout === 'hi' ? (item.name_hi || item.name_en) : item.name_en;
                 html += `
@@ -357,7 +375,6 @@
             itemsEl.innerHTML = html;
 
             // Calculate global discount on subtotal
-            globalDiscountAmount = (subtotal * globalDiscount) / 100;
             const totalDiscount = productDiscount + globalDiscountAmount;
             const total = subtotal - totalDiscount;
 
