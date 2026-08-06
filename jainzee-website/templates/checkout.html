@@ -112,9 +112,10 @@
 
                         <div id="upiSection" style="display: none; margin-top: 25px; text-align: center;">
                             <p style="color: var(--text-light); margin-bottom: 15px; font-size: 0.9rem;" data-i18n="checkout_upi_instructions">Scan QR code or click to pay via UPI</p>
-                            <div style="background: var(--dark); border-radius: 12px; padding: 20px; margin: 15px 0; border: 1px solid rgba(255,215,0,0.2);">
-                                <i class="fas fa-qrcode" style="font-size: 4rem; color: var(--primary);"></i>
-                                <p style="color: var(--text-light); margin-top: 10px; font-size: 0.85rem;" data-i18n="checkout_upi_placeholder">UPI QR will appear here</p>
+                            <div id="upiQrCodeContainer" style="background: white; border-radius: 12px; padding: 20px; margin: 15px 0; border: 2px solid #e8e0d5;">
+                                <img id="upiQrCodeImage" src="" alt="UPI QR Code" style="max-width: 250px; max-height: 250px; border-radius: 8px; margin-bottom: 10px; display: none;">
+                                <p id="upiIdDisplay" style="color: var(--text); font-weight: 600; font-size: 0.9rem; margin-top: 10px;"></p>
+                                <p style="color: var(--text-light); font-size: 0.85rem; margin-top: 5px;">Scan with any UPI app (GPay, PhonePe, Paytm)</p>
                             </div>
                         </div>
                     </div>
@@ -280,10 +281,90 @@
         // Payment method toggle
         document.getElementById('payUpi').addEventListener('change', function() {
             document.getElementById('upiSection').style.display = '';
+            loadUpiQrCode();
         });
         document.getElementById('payCod').addEventListener('change', function() {
             document.getElementById('upiSection').style.display = 'none';
         });
+
+        // Load UPI QR code from settings
+        async function loadUpiQrCode() {
+            try {
+                const res = await fetch('/api/site');
+                const data = await res.json();
+                
+                const qrImage = document.getElementById('upiQrCodeImage');
+                const upiIdDisplay = document.getElementById('upiIdDisplay');
+                
+                if (data.upi_qr_code) {
+                    qrImage.src = data.upi_qr_code;
+                    qrImage.style.display = '';
+                } else {
+                    qrImage.style.display = 'none';
+                }
+                
+                if (data.upi_id) {
+                    upiIdDisplay.textContent = 'UPI ID: ' + data.upi_id;
+                } else {
+                    upiIdDisplay.textContent = '';
+                }
+            } catch(e) {
+                console.error('Failed to load UPI QR code:', e);
+            }
+        }
+
+        // Override renderCheckoutItems to apply global discount
+        const originalRenderCheckoutItems = renderCheckoutItems;
+        renderCheckoutItems = async function() {
+            // Load settings to get global discount
+            let globalDiscount = 0;
+            try {
+                const res = await fetch('/api/site');
+                const data = await res.json();
+                globalDiscount = parseFloat(data.global_discount) || 0;
+            } catch(e) {
+                console.error('Failed to load settings:', e);
+            }
+            
+            const itemsEl = document.getElementById('checkoutItems');
+            let html = '';
+            let subtotal = 0;
+            let productDiscount = 0;
+            let globalDiscountAmount = 0;
+
+            checkoutItems.forEach(item => {
+                const itemPrice = parseFloat(String(item.grade_price || item.base_price || '0').replace(/[₹,\s]/g, '')) || 0;
+                const oldPrice = parseFloat(String(item.old_price || '0').replace(/[₹,\s]/g, '')) || 0;
+                const itemTotal = itemPrice * item.quantity;
+                const itemProductDiscount = (oldPrice - itemPrice) * item.quantity;
+                subtotal += itemTotal;
+                productDiscount += itemProductDiscount > 0 ? itemProductDiscount : 0;
+
+                const name = currentLangCheckout === 'hi' ? (item.name_hi || item.name_en) : item.name_en;
+                html += `
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,215,0,0.1);">
+                        <img src="${item.image || ''}" alt="${name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;" onerror="this.style.display='none'">
+                        <div style="flex: 1;">
+                            <div style="color: var(--text); font-weight: 600; font-size: 0.95rem;">${name}</div>
+                            <div style="color: var(--text-light); font-size: 0.8rem;">${item.grade_name || ''} x ${item.quantity}</div>
+                        </div>
+                        <div style="color: var(--primary); font-weight: 700;">${formatPriceCheckout(item.grade_price || item.base_price)}</div>
+                    </div>
+                `;
+            });
+
+            itemsEl.innerHTML = html;
+
+            // Calculate global discount on subtotal
+            globalDiscountAmount = (subtotal * globalDiscount) / 100;
+            const totalDiscount = productDiscount + globalDiscountAmount;
+            const total = subtotal - totalDiscount;
+
+            document.getElementById('checkoutSubtotal').textContent = formatPriceCheckout('₹' + subtotal.toFixed(2));
+            document.getElementById('checkoutDiscount').textContent = '-' + formatPriceCheckout('₹' + totalDiscount.toFixed(2));
+            document.getElementById('checkoutYouSave').textContent = formatPriceCheckout('₹' + totalDiscount.toFixed(2));
+            document.getElementById('checkoutTotal').textContent = formatPriceCart('₹' + total.toFixed(2));
+        };
 
         async function placeOrder() {
             const name = document.getElementById('checkoutName').value.trim();

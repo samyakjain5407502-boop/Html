@@ -127,6 +127,9 @@ def init_db():
         'about_hi': 'जैनज़ी फूड प्रोसेसिंग इंडस्ट्रीज़ शुद्ध, स्वच्छ और प्रीमियम गुणवत्ता वाले ड्राई फ्रूट्स के लिए एक विश्वसनीय नाम है। हम सबसे बेहतरीन काजू, पिस्ता, बादाम, अखरोट और किशमिश लाते हैं ताकि आप हर दिन प्रकृति का सर्वश्रेष्ठ आनंद ले सकें।',
         'logo': '',
         'password_hash': generate_password_hash('jainzee123'),
+        'global_discount': '0',
+        'upi_id': '',
+        'upi_qr_code': ''
     }
     for k, v in default_settings.items():
         cur.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (k, v))
@@ -445,13 +448,30 @@ def admin_api_site():
         data.pop('password_hash', None)
         return jsonify(data)
     else:
+        # Handle JSON data
         data = request.get_json() or {}
         editable_keys = ['shop_name_en', 'shop_name_hi', 'tagline_en', 'tagline_hi',
                          'address_en', 'address_hi', 'phone', 'whatsapp', 'email',
-                         'hours_en', 'hours_hi', 'about_en', 'about_hi', 'logo']
+                         'hours_en', 'hours_hi', 'about_en', 'about_hi', 'logo',
+                         'global_discount', 'upi_id']
         for key in editable_keys:
             if key in data:
                 conn.execute('UPDATE settings SET value=? WHERE key=?', (str(data[key]), key))
+        
+        # Handle UPI QR code upload
+        if 'upi_qr_code' in request.files:
+            file = request.files['upi_qr_code']
+            if file and file.filename:
+                # Create qr subdirectory if it doesn't exist
+                qr_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'qr')
+                os.makedirs(qr_folder, exist_ok=True)
+                
+                filename = 'upi_qr_code.png'
+                filepath = os.path.join(qr_folder, filename)
+                file.save(filepath)
+                qr_url = '/static/uploads/qr/upi_qr_code.png'
+                conn.execute('UPDATE settings SET value=? WHERE key=?', (qr_url, 'upi_qr_code'))
+        
         conn.commit()
         conn.close()
         return jsonify({'message': 'Settings saved successfully'})

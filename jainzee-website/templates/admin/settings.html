@@ -206,6 +206,42 @@
             </div>
         </div>
 
+        <!-- ===== DISCOUNT & PAYMENT SETTINGS ===== -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h2><i class="fas fa-percentage"></i> Discount & Payment Settings</h2>
+                <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 5px;">Manage site-wide discounts and UPI payment options</p>
+            </div>
+            <div style="padding: 30px; background: #fdf6e3;">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Global Discount (%)</label>
+                        <input type="number" id="sGlobalDiscount" placeholder="e.g. 10 for 10% discount" min="0" max="100" step="0.1">
+                        <small style="color: var(--text-light); font-size: 0.8rem;">Applied to all products at checkout</small>
+                    </div>
+                    <div class="form-group">
+                        <label>UPI ID (merchant@upi)</label>
+                        <input type="text" id="sUpiId" placeholder="e.g. merchant@okaxis">
+                    </div>
+                </div>
+
+                <hr style="border-color: rgba(184,134,11,0.2); margin: 25px 0;">
+
+                <div class="form-group">
+                    <label>UPI QR Code Image</label>
+                    <div class="image-upload" onclick="document.getElementById('upiQrInput').click()">
+                        <i class="fas fa-qrcode"></i>
+                        <p>Click to upload UPI QR code image</p>
+                    </div>
+                    <input type="file" id="upiQrInput" accept="image/*" style="display: none;" onchange="handleUpiQrUpload(this)">
+                    <div class="image-preview" id="upiQrPreview" style="margin-top: 15px;">
+                        <img src="" alt="UPI QR Code Preview" style="max-height: 200px; border-radius: 8px;">
+                    </div>
+                    <p style="color: var(--text-light); font-size: 0.85rem; margin-top: 10px;">Recommended: PNG or JPG, 300x300px or larger</p>
+                </div>
+            </div>
+        </div>
+
         <!-- ===== CHANGE PASSWORD ===== -->
         <div class="admin-card">
             <div class="admin-card-header">

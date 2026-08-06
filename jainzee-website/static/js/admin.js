@@ -437,6 +437,19 @@ async function loadSettings() {
             preview.querySelector('img').src = data.logo;
             preview.style.display = 'block';
         }
+
+        // Discount & Payment
+        setVal('sGlobalDiscount', data.global_discount || '0');
+        setVal('sUpiId', data.upi_id || '');
+        
+        // UPI QR Code preview
+        if (data.upi_qr_code) {
+            const qrPreview = document.getElementById('upiQrPreview');
+            if (qrPreview) {
+                qrPreview.querySelector('img').src = data.upi_qr_code;
+                qrPreview.style.display = 'block';
+            }
+        }
     } catch (e) {
         showToast('Failed to load settings', 'error');
     }
@@ -462,20 +475,35 @@ async function saveSettings() {
         email: document.getElementById('sEmail').value.trim(),
         hours_en: document.getElementById('sHoursEn').value.trim(),
         hours_hi: document.getElementById('sHoursHi').value.trim(),
-        logo: document.getElementById('sLogoUrl').value.trim()
+        logo: document.getElementById('sLogoUrl').value.trim(),
+        global_discount: document.getElementById('sGlobalDiscount').value.trim(),
+        upi_id: document.getElementById('sUpiId').value.trim()
     };
+
+    const formData = new FormData();
+    formData.append('data', JSON.stringify(data));
+    
+    // Append QR code file if selected
+    const qrInput = document.getElementById('upiQrInput');
+    if (qrInput.files && qrInput.files[0]) {
+        formData.append('upi_qr_code', qrInput.files[0]);
+    }
 
     try {
         const res = await fetch('/admin/api/site', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            body: formData
         });
         const result = await res.json();
         if (!res.ok) {
             throw new Error(result.error || 'Failed to save settings');
         }
         showToast('Settings saved successfully!');
+        
+        // Clear QR input after successful upload
+        if (qrInput.files && qrInput.files[0]) {
+            qrInput.value = '';
+        }
     } catch (e) {
         showToast(e.message, 'error');
     }
@@ -577,6 +605,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ==================== UPI QR CODE UPLOAD ====================
+
+async function handleUpiQrUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const preview = document.getElementById('upiQrPreview');
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        preview.querySelector('img').src = e.target.result;
+        preview.style.display = 'block';
+    };
+    
+    reader.readAsDataURL(file);
+}
 
 // ==================== GENERAL MEDIA (Factory & Company) ====================
 
