@@ -229,11 +229,8 @@
             <div class="modal-body" style="padding: 25px 0;">
                 <input type="hidden" id="modalProductId">
                 <div style="margin-bottom: 20px;">
-                    <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;">Weight</label>
-                    <select class="grade-select" id="modalWeightSelect" style="width: 100%;">
-                        <option value="500g">500g</option>
-                        <option value="1kg">1kg</option>
-                    </select>
+                    <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;">Weight / Grade</label>
+                    <select class="grade-select" id="modalGradeSelect" onchange="updateModalPrice()" style="width: 100%;"></select>
                 </div>
                 <div style="margin-bottom: 20px;">
                     <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;">Quantity</label>
