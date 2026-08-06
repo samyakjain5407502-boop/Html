@@ -1364,3 +1364,26 @@ button[onclick*="addToCart"] *,
     visibility: visible !important;
     opacity: 1 !important;
 }
+
+/* Force logo and brand title to always remain visible */
+.navbar-brand, 
+.navbar-brand img, 
+.logo, 
+.logo img, 
+#siteLogo, 
+.header-logo img {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: 45px !important;
+    width: auto !important;
+}
+
+/* Ensure nav logo with inline styles from HTML is NEVER hidden */
+img.nav-logo-img {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    max-height: 50px !important;
+    width: auto !important;
+}

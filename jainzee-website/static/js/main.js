@@ -43,7 +43,8 @@ const translations = {
         'admin_login': 'Admin',
         'edit_website': 'Edit Website',
         'customer_login': 'Customer Login',
-        'share_whatsapp': 'Share'
+        'share_whatsapp': 'Share',
+        'cart_title': 'Cart'
     },
     hi: {
         'nav_home': 'होम',
@@ -82,7 +83,8 @@ const translations = {
         'admin_login': 'एडमिन',
         'edit_website': 'वेबसाइट एडिट करें',
         'customer_login': 'ग्राहक लॉगिन',
-        'share_whatsapp': 'शेयर करें'
+        'share_whatsapp': 'शेयर करें',
+        'cart_title': 'कार्ट'
     }
 };
 
@@ -361,30 +363,33 @@ function applySiteData() {
         waLink.href = 'https://wa.me/' + siteData.whatsapp;
     }
 
-    // Logo - ALWAYS keep visible even if no logo set, text still shows
+    // Logo - ALWAYS keep visible, NEVER hide it
     const logo = siteData.logo || '';
     const navLogo = document.getElementById('navLogo');
     const heroLogo = document.getElementById('heroLogo');
-    if (logo) {
-        navLogo.src = logo;
+    
+    // Nav logo: always visible, never hidden
+    if (navLogo) {
         navLogo.style.display = 'inline-block';
         navLogo.style.visibility = 'visible';
         navLogo.style.opacity = '1';
-        heroLogo.src = logo;
-        heroLogo.style.display = 'inline-block';
-        heroLogo.style.visibility = 'visible';
-        heroLogo.style.opacity = '1';
-    } else {
-        // Don't hide - just show placeholder icon instead
-        navLogo.style.display = 'inline-block';
-        navLogo.style.visibility = 'visible';
-        navLogo.style.opacity = '1';
-        navLogo.src = '/static/uploads/logo.png';
-        navLogo.onerror = function() { 
-            // Fallback: show first letter as text
-            this.style.display = 'none';
-        };
-        heroLogo.style.display = 'none';
+        if (logo) {
+            navLogo.src = logo;
+        }
+        // Remove any onerror that hides the logo
+        navLogo.onerror = null;
+    }
+    
+    // Hero logo: show if logo exists, otherwise hide gracefully
+    if (heroLogo) {
+        if (logo) {
+            heroLogo.src = logo;
+            heroLogo.style.display = 'inline-block';
+            heroLogo.style.visibility = 'visible';
+            heroLogo.style.opacity = '1';
+        } else {
+            heroLogo.style.display = 'none';
+        }
     }
 }
 
