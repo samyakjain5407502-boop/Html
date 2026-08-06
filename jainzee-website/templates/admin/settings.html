@@ -50,13 +50,13 @@
                         <label>Tagline (Hindi)</label>
                         <input type="text" id="sTaglineHi" placeholder="टैगलाइन हिंदी में">
                     </div>
-                    <div class="form-group full-width">
-                        <label>About Us (English)</label>
-                        <textarea id="sAboutEn" placeholder="About the company in English"></textarea>
+                    <div class="form-group">
+                        <label>About Text (English)</label>
+                        <textarea id="sAboutEn" rows="3" placeholder="About description in English"></textarea>
                     </div>
-                    <div class="form-group full-width">
-                        <label>About Us (Hindi)</label>
-                        <textarea id="sAboutHi" placeholder="कंपनी के बारे में हिंदी में"></textarea>
+                    <div class="form-group">
+                        <label>About Text (Hindi)</label>
+                        <textarea id="sAboutHi" rows="3" placeholder="हमारे बारे में हिंदी में"></textarea>
                     </div>
                 </div>
             </div>
@@ -65,24 +65,24 @@
         <!-- ===== CONTACT INFO ===== -->
         <div class="admin-card">
             <div class="admin-card-header">
-                <h2><i class="fas fa-address-card"></i> Contact & Address</h2>
+                <h2><i class="fas fa-address-card"></i> Contact Information</h2>
             </div>
             <div style="padding: 30px;">
                 <div class="form-grid">
-                    <div class="form-group full-width">
+                    <div class="form-group">
                         <label>Address (English)</label>
-                        <input type="text" id="sAddressEn" placeholder="Address in English">
+                        <textarea id="sAddressEn" rows="2" placeholder="Full address in English"></textarea>
                     </div>
-                    <div class="form-group full-width">
+                    <div class="form-group">
                         <label>Address (Hindi)</label>
-                        <input type="text" id="sAddressHi" placeholder="पता हिंदी में">
+                        <textarea id="sAddressHi" rows="2" placeholder="पूरा पता हिंदी में"></textarea>
                     </div>
                     <div class="form-group">
                         <label>Phone Number</label>
                         <input type="text" id="sPhone" placeholder="+91 98260 00000">
                     </div>
                     <div class="form-group">
-                        <label>WhatsApp Number (with country code, no +)</label>
+                        <label>WhatsApp Number</label>
                         <input type="text" id="sWhatsapp" placeholder="919826000000">
                     </div>
                     <div class="form-group">
@@ -101,53 +101,79 @@
             </div>
         </div>
 
-        <!-- ===== LOGO ===== -->
+        <!-- ===== LOGO UPLOAD ===== -->
         <div class="admin-card">
             <div class="admin-card-header">
-                <h2><i class="fas fa-image"></i> Company Logo</h2>
+                <h2><i class="fas fa-image"></i> Logo Upload</h2>
             </div>
             <div style="padding: 30px;">
                 <div class="form-group">
                     <label>Upload Logo</label>
-                    <div class="image-upload" onclick="document.getElementById('sLogoInput').click()">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <p>Click to upload company logo</p>
-                    </div>
-                    <input type="file" id="sLogoInput" accept="image/*" style="display: none;" onchange="handleImageUpload(this, 'sLogoUrl', 'sLogoPreview')">
-                    <div class="image-preview" id="sLogoPreview">
-                        <img src="" alt="Logo Preview">
-                    </div>
-                    <div class="image-url-field">
-                        <label style="font-size: 0.75rem;">or paste logo URL:</label>
-                        <input type="text" id="sLogoUrl" placeholder="/static/uploads/logo.png">
-                    </div>
+                    <input type="file" id="logoInput" accept="image/*">
                 </div>
+                <div id="logoPreview" style="display: none; margin-top: 15px;">
+                    <img src="" alt="Logo Preview" style="max-height: 80px; border-radius: 8px;">
+                </div>
+                <input type="hidden" id="sLogoUrl">
+                <p style="color: var(--text-light); font-size: 0.85rem; margin-top: 10px;">Recommended: PNG or JPG, transparent background, 400x400px</p>
             </div>
         </div>
 
-        <!-- ===== MAIN PAGE VIDEO UPLOAD ===== -->
+        <!-- ===== MAIN PAGE VIDEO BANNER ===== -->
         <div class="admin-card">
             <div class="admin-card-header">
                 <h2><i class="fas fa-video"></i> Main Page Video Banner</h2>
             </div>
             <div style="padding: 30px;">
-                <form id="mainVideoUploadForm">
+                <form id="mainVideoUploadForm" style="margin-bottom: 15px;">
                     <div class="form-group">
-                        <label>Select Main Page Video (MP4 / WEBM)</label>
-                        <input type="file" id="mainVideoInput" accept="video/mp4,video/webm" style="padding: 10px; border: 1px solid #ccc; border-radius: 6px; width: 100%;" required>
+                        <label>Upload Main Page Video (MP4 recommended)</label>
+                        <input type="file" id="mainVideoInput" accept="video/*">
                     </div>
-                    <button type="submit" class="btn btn-primary" id="uploadVideoBtn" style="margin-top: 15px;">
-                        <i class="fas fa-cloud-upload-alt"></i> Upload & Replace Main Video
+                    <button type="submit" class="btn btn-primary" id="uploadVideoBtn">
+                        <i class="fas fa-upload"></i> Upload & Replace Main Video
                     </button>
                 </form>
-                <div id="videoUploadMsg" style="margin-top: 15px; font-weight: 600;"></div>
+                <div id="videoUploadMsg" style="margin-top: 10px; font-size: 0.9rem;"></div>
+                <p style="color: var(--text-light); font-size: 0.85rem; margin-top: 10px;">This video will appear on the main page between the hero and products sections. Max size: 100MB.</p>
+            </div>
+        </div>
+
+        <!-- ===== PRODUCT MEDIA UPLOAD ===== -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h2><i class="fas fa-images"></i> Product Media Upload</h2>
+                <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 5px;">Upload photos & videos for individual products</p>
+            </div>
+            <div style="padding: 30px;">
+                <div class="form-group">
+                    <label>Select Product</label>
+                    <select id="mediaProductId" style="width: 100%; padding: 10px; border-radius: 8px; background: #1a120c; color: var(--text); border: 1px solid rgba(255,215,0,0.3);">
+                        <option value="">-- Choose a product --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Upload Photo or Video</label>
+                    <input type="file" id="mediaFileInput" accept="image/*,video/*">
+                </div>
+                <button class="btn btn-primary" style="margin-bottom: 20px;" onclick="uploadProductMedia()">
+                    <i class="fas fa-upload"></i> Upload Media
+                </button>
+                <div id="mediaUploadMsg" style="margin-top: 10px; font-size: 0.9rem;"></div>
+
+                <hr style="border-color: rgba(255,215,0,0.15); margin: 25px 0;">
+
+                <h3 style="color: var(--text); margin-bottom: 15px;">Uploaded Media</h3>
+                <div id="mediaList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
+                    <!-- Media items will be loaded here -->
+                </div>
             </div>
         </div>
 
         <!-- ===== CHANGE PASSWORD ===== -->
         <div class="admin-card">
             <div class="admin-card-header">
-                <h2><i class="fas fa-key"></i> Change Admin Password</h2>
+                <h2><i class="fas fa-key"></i> Change Password</h2>
             </div>
             <div style="padding: 30px;">
                 <div class="form-grid">
@@ -181,6 +207,121 @@
     <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 
     <script>
+    // Logo upload handler
+    document.getElementById('logoInput').addEventListener('change', async function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/admin/api/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (res.ok) {
+            document.getElementById('sLogoUrl').value = data.url;
+            const preview = document.getElementById('logoPreview');
+            preview.querySelector('img').src = data.url;
+            preview.style.display = 'block';
+        }
+    });
+
+    // Load products into media dropdown
+    async function loadMediaProducts() {
+        try {
+            const res = await fetch('/admin/api/products');
+            const products = await res.json();
+            const select = document.getElementById('mediaProductId');
+            select.innerHTML = '<option value="">-- Choose a product --</option>';
+            products.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.name_en + ' (' + p.name_hi + ')';
+                select.appendChild(opt);
+            });
+        } catch(e) {
+            console.error('Failed to load products:', e);
+        }
+    }
+
+    // Upload product media
+    async function uploadProductMedia() {
+        const productId = document.getElementById('mediaProductId').value;
+        const fileInput = document.getElementById('mediaFileInput');
+        const msgDiv = document.getElementById('mediaUploadMsg');
+
+        if (!productId) {
+            msgDiv.innerHTML = '<span style="color: #dc3545;">Please select a product first.</span>';
+            return;
+        }
+        if (!fileInput.files || !fileInput.files[0]) {
+            msgDiv.innerHTML = '<span style="color: #dc3545;">Please select a file first.</span>';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        msgDiv.innerHTML = '<span style="color: #007bff;"><i class="fas fa-spinner fa-spin"></i> Uploading...</span>';
+
+        try {
+            const res = await fetch('/admin/api/product-media/' + productId, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            });
+            const data = await res.json();
+            if (res.ok) {
+                msgDiv.innerHTML = '<span style="color: #28a745;">✓ Media uploaded successfully!</span>';
+                fileInput.value = '';
+                loadProductMedia(productId);
+            } else {
+                msgDiv.innerHTML = '<span style="color: #dc3545;">❌ ' + (data.error || 'Upload failed') + '</span>';
+            }
+        } catch(err) {
+            msgDiv.innerHTML = '<span style="color: #dc3545;">❌ Upload failed. Server issue.</span>';
+        }
+    }
+
+    // Load product media
+    async function loadProductMedia(productId) {
+        const mediaList = document.getElementById('mediaList');
+        mediaList.innerHTML = '<p style="color: var(--text-light);">Loading...</p>';
+        try {
+            const res = await fetch('/admin/api/product-media/' + productId);
+            const media = await res.json();
+            if (!media.length) {
+                mediaList.innerHTML = '<p style="color: var(--text-light);">No media uploaded yet.</p>';
+                return;
+            }
+            mediaList.innerHTML = '';
+            media.forEach(m => {
+                const div = document.createElement('div');
+                div.style.cssText = 'position: relative; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,215,0,0.2);';
+                if (m.type === 'video') {
+                    div.innerHTML = '<video controls style="width:100%; height:150px; object-fit:cover;"><source src="' + m.url + '" type="video/mp4"></video>';
+                } else {
+                    div.innerHTML = '<img src="' + m.url + '" style="width:100%; height:150px; object-fit:cover;">';
+                }
+                const delBtn = document.createElement('button');
+                delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                delBtn.onclick = () => deleteProductMedia(m.id, productId);
+                delBtn.style.cssText = 'position: absolute; top: 5px; right: 5px; background: rgba(220,53,69,0.8); color: white; border: none; width: 25px; height: 25px; border-radius: 50%; cursor: pointer;';
+                div.appendChild(delBtn);
+                mediaList.appendChild(div);
+            });
+        } catch(e) {
+            mediaList.innerHTML = '<p style="color: #dc3545;">Failed to load media.</p>';
+        }
+    }
+
+    // Delete product media
+    async function deleteProductMedia(mediaId, productId) {
+        if (!confirm('Delete this media?')) return;
+        try {
+            await fetch('/admin/api/product-media/' + mediaId, { method: 'DELETE' });
+            loadProductMedia(productId);
+        } catch(e) {}
+    }
+
+    // Main video upload form handler
     document.getElementById('mainVideoUploadForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const fileInput = document.getElementById('mainVideoInput');
@@ -218,6 +359,19 @@
         } finally {
             btn.disabled = false;
         }
+    });
+
+    // Product media dropdown change
+    document.getElementById('mediaProductId').addEventListener('change', function() {
+        if (this.value) {
+            loadProductMedia(this.value);
+        }
+    });
+
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+        loadSettings();
+        loadMediaProducts();
     });
     </script>
 </body>

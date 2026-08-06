@@ -1,4 +1,5 @@
 import os
+import re
 import sqlite3
 from functools import wraps
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash, send_from_directory
@@ -70,6 +71,16 @@ def init_db():
             FOREIGN KEY (customer_id) REFERENCES customers(id)
         );
     ''')
+
+    # Create product_media table for admin product photo/video uploads
+    cur.execute('''CREATE TABLE IF NOT EXISTS product_media (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER,
+        url TEXT,
+        type TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (product_id) REFERENCES products(id)
+    )''')
 
     # Migration: Add missing columns to existing products table (older DB versions)
     cur.execute("PRAGMA table_info(products)")
@@ -186,6 +197,14 @@ def uploaded_file(filename):
 @app.route('/customer')
 def customer_page():
     return render_template('customer.html')
+
+@app.route('/cart')
+def cart_page():
+    return render_template('cart.html')
+
+@app.route('/checkout')
+def checkout_page():
+    return render_template('checkout.html')
 
 @app.route('/api/customer/register', methods=['POST'])
 def api_customer_register():
@@ -484,6 +503,177 @@ def admin_api_upload_main_video():
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
     return jsonify({'message': 'Main video updated successfully', 'url': '/static/uploads/main_banner_video.mp4'})
+
+# ---------------- CART & CHECKOUT API ----------------
+
+@app.route('/api/cart', methods=['GET', 'POST'])
+def api_cart():
+    if request.method == 'GET':
+        cart = session.get('cart', [])
+        # Enrich with product details
+        if not cart:
+            return jsonify([])
+        conn = get_db()
+        enriched = []
+        for item in cart:
+            row = conn.execute('SELECT * FROM products WHERE id=?', (item['product_id'],)).fetchone()
+            if row:
+                p = dict(row)
+                grades = []
+                try: grades = json.loads(p.get('grades', '[]'))
+                except: pass
+                selectedGrade = grades[item.get('grade_index', 0)] if grades else None
+                enriched.append({
+                    'product_id': item['product_id'],
+                    'name_en': p['name_en'],
+                    'name_hi': p['name_hi'],
+                    'image': p.get('image', ''),
+                    'quantity': item['quantity'],
+                    'grade_index': item.get('grade_index', 0),
+                    'grade_name': selectedGrade['name'] if selectedGrade else '',
+                    'grade_price': selectedGrade['price'] if selectedGrade else p.get('price', ''),
+                    'base_price': p.get('price', ''),
+                    'old_price': p.get('old_price', ''),
+                    'weight': p.get('weight', ''),
+                    'stock': p.get('stock', 0)
+                })
+        conn.close()
+        return jsonify(enriched)
+    else:
+        data = request.get_json() or {}
+        product_id = data.get('product_id')
+        quantity = int(data.get('quantity', 1))
+        grade_index = int(data.get('grade_index', 0))
+        if not product_id:
+            return jsonify({'error': 'Product ID required'}), 400
+        cart = session.get('cart', [])
+        # Check if same product+grade already in cart
+        existing = None
+        for i, item in enumerate(cart):
+            if item['product_id'] == product_id and item.get('grade_index', 0) == grade_index:
+                existing = i
+                break
+        if existing is not None:
+            cart[existing]['quantity'] += quantity
+        else:
+            cart.append({'product_id': product_id, 'quantity': quantity, 'grade_index': grade_index})
+        session['cart'] = cart
+        session.modified = True
+        return jsonify({'message': 'Added to cart', 'cart_count': sum(i['quantity'] for i in cart)})
+
+@app.route('/api/cart/<int:item_index>', methods=['PUT', 'DELETE'])
+def api_cart_item(item_index):
+    cart = session.get('cart', [])
+    if item_index < 0 or item_index >= len(cart):
+        return jsonify({'error': 'Item not found'}), 404
+    if request.method == 'DELETE':
+        removed = cart.pop(item_index)
+        session['cart'] = cart
+        session.modified = True
+        return jsonify({'message': 'Item removed', 'cart_count': sum(i['quantity'] for i in cart)})
+    else:
+        data = request.get_json() or {}
+        quantity = int(data.get('quantity', cart[item_index]['quantity']))
+        if quantity <= 0:
+            cart.pop(item_index)
+        else:
+            cart[item_index]['quantity'] = quantity
+        session['cart'] = cart
+        session.modified = True
+        return jsonify({'message': 'Cart updated', 'cart_count': sum(i['quantity'] for i in cart)})
+
+@app.route('/api/cart/count')
+def api_cart_count():
+    cart = session.get('cart', [])
+    return jsonify({'count': sum(i['quantity'] for i in cart)})
+
+@app.route('/api/checkout', methods=['POST'])
+def api_checkout():
+    data = request.get_json() or {}
+    payment_method = data.get('payment_method', 'cod')
+    customer_name = data.get('name', '')
+    customer_phone = data.get('phone', '')
+    customer_address = data.get('address', '')
+    cart = session.get('cart', [])
+    if not cart:
+        return jsonify({'error': 'Cart is empty'}), 400
+    if not customer_name or not customer_phone or not customer_address:
+        return jsonify({'error': 'Name, phone and address are required'}), 400
+    conn = get_db()
+    import json as json_mod
+    items_json = json_mod.dumps(cart)
+    # Calculate total
+    total = 0
+    for item in cart:
+        row = conn.execute('SELECT * FROM products WHERE id=?', (item['product_id'],)).fetchone()
+        if row:
+            grades = []
+            try: grades = json_mod.loads(row['grades'] or '[]')
+            except: pass
+            price_str = grades[item.get('grade_index', 0)]['price'] if grades and item.get('grade_index', 0) < len(grades) else row['price']
+            price_num = float(re.sub(r'[₹,\s]', '', str(price_str)) or 0)
+            total += price_num * item['quantity']
+    cur = conn.execute(
+        'INSERT INTO orders (customer_id, customer_name, customer_phone, customer_address, items, total, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        (session.get('customer_id'), customer_name, customer_phone, customer_address, items_json, '₹' + str(round(total, 2)), 'pending_' + payment_method)
+    )
+    conn.commit()
+    order_id = cur.lastrowid
+    conn.close()
+    # Clear cart
+    session.pop('cart', None)
+    session.modified = True
+    return jsonify({'order_id': order_id, 'total': '₹' + str(round(total, 2)), 'payment_method': payment_method, 'message': 'Order placed successfully!'})
+
+# ---------------- ADMIN PRODUCT MEDIA ----------------
+
+@app.route('/admin/api/product-media/<int:pid>', methods=['POST'])
+@login_required
+def admin_api_product_media(pid):
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'File type not allowed'}), 400
+    filename = secure_filename(file.filename)
+    name, ext = os.path.splitext(filename)
+    counter = 1
+    while os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], filename)):
+        filename = f"{name}_{counter}{ext}"
+        counter += 1
+    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    url = f'/static/uploads/{filename}'
+    # Store in product_media table
+    conn = get_db()
+    conn.execute('INSERT INTO product_media (product_id, url, type) VALUES (?, ?, ?)',
+                 (pid, url, 'video' if ext.lower() in ALLOWED_VIDEO_EXTENSIONS else 'image'))
+    conn.commit()
+    conn.close()
+    return jsonify({'url': url, 'message': 'Media uploaded successfully'})
+
+@app.route('/admin/api/product-media/<int:pid>', methods=['GET'])
+@login_required
+def admin_api_product_media_list(pid):
+    conn = get_db()
+    rows = conn.execute('SELECT * FROM product_media WHERE product_id=? ORDER BY id DESC', (pid,)).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/admin/api/product-media/<int:mid>', methods=['DELETE'])
+@login_required
+def admin_api_product_media_delete(mid):
+    conn = get_db()
+    row = conn.execute('SELECT url FROM product_media WHERE id=?', (mid,)).fetchone()
+    if row:
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(row['url']))
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        conn.execute('DELETE FROM product_media WHERE id=?', (mid,))
+        conn.commit()
+    conn.close()
+    return jsonify({'message': 'Media deleted'})
 
 # ---------------- STARTUP ----------------
 

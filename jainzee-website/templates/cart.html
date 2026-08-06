@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="cart_title">Your Cart - Jainzee</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=3.0">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Mukta:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <!-- ===== NAVBAR ===== -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <img id="navLogo" src="" alt="Logo" class="nav-logo-img" onerror="this.style.display='none'">
+                <span id="navShopName" class="nav-shop-name">Jainzee Food Processing Industries</span>
+            </div>
+            <div class="nav-right">
+                <div class="lang-toggle" id="langToggle">
+                    <button class="lang-btn active" data-lang="en">🇬🇧 English</button>
+                    <button class="lang-btn" data-lang="hi">🇮🇳 हिन्दी</button>
+                </div>
+                <a href="/cart" class="admin-panel-btn">
+                    <i class="fas fa-shopping-cart"></i> <span data-i18n="cart_title">Cart</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ===== CART SECTION ===== -->
+    <section class="cart-section" style="padding: 140px 0 80px; background: var(--bg-light); min-height: 100vh;">
+        <div class="container">
+            <div class="section-header">
+                <h2 data-i18n="cart_title">Your Shopping Cart</h2>
+                <p data-i18n="cart_subtitle">Review your items and proceed to checkout</p>
+            </div>
+
+            <div id="cartContent">
+                <!-- Cart items will be loaded here -->
+                <div style="text-align: center; padding: 60px; color: var(--text-light);">
+                    <i class="fas fa-shopping-cart" style="font-size: 3rem; margin-bottom: 20px; opacity: 0.3;"></i>
+                    <p style="font-size: 1.2rem;" data-i18n="cart_empty">Your cart is empty</p>
+                </div>
+            </div>
+
+            <div id="cartSummary" style="display: none;">
+                <div class="cart-summary-card" style="background: var(--card-bg); border-radius: var(--radius); padding: 35px; border: 1px solid rgba(255,215,0,0.15); box-shadow: var(--shadow); margin-top: 30px;">
+                    <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 25px; text-align: center;">
+                        <i class="fas fa-receipt"></i> <span data-i18n="order_summary">Order Summary</span>
+                    </h3>
+
+                    <div class="summary-row" style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,215,0,0.1);">
+                        <span data-i18n="subtotal">Subtotal</span>
+                        <span id="cartSubtotal">₹0</span>
+                    </div>
+
+                    <div class="summary-row" style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,215,0,0.1);">
+                        <span data-i18n="discount">Discount</span>
+                        <span id="cartDiscount" style="color: #4ade80;">-₹0</span>
+                    </div>
+
+                    <div class="summary-row" style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,215,0,0.1);">
+                        <span data-i18n="you_save">You Save</span>
+                        <span id="cartYouSave" style="color: #f87171;">₹0</span>
+                    </div>
+
+                    <div class="summary-row" style="display: flex; justify-content: space-between; padding: 20px 0; border-top: 2px solid rgba(255,215,0,0.3); margin-top: 10px;">
+                        <span style="font-weight: 700; font-size: 1.3rem; color: var(--primary);" data-i18n="total">Total</span>
+                        <span id="cartTotal" style="font-weight: 800; font-size: 1.5rem; color: var(--primary);"></span>
+                    </div>
+
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 25px; font-size: 1.1rem; padding: 18px;" onclick="proceedToCheckout()">
+                        <i class="fas fa-credit-card"></i> <span data-i18n="proceed_checkout">Proceed to Checkout</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // Cart page specific JS
+        let cartItems = [];
+        let currentLangCart = localStorage.getItem('jainzee_lang') || 'en';
+
+        const cartTranslations = {
+            en: {
+                'cart_title': 'Your Cart',
+                'cart_subtitle': 'Review your items and proceed to checkout',
+                'cart_empty': 'Your cart is empty',
+                'order_summary': 'Order Summary',
+                'subtotal': 'Subtotal',
+                'discount': 'Discount',
+                'you_save': 'You Save',
+                'total': 'Total',
+                'proceed_checkout': 'Proceed to Checkout',
+                'qty': 'Qty',
+                'remove': 'Remove',
+                'update': 'Update',
+                'add_slot': 'Add Another Item',
+                'checkout_title': 'Checkout',
+                'checkout_address': 'Delivery Address',
+                'checkout_phone': 'Phone Number',
+                'checkout_name': 'Full Name',
+                'checkout_payment': 'Payment Method',
+                'checkout_upi': 'Pay via UPI',
+                'checkout_cod': 'Cash on Delivery (COD)',
+                'checkout_place_order': 'Place Order',
+                'checkout_total': 'Total Amount',
+                'checkout_name_placeholder': 'Enter your full name',
+                'checkout_phone_placeholder': 'Enter your phone number',
+                'checkout_address_placeholder': 'Enter your full address',
+                'order_success': 'Order Placed Successfully!',
+                'order_success_msg': 'Your order has been placed. Order ID:',
+                'back_to_shop': 'Back to Shop'
+            },
+            hi: {
+                'cart_title': 'आपका कार्ट',
+                'cart_subtitle': 'अपने आइटम देखें और चेकआउट करें',
+                'cart_empty': 'आपका कार्ट खाली है',
+                'order_summary': 'ऑर्डर सारांश',
+                'subtotal': 'जिओम',
+                'discount': 'छूट',
+                'you_save': 'आपको बचत मिलेगी',
+                'total': 'कुल',
+                'proceed_checkout': 'चेकआउट करें',
+                'qty': 'मात्रा',
+                'remove': 'हटाएं',
+                'update': 'अपडेट',
+                'add_slot': 'एक और आइटम जोड़ें',
+                'checkout_title': 'चेकआउट',
+                'checkout_address': 'डिलीवरी पता',
+                'checkout_phone': 'फ़ोन नंबर',
+                'checkout_name': 'पूरा नाम',
+                'checkout_payment': 'भुगतान का तरीका',
+                'checkout_upi': 'UPI के माध्यम से भुगतान करें',
+                'checkout_cod': 'नगद डिलीवरी (COD)',
+                'checkout_place_order': 'ऑर्डर दें',
+                'checkout_total': 'कुल राशि',
+                'checkout_name_placeholder': 'अपना पूरा नाम दर्ज करें',
+                'checkout_phone_placeholder': 'अपना फ़ोन नंबर दर्ज करें',
+                'checkout_address_placeholder': 'अपना पूरा पता दर्ज करें',
+                'order_success': 'ऑर्डर सफलतापूर्वक दिया गया!',
+                'order_success_msg': 'आपका ऑर्डर दिया गया है। ऑर्डर आईडी:',
+                'back_to_shop': 'शॉप पर वापस जाएं'
+            }
+        };
+
+        function t(key) {
+            return cartTranslations[currentLangCart][key] || key;
+        }
+
+        function applyCartTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                if (cartTranslations[currentLangCart] && cartTranslations[currentLangCart][key]) {
+                    el.textContent = cartTranslations[currentLangCart][key];
+                }
+            });
+        }
+
+        function formatPriceCart(price) {
+            if (!price) return '₹0';
+            const clean = String(price).replace(/[₹,\s]/g, '');
+            const num = parseFloat(clean);
+            if (isNaN(num)) return price;
+            return '₹' + num.toLocaleString('en-IN');
+        }
+
+        async function loadCart() {
+            try {
+                const res = await fetch('/api/cart');
+                cartItems = await res.json();
+                renderCart();
+                updateCartCount();
+            } catch(e) {
+                console.error('Failed to load cart:', e);
+            }
+        }
+
+        function renderCart() {
+            const content = document.getElementById('cartContent');
+            const summary = document.getElementById('cartSummary');
+
+            if (!cartItems.length) {
+                content.innerHTML = '<div style="text-align: center; padding: 60px; color: var(--text-light);"><i class="fas fa-shopping-cart" style="font-size: 3rem; margin-bottom: 20px; opacity: 0.3;"></i><p style="font-size: 1.2rem;">' + t('cart_empty') + '</p></div>';
+                summary.style.display = 'none';
+                return;
+            }
+
+            let html = '';
+            let subtotal = 0;
+            let totalSavings = 0;
+
+            cartItems.forEach((item, index) => {
+                const itemPrice = parseFloat(String(item.grade_price || item.base_price || '0').replace(/[₹,\s]/g, '')) || 0;
+                const oldPrice = parseFloat(String(item.old_price || '0').replace(/[₹,\s]/g, '')) || 0;
+                const itemTotal = itemPrice * item.quantity;
+                const itemSavings = (oldPrice - itemPrice) * item.quantity;
+                subtotal += itemTotal;
+                totalSavings += itemSavings > 0 ? itemSavings : 0;
+
+                const name = currentLangCart === 'hi' ? (item.name_hi || item.name_en) : item.name_en;
+                const image = item.image ? '<img src="' + item.image + '" alt="' + name + '" style="width:80px;height:80px;object-fit:cover;border-radius:10px;">' : '<div style="width:80px;height:80px;background:var(--card-bg);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:2rem;">📦</div>';
+
+                html += `
+                    <div class="cart-item" style="display: flex; align-items: center; gap: 20px; padding: 25px; background: var(--card-bg); border-radius: var(--radius); margin-bottom: 20px; border: 1px solid rgba(255,215,0,0.15); box-shadow: var(--shadow);">
+                        ${image}
+                        <div style="flex: 1;">
+                            <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.3rem; margin-bottom: 5px;">${name}</h3>
+                            <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 10px;">${t('qty')}: ${item.grade_name || item.weight || ''}</p>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                                <span style="color: var(--primary); font-weight: 700; font-size: 1.2rem;">${formatPriceCart(item.grade_price || item.base_price)}</span>
+                                ${oldPrice > 0 ? '<span style="color: #8a6d4f; text-decoration: line-through; font-size: 0.9rem;">' + formatPriceCart(item.old_price) + '</span>' : ''}
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="number" min="1" max="${item.stock}" value="${item.quantity}" onchange="updateCartQty(${index}, this.value)" style="width: 70px; padding: 8px; text-align: center; border: 2px solid rgba(255,215,0,0.3); border-radius: 8px; background: #1a120c; color: var(--text);">
+                            <button onclick="removeFromCart(${index})" style="background: linear-gradient(135deg, #ff4500, #dc3545); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600;"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            content.innerHTML = html;
+            summary.style.display = '';
+
+            // Update summary
+            const discount = totalSavings;
+            const total = subtotal - discount;
+            document.getElementById('cartSubtotal').textContent = formatPriceCart('₹' + subtotal.toFixed(2));
+            document.getElementById('cartDiscount').textContent = '-' + formatPriceCart('₹' + discount.toFixed(2));
+            document.getElementById('cartYouSave').textContent = formatPriceCart('₹' + totalSavings.toFixed(2));
+            document.getElementById('cartTotal').textContent = formatPriceCart('₹' + total.toFixed(2));
+        }
+
+        async function updateCartQty(index, qty) {
+            const quantity = parseInt(qty) || 1;
+            try {
+                await fetch('/api/cart/' + index, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quantity: quantity })
+                });
+                loadCart();
+            } catch(e) {
+                console.error('Failed to update cart:', e);
+            }
+        }
+
+        async function removeFromCart(index) {
+            try {
+                await fetch('/api/cart/' + index, { method: 'DELETE' });
+                loadCart();
+            } catch(e) {
+                console.error('Failed to remove item:', e);
+            }
+        }
+
+        async function updateCartCount() {
+            try {
+                const res = await fetch('/api/cart/count');
+                const data = await res.json();
+                const cartBtn = document.querySelector('.admin-panel-btn');
+                if (cartBtn) {
+                    cartBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> <span data-i18n="cart_title">Cart</span> <span class="cart-count-badge" style="background: var(--rich-gradient); color: #1a0f08; padding: 2px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 700;">' + data.count + '</span>';
+                }
+            } catch(e) {}
+        }
+
+        function proceedToCheckout() {
+            window.location.href = '/checkout';
+        }
+
+        // Language toggle
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentLangCart = btn.dataset.lang;
+                localStorage.setItem('jainzee_lang', currentLangCart);
+                document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === currentLangCart));
+                applyCartTranslations();
+                renderCart();
+            });
+        });
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            applyCartTranslations();
+            loadCart();
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="checkout_title">Checkout - Jainzee</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=3.0">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Mukta:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <!-- ===== NAVBAR ===== -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <img id="navLogo" src="" alt="Logo" class="nav-logo-img" onerror="this.style.display='none'">
+                <span id="navShopName" class="nav-shop-name">Jainzee Food Processing Industries</span>
+            </div>
+            <div class="nav-right">
+                <div class="lang-toggle" id="langToggle">
+                    <button class="lang-btn active" data-lang="en">🇬🇧 English</button>
+                    <button class="lang-btn" data-lang="hi">🇮🇳 हिन्दी</button>
+                </div>
+                <a href="/cart" class="admin-panel-btn">
+                    <i class="fas fa-shopping-cart"></i> <span data-i18n="cart_title">Cart</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ===== CHECKOUT SECTION ===== -->
+    <section class="checkout-section" style="padding: 140px 0 80px; background: var(--bg-light); min-height: 100vh;">
+        <div class="container">
+            <div class="section-header">
+                <h2 data-i18n="checkout_title">Checkout</h2>
+                <p data-i18n="checkout_subtitle">Enter your details and choose payment method</p>
+            </div>
+
+            <div id="checkoutContent" style="display: none;">
+                <div class="checkout-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+                    <!-- Checkout Form -->
+                    <div class="checkout-form" style="background: var(--card-bg); border-radius: var(--radius); padding: 40px; border: 1px solid rgba(255,215,0,0.15); box-shadow: var(--shadow);">
+                        <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 25px;">
+                            <i class="fas fa-user"></i> <span data-i18n="checkout_title">Checkout</span>
+                        </h3>
+
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;" data-i18n="checkout_name">Full Name</label>
+                            <input type="text" id="checkoutName" placeholder="Enter your full name" style="width: 100%; padding: 14px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; background: #1a120c; color: var(--text); font-size: 1rem; transition: all 0.3s;">
+                        </div>
+
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;" data-i18n="checkout_phone">Phone Number</label>
+                            <input type="tel" id="checkoutPhone" placeholder="Enter your phone number" style="width: 100%; padding: 14px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; background: #1a120c; color: var(--text); font-size: 1rem; transition: all 0.3s;">
+                        </div>
+
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;" data-i18n="checkout_address">Delivery Address</label>
+                            <textarea id="checkoutAddress" rows="4" placeholder="Enter your full address" style="width: 100%; padding: 14px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; background: #1a120c; color: var(--text); font-size: 1rem; resize: vertical; transition: all 0.3s;"></textarea>
+                        </div>
+
+                        <div style="margin-bottom: 30px;">
+                            <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 12px;" data-i18n="checkout_payment">Payment Method</label>
+                            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                                <label style="flex: 1; display: flex; align-items: center; gap: 10px; padding: 15px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; cursor: pointer; transition: all 0.3s; background: #1a120c;">
+                                    <input type="radio" name="payment" value="upi" id="payUpi" style="accent-color: var(--primary);">
+                                    <i class="fas fa-mobile-alt" style="color: var(--primary); font-size: 1.5rem;"></i>
+                                    <span style="color: var(--text); font-weight: 600;" data-i18n="checkout_upi">Pay via UPI</span>
+                                </label>
+                                <label style="flex: 1; display: flex; align-items: center; gap: 10px; padding: 15px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; cursor: pointer; transition: all 0.3s; background: #1a120c;">
+                                    <input type="radio" name="payment" value="cod" id="payCod" style="accent-color: var(--primary);">
+                                    <i class="fas fa-money-bill-wave" style="color: var(--primary); font-size: 1.5rem;"></i>
+                                    <span style="color: var(--text); font-weight: 600;" data-i18n="checkout_cod">Cash on Delivery (COD)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 18px;" onclick="placeOrder()">
+                            <i class="fas fa-check-circle"></i> <span data-i18n="checkout_place_order">Place Order</span>
+                        </button>
+                    </div>
+
+                    <!-- Order Summary -->
+                    <div class="checkout-summary" style="background: var(--card-bg); border-radius: var(--radius); padding: 35px; border: 1px solid rgba(255,215,0,0.15); box-shadow: var(--shadow); height: fit;">
+                        <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 25px; text-align: center;">
+                            <i class="fas fa-receipt"></i> <span data-i18n="order_summary">Order Summary</span>
+                        </h3>
+
+                        <div id="checkoutItems" style="margin-bottom: 25px; max-height: 300px; overflow-y: auto;">
+                            <!-- Items will be loaded here -->
+                        </div>
+
+                        <div class="summary-row" style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,215,0,0.1);">
+                            <span data-i18n="subtotal">Subtotal</span>
+                            <span id="checkoutSubtotal">₹0</span>
+                        </div>
+
+                        <div class="summary-row" style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,215,0,0.1);">
+                            <span data-i18n="discount">Discount</span>
+                            <span id="checkoutDiscount" style="color: #4ade80;">-₹0</span>
+                        </div>
+
+                        <div class="summary-row" style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,215,0,0.1);">
+                            <span data-i18n="you_save">You Save</span>
+                            <span id="checkoutYouSave" style="color: #f87171;">₹0</span>
+                        </div>
+
+                        <div class="summary-row" style="display: flex; justify-content: space-between; padding: 20px 0; border-top: 2px solid rgba(255,215,0,0.3); margin-top: 10px;">
+                            <span style="font-weight: 700; font-size: 1.3rem; color: var(--primary);" data-i18n="total">Total</span>
+                            <span id="checkoutTotal" style="font-weight: 800; font-size: 1.5rem; color: var(--primary);"></span>
+                        </div>
+
+                        <div id="upiSection" style="display: none; margin-top: 25px; text-align: center;">
+                            <p style="color: var(--text-light); margin-bottom: 15px; font-size: 0.9rem;" data-i18n="checkout_upi_instructions">Scan QR code or click to pay via UPI</p>
+                            <div style="background: var(--dark); border-radius: 12px; padding: 20px; margin: 15px 0; border: 1px solid rgba(255,215,0,0.2);">
+                                <i class="fas fa-qrcode" style="font-size: 4rem; color: var(--primary);"></i>
+                                <p style="color: var(--text-light); margin-top: 10px; font-size: 0.85rem;" data-i18n="checkout_upi_placeholder">UPI QR will appear here</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Success Message -->
+            <div id="checkoutSuccess" style="display: none; text-align: center; padding: 80px; background: var(--card-bg); border-radius: var(--radius); border: 1px solid rgba(255,215,0,0.15); box-shadow: var(--shadow);">
+                <i class="fas fa-check-circle" style="font-size: 5rem; color: #4ade80; margin-bottom: 25px; filter: drop-shadow(0 5px 20px rgba(74,222,128,0.3));"></i>
+                <h2 style="color: var(--text); font-family: var(--font-display); font-size: 2.5rem; margin-bottom: 20px;" data-i18n="order_success">Order Placed Successfully!</h2>
+                <p style="color: var(--text-light); font-size: 1.1rem; margin-bottom: 10px;" data-i18n="order_success_msg">Your order has been placed. Order ID:</p>
+                <p style="color: var(--primary); font-size: 1.5rem; font-weight: 700; margin-bottom: 30px;" id="successOrderId"></p>
+                <a href="/" class="btn btn-primary" style="padding: 14px 40px; font-size: 1rem;">
+                    <i class="fas fa-home"></i> <span data-i18n="back_to_shop">Back to Shop</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        let checkoutItems = [];
+        let currentLangCheckout = localStorage.getItem('jainzee_lang') || 'en';
+
+        const checkoutTranslations = {
+            en: {
+                'cart_title': 'Your Cart',
+                'checkout_title': 'Checkout',
+                'checkout_subtitle': 'Enter your details and choose payment method',
+                'checkout_name': 'Full Name',
+                'checkout_phone': 'Phone Number',
+                'checkout_address': 'Delivery Address',
+                'checkout_payment': 'Payment Method',
+                'checkout_upi': 'Pay via UPI',
+                'checkout_cod': 'Cash on Delivery (COD)',
+                'checkout_place_order': 'Place Order',
+                'checkout_upi_instructions': 'Scan QR code or click to pay via UPI',
+                'checkout_upi_placeholder': 'UPI QR will appear here',
+                'order_summary': 'Order Summary',
+                'subtotal': 'Subtotal',
+                'discount': 'Discount',
+                'you_save': 'You Save',
+                'total': 'Total',
+                'order_success': 'Order Placed Successfully!',
+                'order_success_msg': 'Your order has been placed. Order ID:',
+                'back_to_shop': 'Back to Shop',
+                'checkout_name_placeholder': 'Enter your full name',
+                'checkout_phone_placeholder': 'Enter your phone number',
+                'checkout_address_placeholder': 'Enter your full address'
+            },
+            hi: {
+                'cart_title': 'आपका कार्ट',
+                'checkout_title': 'चेकआउट',
+                'checkout_subtitle': 'अपना विवरण दर्ज करें और भुगतान का तरीका चुनें',
+                'checkout_name': 'पूरा नाम',
+                'checkout_phone': 'फ़ोन नंबर',
+                'checkout_address': 'डिलीवरी पता',
+                'checkout_payment': 'भुगतान का तरीका',
+                'checkout_upi': 'UPI के माध्यम से भुतान करें',
+                'checkout_cod': 'नगद डिलीवरी (COD)',
+                'checkout_place_order': 'ऑर्डर दें',
+                'checkout_upi_instructions': 'QR कोड स्कैन करें या UPI के माध्यम से भुगतान करें',
+                'checkout_upi_placeholder': 'UPI QR यहाँ दिखेगा',
+                'order_summary': 'ऑर्डर सारांश',
+                'subtotal': 'जिओम',
+                'discount': 'छूट',
+                'you_save': 'आपको बचत मिलेगी',
+                'total': 'कुल',
+                'order_success': 'ऑर्डर सफलतापूर्वक दिया गया!',
+                'order_success_msg': 'आपका ऑर्डर दिया गया है। ऑर्डर आईडी:',
+                'back_to_shop': 'शॉप पर वापस जाएं',
+                'checkout_name_placeholder': 'अपना पूरा नाम दर्ज करें',
+                'checkout_phone_placeholder': 'अपना फ़ोन नंबर दर्ज करें',
+                'checkout_address_placeholder': 'अपना पूरा पता दर्ज करें'
+            }
+        };
+
+        function t(key) {
+            return checkoutTranslations[currentLangCheckout][key] || key;
+        }
+
+        function applyCheckoutTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                if (checkoutTranslations[currentLangCheckout] && checkoutTranslations[currentLangCheckout][key]) {
+                    el.textContent = checkoutTranslations[currentLangCheckout][key];
+                }
+            });
+            // Update placeholders
+            document.getElementById('checkoutName').placeholder = t('checkout_name_placeholder');
+            document.getElementById('checkoutPhone').placeholder = t('checkout_phone_placeholder');
+            document.getElementById('checkoutAddress').placeholder = t('checkout_address_placeholder');
+        }
+
+        function formatPriceCheckout(price) {
+            if (!price) return '₹0';
+            const clean = String(price).replace(/[₹,\s]/g, '');
+            const num = parseFloat(clean);
+            if (isNaN(num)) return price;
+            return '₹' + num.toLocaleString('en-IN');
+        }
+
+        async function loadCheckout() {
+            try {
+                const res = await fetch('/api/cart');
+                checkoutItems = await res.json();
+                if (!checkoutItems.length) {
+                    window.location.href = '/cart';
+                    return;
+                }
+                renderCheckoutItems();
+                document.getElementById('checkoutContent').style.display = '';
+            } catch(e) {
+                console.error('Failed to load cart:', e);
+            }
+        }
+
+        function renderCheckoutItems() {
+            const itemsEl = document.getElementById('checkoutItems');
+            let html = '';
+            let subtotal = 0;
+            let totalSavings = 0;
+
+            checkoutItems.forEach(item => {
+                const itemPrice = parseFloat(String(item.grade_price || item.base_price || '0').replace(/[₹,\s]/g, '')) || 0;
+                const oldPrice = parseFloat(String(item.old_price || '0').replace(/[₹,\s]/g, '')) || 0;
+                const itemTotal = itemPrice * item.quantity;
+                const itemSavings = (oldPrice - itemPrice) * item.quantity;
+                subtotal += itemTotal;
+                totalSavings += itemSavings > 0 ? itemSavings : 0;
+
+                const name = currentLangCheckout === 'hi' ? (item.name_hi || item.name_en) : item.name_en;
+                html += `
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,215,0,0.1);">
+                        <img src="${item.image || ''}" alt="${name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;" onerror="this.style.display='none'">
+                        <div style="flex: 1;">
+                            <div style="color: var(--text); font-weight: 600; font-size: 0.95rem;">${name}</div>
+                            <div style="color: var(--text-light); font-size: 0.8rem;">${item.grade_name || ''} x ${item.quantity}</div>
+                        </div>
+                        <div style="color: var(--primary); font-weight: 700;">${formatPriceCheckout(item.grade_price || item.base_price)}</div>
+                    </div>
+                `;
+            });
+
+            itemsEl.innerHTML = html;
+
+            const discount = totalSavings;
+            const total = subtotal - discount;
+            document.getElementById('checkoutSubtotal').textContent = formatPriceCheckout('₹' + subtotal.toFixed(2));
+            document.getElementById('checkoutDiscount').textContent = '-' + formatPriceCheckout('₹' + discount.toFixed(2));
+            document.getElementById('checkoutYouSave').textContent = formatPriceCheckout('₹' + totalSavings.toFixed(2));
+            document.getElementById('checkoutTotal').textContent = formatPriceCart('₹' + total.toFixed(2));
+        }
+
+        function formatPriceCart(price) {
+            if (!price) return '₹0';
+            const clean = String(price).replace(/[₹,\s]/g, '');
+            const num = parseFloat(clean);
+            if (isNaN(num)) return price;
+            return '₹' + num.toLocaleString('en-IN');
+        }
+
+        // Payment method toggle
+        document.getElementById('payUpi').addEventListener('change', function() {
+            document.getElementById('upiSection').style.display = '';
+        });
+        document.getElementById('payCod').addEventListener('change', function() {
+            document.getElementById('upiSection').style.display = 'none';
+        });
+
+        async function placeOrder() {
+            const name = document.getElementById('checkoutName').value.trim();
+            const phone = document.getElementById('checkoutPhone').value.trim();
+            const address = document.getElementById('checkoutAddress').value.trim();
+            const paymentMethod = document.querySelector('input[name="payment"]:checked') ? document.querySelector('input[name="payment"]:checked').value : 'cod';
+
+            if (!name || !phone || !address) {
+                alert(t('checkout_name') + ' ' + t('checkout_phone') + ' ' + t('checkout_address') + ' ' + (currentLangCheckout === 'hi' ? 'आवश्यक हैं' : 'are required'));
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: name,
+                        phone: phone,
+                        address: address,
+                        payment_method: paymentMethod
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Checkout failed');
+
+                // Show success
+                document.getElementById('checkoutContent').style.display = 'none';
+                document.getElementById('successOrderId').textContent = data.order_id;
+                document.getElementById('checkoutSuccess').style.display = '';
+            } catch(e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // Language toggle
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentLangCheckout = btn.dataset.lang;
+                localStorage.setItem('jainzee_lang', currentLangCheckout);
+                document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === currentLangCheckout));
+                applyCheckoutTranslations();
+                renderCheckoutItems();
+            });
+        });
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            applyCheckoutTranslations();
+            loadCheckout();
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+        });
+    </script>
+</body>
+</html>

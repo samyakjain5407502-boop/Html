@@ -95,6 +95,113 @@ function shareOnWhatsApp(event) {
     window.open('https://wa.me/?text=' + text, '_blank');
 }
 
+// ==================== CART ====================
+
+let cartCount = 0;
+
+async function updateCartCount() {
+    try {
+        const res = await fetch('/api/cart/count');
+        const data = await res.json();
+        cartCount = data.count;
+        const cartLink = document.getElementById('cartLink');
+        if (cartLink) {
+            let badge = cartLink.querySelector('.cart-count-badge');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'cart-count-badge';
+                cartLink.appendChild(badge);
+            }
+            badge.textContent = data.count;
+            badge.style.display = data.count > 0 ? '' : 'none';
+        }
+    } catch(e) {}
+}
+
+function openProductModal(product) {
+    const modal = document.getElementById('productModal');
+    if (!modal) return;
+    
+    // Populate product info
+    const name = currentLang === 'hi' ? (product.name_hi || product.name_en) : product.name_en;
+    const desc = currentLang === 'hi' ? (product.description_hi || product.description_en) : product.description_en;
+    
+    document.getElementById('modalProductName').textContent = name;
+    document.getElementById('modalProductDesc').textContent = desc || '';
+    document.getElementById('modalProductId').value = product.id;
+    document.getElementById('modalQuantity').value = 1;
+    
+    // Populate grades
+    let grades = [];
+    try { grades = JSON.parse(product.grades || '[]'); } catch(e) {}
+    
+    const gradeSelect = document.getElementById('modalGradeSelect');
+    gradeSelect.innerHTML = '';
+    if (grades.length) {
+        grades.forEach((g, i) => {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = g.name + ' - ' + g.price;
+            gradeSelect.appendChild(opt);
+        });
+    } else {
+        const opt = document.createElement('option');
+        opt.value = 0;
+        opt.textContent = product.price || '₹0';
+        gradeSelect.appendChild(opt);
+    }
+    
+    // Set max quantity based on stock
+    document.getElementById('modalQuantity').max = product.stock || 999;
+    
+    // Show image
+    const img = document.getElementById('modalProductImage');
+    if (product.image) {
+        img.src = product.image;
+        img.style.display = '';
+    } else {
+        img.style.display = 'none';
+    }
+    
+    modal.classList.add('active');
+}
+
+function closeProductModal() {
+    const modal = document.getElementById('productModal');
+    if (modal) modal.classList.remove('active');
+}
+
+async function addToCartFromModal() {
+    const productId = document.getElementById('modalProductId').value;
+    const quantity = parseInt(document.getElementById('modalQuantity').value) || 1;
+    const gradeIndex = parseInt(document.getElementById('modalGradeSelect').value) || 0;
+    
+    if (quantity < 1) {
+        alert(currentLang === 'hi' ? 'कम से कम 1 चुनें' : 'Please select at least 1 item');
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/cart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                product_id: parseInt(productId),
+                quantity: quantity,
+                grade_index: gradeIndex
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to add to cart');
+        
+        updateCartCount();
+        closeProductModal();
+        alert(currentLang === 'hi' ? 'कार्ट में जोड़ दिया गया!' : 'Added to cart!');
+    } catch(e) {
+        alert('Error: ' + e.message);
+    }
+}
+
 // ==================== AUTH STATUS CHECK ====================
 
 async function checkAuthStatus() {
@@ -310,19 +417,24 @@ function renderProducts() {
                 </div>`;
         }
 
+        const addDisabled = stockNum <= 0 ? 'disabled' : '';
+        const addBtnText = currentLang === 'hi' ? 'कार्ट में जोड़ें' : 'Add to Cart';
         card.innerHTML = `
-            <div class="product-image">
+            <div class="product-image" onclick="openProductModal(${JSON.stringify(p).replace(/"/g, '"')})">
                 ${imageHtml}
                 <span class="product-badge">${currentLang === 'hi' ? 'प्रीमियम' : 'Premium'}</span>
             </div>
             <div class="product-info">
-                <h3>${name}</h3>
+                <h3 onclick="openProductModal(${JSON.stringify(p).replace(/"/g, '"')})" style="cursor: pointer;">${name}</h3>
                 ${priceHtml}
                 <div class="product-weight"><i class="fas fa-box"></i> ${p.weight || ''}</div>
                 ${gradeHtml}
                 ${videoHtml}
                 <p class="product-desc">${desc || ''}</p>
                 ${stockHtml}
+                <button class="btn btn-primary" style="width: 100%; margin-top: 15px; font-size: 0.9rem; padding: 12px;" onclick="openProductModal(${JSON.stringify(p).replace(/"/g, '"')})" ${addDisabled}>
+                    <i class="fas fa-shopping-cart"></i> ${addBtnText}
+                </button>
             </div>
         `;
         grid.appendChild(card);
@@ -423,6 +535,9 @@ function init() {
 
     // Check auth status first (admin edit buttons)
     checkAuthStatus();
+
+    // Load cart count
+    updateCartCount();
 
     // Load main banner video (if uploaded)
     loadMainBannerVideo();
