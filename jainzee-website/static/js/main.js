@@ -118,6 +118,32 @@ async function updateCartCount() {
     } catch(e) {}
 }
 
+// Universal Add to Cart function for Product Cards
+async function addToCart(productId, gradeIndex = 0, quantity = 1) {
+    try {
+        const res = await fetch('/api/cart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                product_id: parseInt(productId),
+                quantity: parseInt(quantity) || 1,
+                grade_index: parseInt(gradeIndex) || 0
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to add to cart');
+
+        // Update cart badge immediately
+        await updateCartCount();
+        
+        // Show success alert/toast
+        alert(currentLang === 'hi' ? 'कार्ट में जोड़ दिया गया!' : 'Added to cart!');
+    } catch(e) {
+        alert('Error: ' + e.message);
+        console.error('Add to cart error:', e);
+    }
+}
+
 function openProductModal(product) {
     const modal = document.getElementById('productModal');
     if (!modal) return;
