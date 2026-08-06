@@ -1104,6 +1104,26 @@ body {
     accent-color: var(--primary);
 }
 
+/* ===== MAIN PRODUCT VIDEO BANNER ===== */
+.main-product-video-wrapper {
+    text-align: center;
+    overflow: hidden;
+    padding: 0 15px;
+    margin: 20px auto;
+}
+
+.main-product-video-wrapper video {
+    max-width: 800px;
+    max-height: 420px;
+    width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
 /* ===== FACTORY MEDIA ===== */
 .factory-media-section {
     padding: 100px 0;
@@ -1262,4 +1282,23 @@ body {
         padding: 14px 30px;
         font-size: 0.9rem;
     }
+}
+
+/* Force white text on all Add to Cart buttons and their child elements */
+button.add-to-cart,
+.add-to-cart-btn,
+.btn-add-to-cart,
+.add-to-cart,
+button[onclick*="addToCart"],
+.product-card button,
+.modal-footer button {
+    color: #ffffff !important;
+}
+
+button.add-to-cart *,
+.add-to-cart-btn *,
+.btn-add-to-cart *,
+button[onclick*="addToCart"] *,
+.product-card button * {
+    color: #ffffff !important;
 }
