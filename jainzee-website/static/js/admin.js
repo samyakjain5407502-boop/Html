@@ -442,11 +442,11 @@ async function loadSettings() {
         setVal('sGlobalDiscount', data.global_discount || '0');
         setVal('sUpiId', data.upi_id || '');
         
-        // UPI QR Code preview
-        if (data.upi_qr_code) {
+        // UPI QR Code preview (Base64 permanent storage)
+        if (data.upi_qr_data) {
             const qrPreview = document.getElementById('upiQrPreview');
             if (qrPreview) {
-                qrPreview.querySelector('img').src = data.upi_qr_code;
+                qrPreview.querySelector('img').src = data.upi_qr_data;
                 qrPreview.style.display = 'block';
             }
         }
@@ -494,18 +494,30 @@ async function saveSettings() {
             method: 'POST',
             body: formData
         });
-        const result = await res.json();
+        
+        // Check if response is OK before parsing JSON
         if (!res.ok) {
+            const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(errorData.error || `HTTP ${res.status}: ${res.statusText}`);
+        }
+        
+        const result = await res.json();
+        if (result.success) {
+            showToast('✅ Settings saved successfully!', 'success');
+            
+            // Clear QR input after successful upload
+            if (qrInput.files && qrInput.files[0]) {
+                qrInput.value = '';
+            }
+            
+            // Reload settings to show updated preview
+            await loadSettings();
+        } else {
             throw new Error(result.error || 'Failed to save settings');
         }
-        showToast('Settings saved successfully!');
-        
-        // Clear QR input after successful upload
-        if (qrInput.files && qrInput.files[0]) {
-            qrInput.value = '';
-        }
     } catch (e) {
-        showToast(e.message, 'error');
+        showToast('❌ ' + e.message, 'error');
+        console.error('Save settings error:', e);
     }
 }
 
