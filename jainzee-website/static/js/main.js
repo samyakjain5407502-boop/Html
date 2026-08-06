@@ -120,6 +120,20 @@ async function updateCartCount() {
 
 // Universal Add to Cart function for Product Cards
 async function addToCart(productId, gradeIndex = 0, quantity = 1) {
+    // Check if user is logged in
+    try {
+        const authRes = await fetch('/api/auth/status');
+        const authData = await authRes.json();
+        
+        if (!authData.customer_logged_in) {
+            alert(currentLang === 'hi' ? 'कृपया कार्ट में आइटम जोड़ने के लिए लॉगिन करें' : 'Please login to add items to cart');
+            window.location.href = '/customer';
+            return;
+        }
+    } catch(e) {
+        console.error('Auth check failed:', e);
+    }
+    
     try {
         const res = await fetch('/api/cart', {
             method: 'POST',
@@ -143,6 +157,9 @@ async function addToCart(productId, gradeIndex = 0, quantity = 1) {
         console.error('Add to cart error:', e);
     }
 }
+
+// Expose globally for inline onclick handlers
+window.addToCart = addToCart;
 
 function openProductModal(product) {
     const modal = document.getElementById('productModal');
@@ -476,6 +493,20 @@ function renderProducts() {
 
         const addDisabled = stockNum <= 0 ? 'disabled' : '';
         const addBtnText = currentLang === 'hi' ? 'कार्ट में जोड़ें' : 'Add to Cart';
+        
+        // Create inline quantity and weight selector for direct add to cart
+        const qtyId = 'qty-' + p.id;
+        const weightId = 'weight-' + p.id;
+        
+        // Parse weights for inline selector
+        const weightField = p.weight || '';
+        const availableWeights = [];
+        if (weightField.includes('500g') || weightField.includes('500')) availableWeights.push('500g');
+        if (weightField.includes('1kg') || weightField.includes('1000g') || weightField.includes('1 kg')) availableWeights.push('1kg');
+        if (availableWeights.length === 0) availableWeights.push('500g', '1kg');
+        
+        const weightOptions = availableWeights.map((w, i) => `<option value="${i}">${w}</option>`).join('');
+        
         card.innerHTML = `
             <div class="product-image" onclick="openProductModal(${JSON.stringify(p).replace(/"/g, '"')})">
                 ${imageHtml}
@@ -489,7 +520,16 @@ function renderProducts() {
                 ${videoHtml}
                 <p class="product-desc">${desc || ''}</p>
                 ${stockHtml}
-                <button class="btn btn-primary" style="width: 100%; margin-top: 15px; font-size: 0.9rem; padding: 12px;" onclick="openProductModal(${JSON.stringify(p).replace(/"/g, '"')})" ${addDisabled}>
+                
+                <!-- Inline Quantity & Weight Selector -->
+                <div style="display: flex; gap: 10px; margin-top: 15px; align-items: center;">
+                    <input type="number" id="${qtyId}" min="1" max="${stockNum || 999}" value="1" style="width: 70px; padding: 8px; text-align: center; border: 2px solid #e8e0d5; border-radius: 8px; background: white; color: var(--text); font-size: 0.9rem;" onclick="event.stopPropagation();">
+                    <select id="${weightId}" class="grade-select" style="flex: 1; padding: 8px; font-size: 0.9rem;" onclick="event.stopPropagation();">
+                        ${weightOptions}
+                    </select>
+                </div>
+                
+                <button class="btn btn-primary" style="width: 100%; margin-top: 10px; font-size: 0.9rem; padding: 12px;" onclick="event.stopPropagation(); addToCart(${p.id}, document.getElementById('${weightId}').value, document.getElementById('${qtyId}').value)" ${addDisabled}>
                     <i class="fas fa-shopping-cart"></i> ${addBtnText}
                 </button>
             </div>

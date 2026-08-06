@@ -44,8 +44,17 @@
             <a href="#products" data-i18n="nav_products">Products</a>
             <a href="#about" data-i18n="nav_about">About Us</a>
             <a href="#contact" data-i18n="nav_contact">Contact</a>
+            
+            <div class="lang-toggle" style="display: flex; justify-content: center; margin: 10px 0;">
+                <button class="lang-btn active" data-lang="en">🇬🇧 English</button>
+                <button class="lang-btn" data-lang="hi">🇮🇳 हिन्दी</button>
+            </div>
+            
             <a href="#" class="mobile-whatsapp-link" onclick="shareOnWhatsApp(event)"><i class="fab fa-whatsapp"></i> <span data-i18n="share_whatsapp">Share</span></a>
             <a href="/customer" class="mobile-customer-link"><i class="fas fa-user"></i> <span data-i18n="customer_login">Customer Login</span></a>
+            <a href="/cart" class="mobile-cart-link" style="background: var(--primary); color: white; padding: 10px 15px; border-radius: 10px; text-align: center; margin-top: 5px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i class="fas fa-shopping-cart" style="color: #ffffff !important;"></i> <span data-i18n="cart_title">Cart</span>
+            </a>
             <a href="/admin" class="mobile-admin-link" id="mobileAdminLink" style="display:none;"><i class="fas fa-edit"></i> <span data-i18n="edit_website">Edit Website</span></a>
         </div>
     </nav>
