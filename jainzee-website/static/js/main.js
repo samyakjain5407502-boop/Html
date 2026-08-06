@@ -361,17 +361,29 @@ function applySiteData() {
         waLink.href = 'https://wa.me/' + siteData.whatsapp;
     }
 
-    // Logo
+    // Logo - ALWAYS keep visible even if no logo set, text still shows
     const logo = siteData.logo || '';
     const navLogo = document.getElementById('navLogo');
     const heroLogo = document.getElementById('heroLogo');
     if (logo) {
         navLogo.src = logo;
-        navLogo.style.display = '';
+        navLogo.style.display = 'inline-block';
+        navLogo.style.visibility = 'visible';
+        navLogo.style.opacity = '1';
         heroLogo.src = logo;
-        heroLogo.style.display = '';
+        heroLogo.style.display = 'inline-block';
+        heroLogo.style.visibility = 'visible';
+        heroLogo.style.opacity = '1';
     } else {
-        navLogo.style.display = 'none';
+        // Don't hide - just show placeholder icon instead
+        navLogo.style.display = 'inline-block';
+        navLogo.style.visibility = 'visible';
+        navLogo.style.opacity = '1';
+        navLogo.src = '/static/uploads/logo.png';
+        navLogo.onerror = function() { 
+            // Fallback: show first letter as text
+            this.style.display = 'none';
+        };
         heroLogo.style.display = 'none';
     }
 }
@@ -673,32 +685,23 @@ async function loadGeneralMedia() {
     }
 }
 
-// Add fade-in animation to product cards
+// Remove IntersectionObserver - it was hiding elements with opacity:0 that never became visible
 document.addEventListener('DOMContentLoaded', function() {
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
-            }
-        });
-    }, { threshold: 0.1 });
+    // Ensure ALL cards are always fully visible
+    document.querySelectorAll('.product-card, .feature-card, .contact-card').forEach(card => {
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+    });
 
-    // Observe all cards after products render
-    const observeCards = () => {
-        document.querySelectorAll('.product-card, .feature-card, .contact-card').forEach(card => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(30px)';
-            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-            observer.observe(card);
-        });
-    };
-
-    // Re-observe when products are rendered
+    // Re-apply when products are rendered dynamically
     const grid = document.getElementById('productsGrid');
     if (grid) {
-        const mutationObserver = new MutationObserver(observeCards);
+        const mutationObserver = new MutationObserver(() => {
+            document.querySelectorAll('.product-card, .feature-card, .contact-card').forEach(card => {
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            });
+        });
         mutationObserver.observe(grid, { childList: true });
     }
-    observeCards();
 });

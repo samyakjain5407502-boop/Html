@@ -170,6 +170,7 @@
 
         async function loadCart() {
             try {
+                await loadGlobalDiscount();
                 const res = await fetch('/api/cart');
                 cartItems = await res.json();
                 renderCart();
@@ -204,27 +205,22 @@
 
             let html = '';
             let subtotal = 0;
-            let productDiscount = 0;
             let globalDiscountAmount = 0;
 
             cartItems.forEach((item, index) => {
-                // Use base_price (MRP) as the starting point
                 const basePrice = parseFloat(String(item.base_price || '0').replace(/[₹,\s]/g, '')) || 0;
-                const oldPrice = parseFloat(String(item.old_price || '0').replace(/[₹,\s]/g, '')) || 0;
                 const gradePrice = parseFloat(String(item.grade_price || '0').replace(/[₹,\s]/g, '')) || 0;
+                const itemOldPrice = parseFloat(String(item.old_price || '0').replace(/[₹,\s]/g, '')) || 0;
                 
                 // Use grade_price if available, otherwise base_price
+                // NOTE: item price is ALREADY the final discounted price - do NOT apply MRP savings again
                 const itemPrice = gradePrice > 0 ? gradePrice : basePrice;
                 
-                // Product-level discount (old_price vs base/grade price)
-                const itemProductDiscount = (oldPrice - itemPrice) * item.quantity;
-                
-                // Calculate global discount on this item
+                // Calculate global admin discount on this item only
                 const itemSubtotal = itemPrice * item.quantity;
                 const itemGlobalDiscount = (itemSubtotal * globalDiscountPercent) / 100;
                 
                 subtotal += itemSubtotal;
-                productDiscount += itemProductDiscount > 0 ? itemProductDiscount : 0;
                 globalDiscountAmount += itemGlobalDiscount;
 
                 const name = currentLangCart === 'hi' ? (item.name_hi || item.name_en) : item.name_en;
@@ -238,7 +234,7 @@
                             <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 10px;">${t('qty')}: ${item.grade_name || item.weight || ''}</p>
                     <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
                         <span style="color: var(--primary-dark); font-weight: 700; font-size: 1.2rem;">${formatPriceCart(item.grade_price || item.base_price)}</span>
-                        ${oldPrice > 0 ? '<span style="color: #999; text-decoration: line-through; font-size: 0.9rem;">' + formatPriceCart(item.old_price) + '</span>' : ''}
+                        ${itemOldPrice > 0 ? '<span style="color: #999; text-decoration: line-through; font-size: 0.9rem;">' + formatPriceCart(item.old_price) + '</span>' : ''}
                     </div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 10px;">
@@ -252,12 +248,12 @@
             content.innerHTML = html;
             summary.style.display = '';
 
-            // Update summary with proper discount calculation
-            const totalDiscount = productDiscount + globalDiscountAmount;
-            const total = subtotal - totalDiscount;
+            // Update summary - only apply admin-set global discount
+            // Item price is ALREADY the final discounted price
+            const total = subtotal - globalDiscountAmount;
             document.getElementById('cartSubtotal').textContent = formatPriceCart('₹' + subtotal.toFixed(2));
-            document.getElementById('cartDiscount').textContent = '-' + formatPriceCart('₹' + totalDiscount.toFixed(2));
-            document.getElementById('cartYouSave').textContent = formatPriceCart('₹' + totalDiscount.toFixed(2));
+            document.getElementById('cartDiscount').textContent = '-' + formatPriceCart('₹' + globalDiscountAmount.toFixed(2));
+            document.getElementById('cartYouSave').textContent = formatPriceCart('₹' + globalDiscountAmount.toFixed(2));
             document.getElementById('cartTotal').textContent = formatPriceCart('₹' + total.toFixed(2));
         }
 

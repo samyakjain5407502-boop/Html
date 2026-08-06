@@ -74,6 +74,9 @@ body {
     height: 45px;
     width: auto;
     border-radius: 8px;
+    display: inline-block;
+    visibility: visible;
+    opacity: 1;
 }
 
 .nav-shop-name {
@@ -81,6 +84,9 @@ body {
     font-weight: 700;
     font-size: 1.1rem;
     letter-spacing: 0.5px;
+    display: inline-block;
+    visibility: visible;
+    opacity: 1;
 }
 
 .nav-right {
@@ -1301,4 +1307,60 @@ button.add-to-cart *,
 button[onclick*="addToCart"] *,
 .product-card button * {
     color: #ffffff !important;
+}
+
+/* ===== EMERGENCY FIX: ENSURE LOGO & NAV VISIBILITY ===== */
+.nav-logo,
+.nav-logo img,
+.nav-logo-img,
+.nav-shop-name {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Ensure navbar text is always white on dark background */
+.navbar .nav-shop-name,
+.navbar .lang-btn,
+.navbar .admin-panel-btn,
+.navbar .customer-panel-btn,
+.navbar .whatsapp-share-btn {
+    color: #ffffff !important;
+}
+
+/* Ensure all fixed opacity-0 elements from animation always become visible */
+.product-card,
+.feature-card,
+.contact-card {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+}
+
+/* Section headers and text always visible */
+.section-header h2,
+.section-header p,
+.hero-content h1,
+.hero-content p,
+.about-content h2,
+.about-content p,
+.contact-card h3,
+.contact-card p {
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Explicit header/enhanced visibility for all site content */
+#navLogo,
+#heroLogo,
+#navShopName,
+#heroShopName,
+#heroTagline,
+#footerShopName,
+#contactAddress,
+#contactPhone,
+#contactHours,
+#contactEmail {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }

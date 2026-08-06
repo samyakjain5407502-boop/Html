@@ -682,9 +682,9 @@ def api_checkout():
     global_discount_row = conn.execute("SELECT value FROM settings WHERE key='global_discount'").fetchone()
     global_discount_percent = float(global_discount_row['value']) if global_discount_row else 0
     
-    # Calculate total with discount
+    # Calculate total with only admin-set global discount
+    # NOTE: item prices in cart are ALREADY the final discounted prices - do NOT double-deduct MRP savings
     subtotal = 0
-    product_discount = 0
     for item in cart:
         row = conn.execute('SELECT * FROM products WHERE id=?', (item['product_id'],)).fetchone()
         if row:
@@ -693,20 +693,16 @@ def api_checkout():
             except: pass
             grade_price_str = grades[item.get('grade_index', 0)]['price'] if grades and item.get('grade_index', 0) < len(grades) else row['price']
             base_price_str = row['price']
-            old_price_str = row['old_price'] or base_price_str
             
             grade_price = float(re.sub(r'[₹,\s]', '', str(grade_price_str)) or 0)
             base_price = float(re.sub(r'[₹,\s]', '', str(base_price_str)) or 0)
-            old_price = float(re.sub(r'[₹,\s]', '', str(old_price_str)) or 0)
             
             item_price = grade_price if grade_price > 0 else base_price
             subtotal += item_price * item['quantity']
-            product_discount += (old_price - item_price) * item['quantity']
     
-    # Apply global discount
+    # Apply ONLY global admin discount
     global_discount_amount = (subtotal * global_discount_percent) / 100
-    total_discount = product_discount + global_discount_amount
-    final_total = subtotal - total_discount
+    final_total = subtotal - global_discount_amount
     
     cur = conn.execute(
         'INSERT INTO orders (customer_id, customer_name, customer_phone, customer_address, items, total, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
