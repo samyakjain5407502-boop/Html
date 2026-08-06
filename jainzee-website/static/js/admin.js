@@ -560,6 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (hasSettingsForm) {
         loadSettings();
+        loadGeneralMedia();
     }
 
     // Main video upload form handler
@@ -576,3 +577,84 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ==================== GENERAL MEDIA (Factory & Company) ====================
+
+async function uploadGeneralMedia() {
+    const title = document.getElementById('generalMediaTitle').value;
+    const category = document.getElementById('generalMediaCategory').value;
+    const fileInput = document.getElementById('generalMediaFileInput');
+    const msgDiv = document.getElementById('generalMediaUploadMsg');
+
+    if (!fileInput.files || !fileInput.files[0]) {
+        msgDiv.innerHTML = '<span style="color: #dc3545;">Please select a file first.</span>';
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('title', title);
+    formData.append('category', category);
+
+    msgDiv.innerHTML = '<span style="color: #007bff;"><i class="fas fa-spinner fa-spin"></i> Uploading...</span>';
+
+    try {
+        const res = await fetch('/admin/api/general-media', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+        const data = await res.json();
+        if (res.ok) {
+            msgDiv.innerHTML = '<span style="color: #28a745;">✓ Media uploaded successfully!</span>';
+            fileInput.value = '';
+            document.getElementById('generalMediaTitle').value = '';
+            loadGeneralMedia();
+        } else {
+            msgDiv.innerHTML = '<span style="color: #dc3545;">❌ ' + (data.error || 'Upload failed') + '</span>';
+        }
+    } catch(err) {
+        msgDiv.innerHTML = '<span style="color: #dc3545;">❌ Upload failed. Server issue.</span>';
+    }
+}
+
+async function loadGeneralMedia() {
+    const mediaList = document.getElementById('generalMediaList');
+    if (!mediaList) return;
+    
+    mediaList.innerHTML = '<p style="color: var(--text-light);">Loading...</p>';
+    try {
+        const res = await fetch('/admin/api/general-media');
+        const media = await res.json();
+        if (!media.length) {
+            mediaList.innerHTML = '<p style="color: var(--text-light);">No media uploaded yet.</p>';
+            return;
+        }
+        mediaList.innerHTML = '';
+        media.forEach(m => {
+            const div = document.createElement('div');
+            div.style.cssText = 'position: relative; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,215,0,0.2);';
+            if (m.type === 'video') {
+                div.innerHTML = '<video controls style="width:100%; height:150px; object-fit:cover;"><source src="' + m.url + '" type="video/mp4"></video>';
+            } else {
+                div.innerHTML = '<img src="' + m.url + '" style="width:100%; height:150px; object-fit:cover;">';
+            }
+            const delBtn = document.createElement('button');
+            delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+            delBtn.onclick = () => deleteGeneralMedia(m.id);
+            delBtn.style.cssText = 'position: absolute; top: 5px; right: 5px; background: rgba(220,53,69,0.8); color: white; border: none; width: 25px; height: 25px; border-radius: 50%; cursor: pointer;';
+            div.appendChild(delBtn);
+            mediaList.appendChild(div);
+        });
+    } catch(e) {
+        mediaList.innerHTML = '<p style="color: #dc3545;">Failed to load media.</p>';
+    }
+}
+
+async function deleteGeneralMedia(mediaId) {
+    if (!confirm('Delete this media?')) return;
+    try {
+        await fetch('/admin/api/general-media/' + mediaId, { method: 'DELETE' });
+        loadGeneralMedia();
+    } catch(e) {}
+}

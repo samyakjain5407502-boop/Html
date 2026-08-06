@@ -83,6 +83,16 @@ def init_db():
         FOREIGN KEY (product_id) REFERENCES products(id)
     )''')
 
+    # Create general_media table for factory/company media
+    cur.execute('''CREATE TABLE IF NOT EXISTS general_media (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        category TEXT,
+        type TEXT,
+        url TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
     # Migration: Add missing columns to existing products table (older DB versions)
     cur.execute("PRAGMA table_info(products)")
     existing_cols = [row[1] for row in cur.fetchall()]
@@ -541,27 +551,42 @@ def api_cart():
         conn.close()
         return jsonify(enriched)
     else:
-        data = request.get_json() or {}
-        product_id = data.get('product_id')
-        quantity = int(data.get('quantity', 1))
-        weight = data.get('weight', '')
-        grade_index = int(data.get('grade_index', 0))
-        if not product_id:
-            return jsonify({'error': 'Product ID required'}), 400
-        cart = session.get('cart', [])
-        # Check if same product+weight already in cart
-        existing = None
-        for i, item in enumerate(cart):
-            if item['product_id'] == product_id and item.get('weight', '') == weight:
-                existing = i
-                break
-        if existing is not None:
-            cart[existing]['quantity'] += quantity
-        else:
-            cart.append({'product_id': product_id, 'quantity': quantity, 'weight': weight, 'grade_index': grade_index})
-        session['cart'] = cart
-        session.modified = True
-        return jsonify({'message': 'Added to cart', 'cart_count': sum(i['quantity'] for i in cart)})
+        try:
+            data = request.get_json() or {}
+            product_id = int(data.get('product_id', 0))
+            quantity = int(data.get('quantity', 1))
+            grade_index = int(data.get('grade_index', 0))
+            
+            if not product_id or product_id <= 0:
+                return jsonify({'error': 'Valid Product ID required'}), 400
+            
+            cart = session.get('cart', [])
+            
+            # Check if same product+grade already in cart
+            existing = None
+            for i, item in enumerate(cart):
+                if item['product_id'] == product_id and item.get('grade_index', 0) == grade_index:
+                    existing = i
+                    break
+            
+            if existing is not None:
+                cart[existing]['quantity'] += quantity
+            else:
+                cart.append({
+                    'product_id': product_id, 
+                    'quantity': quantity, 
+                    'grade_index': grade_index
+                })
+            
+            session['cart'] = cart
+            session.modified = True
+            cart_count = sum(i['quantity'] for i in cart)
+            return jsonify({'message': 'Added to cart', 'cart_count': cart_count}), 200
+            
+        except (ValueError, TypeError) as e:
+            return jsonify({'error': 'Invalid data format: ' + str(e)}), 400
+        except Exception as e:
+            return jsonify({'error': 'Server error: ' + str(e)}), 500
 
 @app.route('/api/cart/<int:item_index>', methods=['PUT', 'DELETE'])
 def api_cart_item(item_index):
@@ -676,6 +701,64 @@ def admin_api_product_media_delete(mid):
         conn.commit()
     conn.close()
     return jsonify({'message': 'Media deleted'})
+
+# ---------------- GENERAL MEDIA (Factory & Company) ----------------
+
+@app.route('/admin/api/general-media', methods=['GET', 'POST'])
+@login_required
+def admin_api_general_media():
+    conn = get_db()
+    if request.method == 'GET':
+        rows = conn.execute('SELECT * FROM general_media ORDER BY id DESC').fetchall()
+        conn.close()
+        return jsonify([dict(r) for r in rows])
+    else:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'File type not allowed'}), 400
+        
+        title = request.form.get('title', '')
+        category = request.form.get('category', 'factory')
+        
+        filename = secure_filename(file.filename)
+        name, ext = os.path.splitext(filename)
+        counter = 1
+        while os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], filename)):
+            filename = f"{name}_{counter}{ext}"
+            counter += 1
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        url = f'/static/uploads/{filename}'
+        
+        conn.execute('INSERT INTO general_media (title, category, type, url) VALUES (?, ?, ?, ?)',
+                     (title, category, 'video' if ext.lower() in ALLOWED_VIDEO_EXTENSIONS else 'image', url))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Media uploaded successfully', 'url': url}), 201
+
+@app.route('/admin/api/general-media/<int:mid>', methods=['DELETE'])
+@login_required
+def admin_api_general_media_delete(mid):
+    conn = get_db()
+    row = conn.execute('SELECT url FROM general_media WHERE id=?', (mid,)).fetchone()
+    if row:
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(row['url']))
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        conn.execute('DELETE FROM general_media WHERE id=?', (mid,))
+        conn.commit()
+    conn.close()
+    return jsonify({'message': 'Media deleted'})
+
+@app.route('/api/general-media')
+def api_general_media():
+    conn = get_db()
+    rows = conn.execute('SELECT * FROM general_media ORDER BY id DESC').fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
 
 # ---------------- STARTUP ----------------
 

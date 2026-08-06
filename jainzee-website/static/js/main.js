@@ -573,6 +573,9 @@ function init() {
     // Load main banner video (if uploaded)
     loadMainBannerVideo();
 
+    // Load factory & company media
+    loadGeneralMedia();
+
     // Load data
     fetchSiteData().then(() => fetchProducts());
 }
@@ -581,6 +584,42 @@ document.addEventListener('DOMContentLoaded', () => {
     setLanguage(currentLang); // Apply saved language first
     init();
 });
+
+// ==================== GENERAL MEDIA (Factory & Company) ====================
+
+async function loadGeneralMedia() {
+    const mediaContainer = document.getElementById('generalMediaPlayer');
+    if (!mediaContainer) return;
+    
+    try {
+        const res = await fetch('/api/general-media');
+        const media = await res.json();
+        
+        if (!media.length) {
+            mediaContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: var(--text-light); grid-column: 1 / -1;">No media uploaded yet. Check back soon!</p>';
+            return;
+        }
+        
+        mediaContainer.innerHTML = '';
+        media.forEach(m => {
+            const card = document.createElement('div');
+            card.className = 'media-card';
+            
+            let mediaHtml = '';
+            if (m.type === 'video') {
+                mediaHtml = '<video controls preload="metadata" style="width:100%; height:300px; object-fit:cover;"><source src="' + m.url + '" type="video/mp4">Your browser does not support video.</video>';
+            } else {
+                mediaHtml = '<img src="' + m.url + '" alt="' + (m.title || 'Company Photo') + '" style="width:100%; height:300px; object-fit:cover;">';
+            }
+            
+            card.innerHTML = mediaHtml + '<div class="media-card-caption"><h4>' + (m.title || 'Untitled') + '</h4><p>' + (m.category === 'factory' ? 'Factory Video' : 'Company Photo') + '</p></div>';
+            mediaContainer.appendChild(card);
+        });
+    } catch(e) {
+        mediaContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: var(--text-light); grid-column: 1 / -1;">Failed to load media.</p>';
+        console.error('Failed to load general media:', e);
+    }
+}
 
 // Add fade-in animation to product cards
 document.addEventListener('DOMContentLoaded', function() {

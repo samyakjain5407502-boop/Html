@@ -145,10 +145,10 @@
                 <h2><i class="fas fa-images"></i> Product Media Upload</h2>
                 <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 5px;">Upload photos & videos for individual products</p>
             </div>
-            <div style="padding: 30px;">
+            <div style="padding: 30px; background: #fdf6e3;">
                 <div class="form-group">
                     <label>Select Product</label>
-                    <select id="mediaProductId" style="width: 100%; padding: 10px; border-radius: 8px; background: #1a120c; color: var(--text); border: 1px solid rgba(255,215,0,0.3);">
+                    <select id="mediaProductId" style="width: 100%; padding: 10px; border-radius: 8px; background: white; color: var(--text); border: 1px solid #e8e0d5;">
                         <option value="">-- Choose a product --</option>
                     </select>
                 </div>
@@ -161,10 +161,46 @@
                 </button>
                 <div id="mediaUploadMsg" style="margin-top: 10px; font-size: 0.9rem;"></div>
 
-                <hr style="border-color: rgba(255,215,0,0.15); margin: 25px 0;">
+                <hr style="border-color: rgba(184,134,11,0.2); margin: 25px 0;">
 
-                <h3 style="color: var(--text); margin-bottom: 15px;">Uploaded Media</h3>
+                <h3 style="color: var(--dark); margin-bottom: 15px;">Uploaded Media</h3>
                 <div id="mediaList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
+                    <!-- Media items will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== FACTORY & COMPANY MEDIA ===== -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h2><i class="fas fa-industry"></i> Factory Video & Company Photo</h2>
+                <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 5px;">Upload factory videos and company photos for the homepage media player</p>
+            </div>
+            <div style="padding: 30px; background: #fdf6e3;">
+                <div class="form-group">
+                    <label>Media Title</label>
+                    <input type="text" id="generalMediaTitle" placeholder="e.g., Factory Tour, Our Facility" style="width: 100%; padding: 10px; border-radius: 8px; background: white; color: var(--text); border: 1px solid #e8e0d5;">
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="generalMediaCategory" style="width: 100%; padding: 10px; border-radius: 8px; background: white; color: var(--text); border: 1px solid #e8e0d5;">
+                        <option value="factory">Factory Video</option>
+                        <option value="company">Company Photo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Upload Photo or Video</label>
+                    <input type="file" id="generalMediaFileInput" accept="image/*,video/*">
+                </div>
+                <button class="btn btn-primary" style="margin-bottom: 20px;" onclick="uploadGeneralMedia()">
+                    <i class="fas fa-upload"></i> Upload Media
+                </button>
+                <div id="generalMediaUploadMsg" style="margin-top: 10px; font-size: 0.9rem;"></div>
+
+                <hr style="border-color: rgba(184,134,11,0.2); margin: 25px 0;">
+
+                <h3 style="color: var(--dark); margin-bottom: 15px;">Uploaded Media</h3>
+                <div id="generalMediaList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
                     <!-- Media items will be loaded here -->
                 </div>
             </div>
