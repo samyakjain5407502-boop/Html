@@ -29,7 +29,7 @@
     </nav>
 
     <!-- ===== CART SECTION ===== -->
-    <section class="cart-section" style="padding: 140px 0 80px; background: var(--bg-light); min-height: 100vh;">
+    <section class="cart-section">
         <div class="container">
             <div class="section-header">
                 <h2 data-i18n="cart_title">Your Shopping Cart</h2>
@@ -45,27 +45,27 @@
             </div>
 
             <div id="cartSummary" style="display: none;">
-                <div class="cart-summary-card" style="background: var(--card-bg); border-radius: var(--radius); padding: 35px; border: 1px solid rgba(255,215,0,0.15); box-shadow: var(--shadow); margin-top: 30px;">
+                <div class="cart-summary-card">
                     <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 25px; text-align: center;">
                         <i class="fas fa-receipt"></i> <span data-i18n="order_summary">Order Summary</span>
                     </h3>
 
-                    <div class="summary-row" style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,215,0,0.1);">
+                    <div class="summary-row">
                         <span data-i18n="subtotal">Subtotal</span>
                         <span id="cartSubtotal">₹0</span>
                     </div>
 
-                    <div class="summary-row" style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,215,0,0.1);">
+                    <div class="summary-row">
                         <span data-i18n="discount">Discount</span>
-                        <span id="cartDiscount" style="color: #4ade80;">-₹0</span>
+                        <span id="cartDiscount" style="color: #155724;">-₹0</span>
                     </div>
 
-                    <div class="summary-row" style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,215,0,0.1);">
+                    <div class="summary-row">
                         <span data-i18n="you_save">You Save</span>
-                        <span id="cartYouSave" style="color: #f87171;">₹0</span>
+                        <span id="cartYouSave" style="color: #721c24;">₹0</span>
                     </div>
 
-                    <div class="summary-row" style="display: flex; justify-content: space-between; padding: 20px 0; border-top: 2px solid rgba(255,215,0,0.3); margin-top: 10px;">
+                    <div class="summary-row" style="border-top: 2px solid rgba(184,134,11,0.3); margin-top: 10px; padding-top: 20px;">
                         <span style="font-weight: 700; font-size: 1.3rem; color: var(--primary);" data-i18n="total">Total</span>
                         <span id="cartTotal" style="font-weight: 800; font-size: 1.5rem; color: var(--primary);"></span>
                     </div>
@@ -210,14 +210,14 @@
                         <div style="flex: 1;">
                             <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.3rem; margin-bottom: 5px;">${name}</h3>
                             <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 10px;">${t('qty')}: ${item.grade_name || item.weight || ''}</p>
-                            <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
-                                <span style="color: var(--primary); font-weight: 700; font-size: 1.2rem;">${formatPriceCart(item.grade_price || item.base_price)}</span>
-                                ${oldPrice > 0 ? '<span style="color: #8a6d4f; text-decoration: line-through; font-size: 0.9rem;">' + formatPriceCart(item.old_price) + '</span>' : ''}
-                            </div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                        <span style="color: var(--primary-dark); font-weight: 700; font-size: 1.2rem;">${formatPriceCart(item.grade_price || item.base_price)}</span>
+                        ${oldPrice > 0 ? '<span style="color: #999; text-decoration: line-through; font-size: 0.9rem;">' + formatPriceCart(item.old_price) + '</span>' : ''}
+                    </div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="number" min="1" max="${item.stock}" value="${item.quantity}" onchange="updateCartQty(${index}, this.value)" style="width: 70px; padding: 8px; text-align: center; border: 2px solid rgba(255,215,0,0.3); border-radius: 8px; background: #1a120c; color: var(--text);">
-                            <button onclick="removeFromCart(${index})" style="background: linear-gradient(135deg, #ff4500, #dc3545); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600;"><i class="fas fa-trash"></i></button>
+                            <input type="number" min="1" max="${item.stock}" value="${item.quantity}" onchange="updateCartQty(${index}, this.value)" style="width: 70px; padding: 8px; text-align: center; border: 2px solid #e8e0d5; border-radius: 8px; background: white; color: var(--text);">
+                            <button onclick="removeFromCart(${index})" style="background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600;"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                 `;
@@ -264,7 +264,7 @@
                 const data = await res.json();
                 const cartBtn = document.querySelector('.admin-panel-btn');
                 if (cartBtn) {
-                    cartBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> <span data-i18n="cart_title">Cart</span> <span class="cart-count-badge" style="background: var(--rich-gradient); color: #1a0f08; padding: 2px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 700;">' + data.count + '</span>';
+                    cartBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> <span data-i18n="cart_title">Cart</span> <span class="cart-count-badge" style="background: var(--primary); color: white; padding: 2px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 700;">' + data.count + '</span>';
                 }
             } catch(e) {}
         }

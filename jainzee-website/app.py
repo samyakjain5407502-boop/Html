@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import sqlite3
 from functools import wraps
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash, send_from_directory
@@ -530,11 +531,11 @@ def api_cart():
                     'image': p.get('image', ''),
                     'quantity': item['quantity'],
                     'grade_index': item.get('grade_index', 0),
-                    'grade_name': selectedGrade['name'] if selectedGrade else '',
+                    'grade_name': selectedGrade['name'] if selectedGrade else item.get('weight', ''),
                     'grade_price': selectedGrade['price'] if selectedGrade else p.get('price', ''),
                     'base_price': p.get('price', ''),
                     'old_price': p.get('old_price', ''),
-                    'weight': p.get('weight', ''),
+                    'weight': item.get('weight', p.get('weight', '')),
                     'stock': p.get('stock', 0)
                 })
         conn.close()
@@ -543,20 +544,21 @@ def api_cart():
         data = request.get_json() or {}
         product_id = data.get('product_id')
         quantity = int(data.get('quantity', 1))
+        weight = data.get('weight', '')
         grade_index = int(data.get('grade_index', 0))
         if not product_id:
             return jsonify({'error': 'Product ID required'}), 400
         cart = session.get('cart', [])
-        # Check if same product+grade already in cart
+        # Check if same product+weight already in cart
         existing = None
         for i, item in enumerate(cart):
-            if item['product_id'] == product_id and item.get('grade_index', 0) == grade_index:
+            if item['product_id'] == product_id and item.get('weight', '') == weight:
                 existing = i
                 break
         if existing is not None:
             cart[existing]['quantity'] += quantity
         else:
-            cart.append({'product_id': product_id, 'quantity': quantity, 'grade_index': grade_index})
+            cart.append({'product_id': product_id, 'quantity': quantity, 'weight': weight, 'grade_index': grade_index})
         session['cart'] = cart
         session.modified = True
         return jsonify({'message': 'Added to cart', 'cart_count': sum(i['quantity'] for i in cart)})

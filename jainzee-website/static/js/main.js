@@ -131,25 +131,33 @@ function openProductModal(product) {
     document.getElementById('modalProductId').value = product.id;
     document.getElementById('modalQuantity').value = 1;
     
-    // Populate grades
-    let grades = [];
-    try { grades = JSON.parse(product.grades || '[]'); } catch(e) {}
+    // Populate weight options based on product weight field
+    const weightSelect = document.getElementById('modalWeightSelect');
+    weightSelect.innerHTML = '';
     
-    const gradeSelect = document.getElementById('modalGradeSelect');
-    gradeSelect.innerHTML = '';
-    if (grades.length) {
-        grades.forEach((g, i) => {
-            const opt = document.createElement('option');
-            opt.value = i;
-            opt.textContent = g.name + ' - ' + g.price;
-            gradeSelect.appendChild(opt);
-        });
-    } else {
-        const opt = document.createElement('option');
-        opt.value = 0;
-        opt.textContent = product.price || '₹0';
-        gradeSelect.appendChild(opt);
+    // Parse available weights from product.weight field (e.g., "500g / 1kg")
+    const weightField = product.weight || '';
+    const availableWeights = [];
+    
+    if (weightField.includes('500g') || weightField.includes('500')) {
+        availableWeights.push('500g');
     }
+    if (weightField.includes('1kg') || weightField.includes('1000g') || weightField.includes('1 kg')) {
+        availableWeights.push('1kg');
+    }
+    
+    // If no weights found in product, default to 500g and 1kg
+    if (availableWeights.length === 0) {
+        availableWeights.push('500g', '1kg');
+    }
+    
+    // Populate dropdown
+    availableWeights.forEach(w => {
+        const opt = document.createElement('option');
+        opt.value = w;
+        opt.textContent = w;
+        weightSelect.appendChild(opt);
+    });
     
     // Set max quantity based on stock
     document.getElementById('modalQuantity').max = product.stock || 999;
@@ -174,7 +182,7 @@ function closeProductModal() {
 async function addToCartFromModal() {
     const productId = document.getElementById('modalProductId').value;
     const quantity = parseInt(document.getElementById('modalQuantity').value) || 1;
-    const gradeIndex = parseInt(document.getElementById('modalGradeSelect').value) || 0;
+    const weight = document.getElementById('modalWeightSelect').value;
     
     if (quantity < 1) {
         alert(currentLang === 'hi' ? 'कम से कम 1 चुनें' : 'Please select at least 1 item');
@@ -188,7 +196,8 @@ async function addToCartFromModal() {
             body: JSON.stringify({
                 product_id: parseInt(productId),
                 quantity: quantity,
-                grade_index: gradeIndex
+                weight: weight,
+                grade_index: 0
             })
         });
         const data = await res.json();
