@@ -96,6 +96,18 @@ def init_db():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
 
+    # Create product_reviews table for customer reviews and ratings
+    cur.execute('''CREATE TABLE IF NOT EXISTS product_reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        customer_name TEXT NOT NULL,
+        customer_phone TEXT NOT NULL,
+        rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+        review_text TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+    )''')
+
     # Migration: Add missing columns to existing products table (older DB versions)
     cur.execute("PRAGMA table_info(products)")
     existing_cols = [row[1] for row in cur.fetchall()]
@@ -655,6 +667,254 @@ def admin_api_upload_main_video():
     file.save(filepath)
     return jsonify({'message': 'Main video updated successfully', 'url': '/static/uploads/main_banner_video.mp4'})
 
+# ---------------- PDF INVOICE GENERATION ----------------
+
+@app.route('/api/orders/<int:order_id>/invoice')
+def api_order_invoice(order_id):
+    """Generate and download PDF invoice for an order"""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    import io
+    
+    # Check if customer is logged in
+    if not session.get('customer_id'):
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    conn = get_db()
+    order = conn.execute('SELECT * FROM orders WHERE id=? AND customer_id=?', 
+                        (order_id, session['customer_id'])).fetchone()
+    
+    if not order:
+        conn.close()
+        return jsonify({'error': 'Order not found'}), 404
+    
+    # Get shop settings
+    settings = {}
+    for row in conn.execute('SELECT key, value FROM settings'):
+        settings[row['key']] = row['value']
+    
+    # Parse order items
+    import json as json_mod
+    items = json_mod.loads(order['items'] or '[]')
+    
+    conn.close()
+    
+    # Create PDF buffer
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+                          rightMargin=72, leftMargin=72,
+                          topMargin=72, bottomMargin=18)
+    
+    # Container for the 'flowables'
+    elements = []
+    
+    # Custom styles
+    styles = getSampleStyleSheet()
+    
+    # Title style
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#b8860b'),
+        alignment=TA_CENTER,
+        spaceAfter=30,
+        fontName='Helvetica-Bold'
+    )
+    
+    # Header style
+    header_style = ParagraphStyle(
+        'CustomHeader',
+        parent=styles['Normal'],
+        fontSize=12,
+        textColor=colors.HexColor('#2c1810'),
+        alignment=TA_LEFT,
+        spaceAfter=6,
+        fontName='Helvetica-Bold'
+    )
+    
+    # Normal style
+    normal_style = ParagraphStyle(
+        'CustomNormal',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.HexColor('#4a3728'),
+        alignment=TA_LEFT,
+        spaceAfter=4
+    )
+    
+    # Company name
+    shop_name = settings.get('shop_name_en', 'Jainzee Food Processing Industries')
+    elements.append(Paragraph(shop_name, title_style))
+    elements.append(Spacer(1, 12))
+    
+    # Company details
+    address = settings.get('address_en', 'Siyaganj, Indore, Madhya Pradesh 452001')
+    phone = settings.get('phone', '+91 98260 00000')
+    email = settings.get('email', 'info@jainzee.in')
+    
+    elements.append(Paragraph(f"Address: {address}", normal_style))
+    elements.append(Paragraph(f"Phone: {phone}", normal_style))
+    elements.append(Paragraph(f"Email: {email}", normal_style))
+    elements.append(Spacer(1, 20))
+    
+    # Invoice title
+    invoice_title = ParagraphStyle(
+        'InvoiceTitle',
+        parent=styles['Heading2'],
+        fontSize=16,
+        textColor=colors.HexColor('#b8860b'),
+        alignment=TA_CENTER,
+        spaceAfter=20,
+        fontName='Helvetica-Bold'
+    )
+    elements.append(Paragraph("INVOICE", invoice_title))
+    elements.append(Spacer(1, 12))
+    
+    # Order details table
+    order_data = [
+        ['Invoice #:', f"INV-{order['id']:06d}"],
+        ['Order #:', str(order['id'])],
+        ['Date:', order['created_at']],
+        ['Customer Name:', order['customer_name']],
+        ['Phone:', order['customer_phone']],
+        ['Address:', order['customer_address']]
+    ]
+    
+    order_table = Table(order_data, colWidths=[2.5*inch, 4*inch])
+    order_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#b8860b')),
+        ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#2c1810')),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(order_table)
+    elements.append(Spacer(1, 20))
+    
+    # Items table
+    elements.append(Paragraph("Order Items:", header_style))
+    elements.append(Spacer(1, 8))
+    
+    # Calculate subtotal
+    subtotal = 0
+    items_data = [['Item', 'Qty', 'Price', 'Total']]
+    
+    for item in items:
+        product_id = item.get('product_id')
+        qty = item.get('quantity', 1)
+        
+        # Get product details
+        conn = get_db()
+        product = conn.execute('SELECT name_en, price FROM products WHERE id=?', (product_id,)).fetchone()
+        conn.close()
+        
+        if product:
+            name = product['name_en']
+            price_str = product['price'] or '₹0'
+            price = float(re.sub(r'[₹,\s]', '', price_str) or 0)
+        else:
+            name = f"Product #{product_id}"
+            price = 0
+        
+        item_total = price * qty
+        subtotal += item_total
+        
+        items_data.append([
+            name,
+            str(qty),
+            f"₹{price:.2f}",
+            f"₹{item_total:.2f}"
+        ])
+    
+    # Add subtotal, discount, and total rows
+    items_data.append(['', '', '', ''])
+    items_data.append(['', '', 'Subtotal:', f"₹{subtotal:.2f}"])
+    
+    # Check for discount
+    discount_percent = 0
+    try:
+        discount_val = settings.get('global_discount_percent') or settings.get('global_discount', '0')
+        discount_percent = float(str(discount_val).replace('%', '').strip()) or 0
+    except:
+        discount_percent = 0
+    
+    discount_amount = (subtotal * discount_percent) / 100
+    final_total = subtotal - discount_amount
+    
+    if discount_percent > 0:
+        items_data.append(['', '', f'Discount ({discount_percent}%):', f"-₹{discount_amount:.2f}"])
+    
+    items_data.append(['', '', 'Grand Total:', f"₹{final_total:.2f}"])
+    
+    items_table = Table(items_data, colWidths=[3*inch, 1*inch, 1.5*inch, 1.5*inch])
+    items_table.setStyle(TableStyle([
+        # Header row
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#b8860b')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('TOPPADDING', (0, 0), (-1, 0), 12),
+        
+        # Data rows
+        ('FONTNAME', (0, 1), (-1, -4), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -4), 10),
+        ('ALIGN', (2, 1), (-1, -1), 'RIGHT'),
+        ('ALIGN', (1, 1), (1, -1), 'CENTER'),
+        ('TEXTCOLOR', (0, 1), (-1, -4), colors.HexColor('#2c1810')),
+        ('BOTTOMPADDING', (0, 1), (-1, -4), 8),
+        ('TOPPADDING', (0, 1), (-1, -4), 8),
+        
+        # Total rows
+        ('FONTNAME', (2, -3), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (2, -3), (-1, -1), 11),
+        ('TEXTCOLOR', (2, -3), (-1, -1), colors.HexColor('#b8860b')),
+        ('LINEABOVE', (2, -3), (-1, -3), 1, colors.HexColor('#e8e0d5')),
+        ('LINEABOVE', (2, -1), (-1, -1), 2, colors.HexColor('#b8860b')),
+        ('BOTTOMPADDING', (2, -1), (-1, -1), 12),
+        ('TOPPADDING', (2, -1), (-1, -1), 12),
+    ]))
+    elements.append(items_table)
+    elements.append(Spacer(1, 30))
+    
+    # Footer
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=9,
+        textColor=colors.HexColor('#8a7362'),
+        alignment=TA_CENTER,
+        spaceAfter=6
+    )
+    elements.append(Paragraph("Thank you for your business!", footer_style))
+    elements.append(Paragraph("For any queries, contact us at " + email, footer_style))
+    
+    # Build PDF
+    doc.build(elements)
+    
+    # Get PDF data
+    pdf_data = buffer.getvalue()
+    buffer.close()
+    
+    # Return PDF as download
+    from flask import make_response
+    response = make_response(pdf_data)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'attachment; filename=invoice_{order_id}.pdf'
+    
+    return response
+
 # ---------------- CART & CHECKOUT API ----------------
 
 @app.route('/api/cart', methods=['GET', 'POST'])
@@ -930,6 +1190,82 @@ def api_general_media():
     rows = conn.execute('SELECT * FROM general_media ORDER BY id DESC').fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
+
+# ---------------- PRODUCT REVIEWS API ----------------
+
+@app.route('/api/products/<int:product_id>/reviews', methods=['GET', 'POST'])
+def api_product_reviews(product_id):
+    """Get or submit reviews for a product"""
+    conn = get_db()
+    
+    if request.method == 'GET':
+        # Get all reviews for this product
+        reviews = conn.execute(
+            'SELECT * FROM product_reviews WHERE product_id=? ORDER BY created_at DESC',
+            (product_id,)
+        ).fetchall()
+        
+        # Calculate average rating
+        avg_rating = conn.execute(
+            'SELECT AVG(rating) as avg FROM product_reviews WHERE product_id=?',
+            (product_id,)
+        ).fetchone()
+        
+        conn.close()
+        
+        return jsonify({
+            'reviews': [dict(r) for r in reviews],
+            'average_rating': round(avg_rating['avg'], 1) if avg_rating and avg_rating['avg'] else 0,
+            'total_reviews': len(reviews)
+        })
+    
+    else:  # POST - submit a review
+        # Check if customer is logged in
+        if not session.get('customer_id'):
+            return jsonify({'error': 'Please login to submit a review'}), 401
+        
+        data = request.get_json() or {}
+        rating = data.get('rating')
+        review_text = data.get('review_text', '').strip()
+        
+        # Validate rating
+        if not rating or not isinstance(rating, int) or rating < 1 or rating > 5:
+            return jsonify({'error': 'Rating must be between 1 and 5'}), 400
+        
+        # Get customer details
+        customer = conn.execute(
+            'SELECT name, phone FROM customers WHERE id=?',
+            (session['customer_id'],)
+        ).fetchone()
+        
+        if not customer:
+            conn.close()
+            return jsonify({'error': 'Customer not found'}), 404
+        
+        # Insert review
+        conn.execute(
+            'INSERT INTO product_reviews (product_id, customer_name, customer_phone, rating, review_text) VALUES (?, ?, ?, ?, ?)',
+            (product_id, customer['name'], customer['phone'], rating, review_text)
+        )
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Review submitted successfully!'}), 201
+
+@app.route('/api/my-reviews', methods=['GET'])
+def api_my_reviews():
+    """Get all reviews by the currently logged-in customer"""
+    if not session.get('customer_id'):
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    conn = get_db()
+    reviews = conn.execute(
+        'SELECT pr.*, p.name_en as product_name FROM product_reviews pr JOIN products p ON pr.product_id = p.id WHERE pr.customer_phone = (SELECT phone FROM customers WHERE id=?) ORDER BY pr.created_at DESC',
+        (session['customer_id'],)
+    ).fetchall()
+    conn.close()
+    
+    return jsonify([dict(r) for r in reviews])
 
 # ---------------- STARTUP ----------------
 

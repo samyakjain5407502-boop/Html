@@ -359,10 +359,13 @@ async function openMyOrdersModal() {
                     <div style="margin-bottom: 10px;">
                         <p style="color: var(--text); font-size: 0.95rem; line-height: 1.6;">${order.item_summary}</p>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(184,134,11,0.1);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(184,134,11,0.1); margin-bottom: 10px;">
                         <span style="color: var(--text-light); font-size: 0.9rem;">Total Amount</span>
                         <strong style="color: var(--primary-dark); font-size: 1.2rem;">${order.total}</strong>
                     </div>
+                    <button class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 0.85rem;" onclick="downloadInvoice(${order.id})">
+                        <i class="fas fa-download"></i> Download Invoice (PDF)
+                    </button>
                 </div>
             `;
         });
@@ -396,6 +399,14 @@ function getStatusClass(status) {
         default:
             return 'status-pending';
     }
+}
+
+// ==================== PDF INVOICE DOWNLOAD ====================
+
+function downloadInvoice(orderId) {
+    // Open invoice in new tab for download
+    const url = `/api/orders/${orderId}/invoice`;
+    window.open(url, '_blank');
 }
 
 // Close modal when clicking outside
@@ -561,6 +572,146 @@ function applySiteData() {
     }
 }
 
+// ==================== PRODUCT REVIEWS ====================
+
+let currentReviewProductId = null;
+let currentReviewRating = 0;
+
+async function loadProductReviews(productId) {
+    try {
+        const res = await fetch(`/api/products/${productId}/reviews`);
+        const data = await res.json();
+        
+        const reviewsContainer = document.getElementById(`reviews-${productId}`);
+        if (!reviewsContainer) return;
+        
+        // Update average rating display
+        const ratingDisplay = document.getElementById(`rating-${productId}`);
+        if (ratingDisplay && data.average_rating) {
+            ratingDisplay.innerHTML = `
+                <div class="stars">
+                    ${generateStars(data.average_rating)}
+                </div>
+                <span class="rating-text">${data.average_rating} (${data.total_reviews} reviews)</span>
+            `;
+        }
+        
+        // Display reviews list
+        if (!data.reviews.length) {
+            reviewsContainer.innerHTML = '<p class="no-reviews">No reviews yet. Be the first to review!</p>';
+            return;
+        }
+        
+        let html = '<div class="reviews-list">';
+        data.reviews.forEach(review => {
+            html += `
+                <div class="review-item">
+                    <div class="review-header">
+                        <span class="review-author">${review.customer_name}</span>
+                        <span class="review-date">${new Date(review.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div class="review-rating">${generateStars(review.rating)}</div>
+                    ${review.review_text ? `<p class="review-text">${review.review_text}</p>` : ''}
+                </div>
+            `;
+        });
+        html += '</div>';
+        reviewsContainer.innerHTML = html;
+        
+    } catch (e) {
+        console.error('Error loading reviews:', e);
+    }
+}
+
+function generateStars(rating) {
+    let stars = '';
+    for (let i = 1; i <= 5; i++) {
+        if (i <= rating) {
+            stars += '<i class="fas fa-star"></i>';
+        } else {
+            stars += '<i class="fas fa-star star-empty"></i>';
+        }
+    }
+    return stars;
+}
+
+function openReviewForm(productId) {
+    currentReviewProductId = productId;
+    currentReviewRating = 0;
+    
+    const modal = document.getElementById('reviewModal');
+    if (!modal) return;
+    
+    // Reset form
+    document.getElementById('reviewProductId').value = productId;
+    document.getElementById('reviewRating').value = 0;
+    document.getElementById('reviewText').value = '';
+    
+    // Reset star display
+    updateStarDisplay(0);
+    
+    modal.classList.add('active');
+}
+
+function closeReviewModal() {
+    const modal = document.getElementById('reviewModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function setRating(rating) {
+    currentReviewRating = rating;
+    document.getElementById('reviewRating').value = rating;
+    updateStarDisplay(rating);
+}
+
+function updateStarDisplay(rating) {
+    const stars = document.querySelectorAll('.star-rating-input .star');
+    stars.forEach((star, index) => {
+        if (index < rating) {
+            star.classList.add('active');
+        } else {
+            star.classList.remove('active');
+        }
+    });
+}
+
+async function submitReview() {
+    const rating = currentReviewRating;
+    const reviewText = document.getElementById('reviewText').value.trim();
+    
+    if (rating === 0) {
+        alert('Please select a rating');
+        return;
+    }
+    
+    try {
+        const res = await fetch(`/api/products/${currentReviewProductId}/reviews`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rating, review_text: reviewText })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) {
+            if (res.status === 401) {
+                alert('Please login to submit a review');
+                return;
+            }
+            throw new Error(data.error || 'Failed to submit review');
+        }
+        
+        alert('Review submitted successfully!');
+        closeReviewModal();
+        
+        // Reload reviews
+        loadProductReviews(currentReviewProductId);
+        
+    } catch (e) {
+        alert('Error: ' + e.message);
+        console.error('Submit review error:', e);
+    }
+}
+
 // ==================== PRODUCTS RENDERING ====================
 
 const productIcons = {
@@ -636,6 +787,20 @@ function renderProducts() {
             stockHtml = '<span class="stock-badge stock-out" style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;"><i class="fas fa-times-circle"></i> ' + outText + '</span>';
         }
 
+        // Rating display
+        const ratingHtml = `
+            <div class="rating-display" id="rating-${p.id}">
+                <div class="stars">
+                    <i class="fas fa-star star-empty"></i>
+                    <i class="fas fa-star star-empty"></i>
+                    <i class="fas fa-star star-empty"></i>
+                    <i class="fas fa-star star-empty"></i>
+                    <i class="fas fa-star star-empty"></i>
+                </div>
+                <span class="rating-text">No reviews yet</span>
+            </div>
+        `;
+
         // Grades
         let grades = [];
         try { grades = JSON.parse(p.grades || '[]'); } catch(e) {}
@@ -691,6 +856,17 @@ function renderProducts() {
                 ${videoHtml}
                 <p class="product-desc">${desc || ''}</p>
                 ${stockHtml}
+                ${ratingHtml}
+                
+                <!-- Review Section -->
+                <div class="review-section">
+                    <div id="reviews-${p.id}">
+                        <p class="no-reviews">Loading reviews...</p>
+                    </div>
+                    <button class="btn btn-outline" style="width: 100%; margin-top: 10px; padding: 8px; font-size: 0.85rem; border: 2px solid var(--primary); color: var(--primary);" onclick="event.stopPropagation(); openReviewForm(${p.id})">
+                        <i class="fas fa-star"></i> Write a Review
+                    </button>
+                </div>
                 
                 <!-- Inline Quantity & Weight Selector -->
                 <div style="display: flex; gap: 10px; margin-top: 15px; align-items: center;">
@@ -706,6 +882,15 @@ function renderProducts() {
             </div>
         `;
         grid.appendChild(card);
+        
+        // Load reviews for this product
+        loadProductReviews(p.id);
+    });
+    
+    // Ensure all cards are visible after rendering
+    document.querySelectorAll('.product-card').forEach(card => {
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
     });
 }
 
