@@ -71,6 +71,7 @@ def init_db():
             items TEXT,
             total TEXT,
             status TEXT DEFAULT 'pending',
+            is_hidden INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (customer_id) REFERENCES customers(id)
         );
@@ -125,6 +126,15 @@ def init_db():
                 cur.execute(f"ALTER TABLE products ADD COLUMN {col} {col_def}")
             except sqlite3.OperationalError:
                 pass  # Column already exists
+    
+    # Migration: Add is_hidden column to orders table if it doesn't exist
+    cur.execute("PRAGMA table_info(orders)")
+    order_cols = [row[1] for row in cur.fetchall()]
+    if 'is_hidden' not in order_cols:
+        try:
+            cur.execute("ALTER TABLE orders ADD COLUMN is_hidden INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
 
     default_settings = {
         'shop_name_en': 'Jainzee Food Processing Industries',
@@ -463,7 +473,16 @@ def admin_orders_page():
 @login_required
 def admin_api_orders():
     conn = get_db()
-    rows = conn.execute('SELECT * FROM orders ORDER BY id DESC').fetchall()
+    
+    # Check if show_hidden parameter is present
+    show_hidden = request.args.get('show_hidden', 'false').lower() == 'true'
+    
+    # Filter orders based on is_hidden status
+    if show_hidden:
+        rows = conn.execute('SELECT * FROM orders WHERE is_hidden=1 ORDER BY id DESC').fetchall()
+    else:
+        rows = conn.execute('SELECT * FROM orders WHERE is_hidden=0 ORDER BY id DESC').fetchall()
+    
     conn.close()
     
     # Enrich orders with product details
@@ -543,6 +562,38 @@ def admin_api_order_update(oid):
     conn.commit()
     conn.close()
     return jsonify({'message': 'Order status updated'})
+
+@app.route('/admin/api/orders/<int:oid>/hide', methods=['POST'])
+@login_required
+def admin_api_order_hide(oid):
+    """Toggle hide/archive status of an order"""
+    conn = get_db()
+    order = conn.execute('SELECT is_hidden FROM orders WHERE id=?', (oid,)).fetchone()
+    if not order:
+        conn.close()
+        return jsonify({'error': 'Order not found'}), 404
+    
+    new_status = 1 if order['is_hidden'] == 0 else 0
+    conn.execute('UPDATE orders SET is_hidden=? WHERE id=?', (new_status, oid))
+    conn.commit()
+    conn.close()
+    
+    action = 'hidden' if new_status == 1 else 'restored'
+    return jsonify({'message': f'Order {action} successfully', 'is_hidden': new_status})
+
+@app.route('/admin/api/orders/<int:oid>', methods=['DELETE'])
+@login_required
+def admin_api_order_delete(oid):
+    """Permanently delete an order"""
+    conn = get_db()
+    result = conn.execute('DELETE FROM orders WHERE id=?', (oid,))
+    conn.commit()
+    conn.close()
+    
+    if result.rowcount > 0:
+        return jsonify({'message': 'Order deleted permanently'})
+    else:
+        return jsonify({'error': 'Order not found'}), 404
 
 # ---------------- ADMIN ROUTES ----------------
 

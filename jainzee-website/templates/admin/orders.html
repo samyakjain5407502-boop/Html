@@ -38,7 +38,17 @@
         <div class="admin-card">
             <div class="admin-card-header">
                 <h2>All Orders</h2>
-                <button class="btn btn-outline" onclick="loadOrders()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <div style="display: flex; gap: 5px; background: #f5f0e8; padding: 5px; border-radius: 8px;">
+                        <button class="btn btn-sm" id="showActiveBtn" onclick="toggleOrderFilter('active')" style="background: var(--primary); color: white; padding: 8px 16px; font-size: 0.85rem;">
+                            <i class="fas fa-eye"></i> Active
+                        </button>
+                        <button class="btn btn-sm" id="showArchivedBtn" onclick="toggleOrderFilter('archived')" style="background: transparent; color: var(--text); padding: 8px 16px; font-size: 0.85rem;">
+                            <i class="fas fa-archive"></i> Archived
+                        </button>
+                    </div>
+                    <button class="btn btn-outline" onclick="loadOrders()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                </div>
             </div>
             <div style="overflow-x: auto;">
                 <table class="admin-table" id="ordersTable">
@@ -52,10 +62,11 @@
                             <th>Total</th>
                             <th>Date</th>
                             <th>Status</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="ordersTableBody">
-                        <tr><td colspan="8" style="text-align: center; padding: 40px; color: #8a7362;">Loading orders...</td></tr>
+                        <tr><td colspan="9" style="text-align: center; padding: 40px; color: #8a7362;">Loading orders...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -85,13 +96,16 @@
             setTimeout(() => toast.remove(), 3000);
         }
 
+        let currentFilter = 'active'; // 'active' or 'archived'
+        
         async function loadOrders() {
             try {
-                const res = await fetch('/admin/api/orders');
+                const url = currentFilter === 'archived' ? '/admin/api/orders?show_hidden=true' : '/admin/api/orders';
+                const res = await fetch(url);
                 const orders = await res.json();
                 const tbody = document.getElementById('ordersTableBody');
                 if (!orders.length) {
-                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #8a7362;">No orders yet</td></tr>';
+                    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: #8a7362;">No ${currentFilter} orders</td></tr>`;
                     return;
                 }
                 tbody.innerHTML = '';
@@ -99,7 +113,8 @@
                     const tr = document.createElement('tr');
                     tr.setAttribute('data-order-id', order.id);
                     const isPending = String(order.status || '').startsWith('pending');
-                    tr.style.cssText = isPending ? 'background: #fff8e1;' : '';
+                    const isHidden = order.is_hidden === 1;
+                    tr.style.cssText = isPending ? 'background: #fff8e1;' : (isHidden ? 'background: #f5f5f5; opacity: 0.8;' : '');
                     
                     // Use enriched items_parsed if available, otherwise fallback to raw items
                     let itemsHtml = '';
@@ -118,8 +133,21 @@
                         itemsHtml = items.map(item => `<div>• ${item.name || 'Item'} x${item.quantity || 1}</div>`).join('');
                     }
                     
+                    // Actions column
+                    const hideBtn = isHidden 
+                        ? `<button class="btn btn-sm" onclick="toggleHideOrder(${order.id})" style="background: #28a745; color: white; padding: 6px 12px; font-size: 0.75rem; margin-right: 5px;" title="Restore Order">
+                            <i class="fas fa-eye"></i> Restore
+                           </button>`
+                        : `<button class="btn btn-sm" onclick="toggleHideOrder(${order.id})" style="background: #ffc107; color: #000; padding: 6px 12px; font-size: 0.75rem; margin-right: 5px;" title="Hide/Archive Order">
+                            <i class="fas fa-eye-slash"></i> Hide
+                           </button>`;
+                    
+                    const deleteBtn = `<button class="btn btn-sm" onclick="deleteOrder(${order.id})" style="background: #dc3545; color: white; padding: 6px 12px; font-size: 0.75rem;" title="Delete Permanently">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>`;
+                    
                     tr.innerHTML = `
-                        <td><strong>#${order.id}</strong>${isPending ? ' <span class="order-status-select" style="background:#ffc107; color:#000; font-size:0.7rem; border-radius:20px; padding:2px 8px; font-weight: bold;">NEW</span>' : ''}</td>
+                        <td><strong>#${order.id}</strong>${isPending ? ' <span class="order-status-select" style="background:#ffc107; color:#000; font-size:0.7rem; border-radius:20px; padding:2px 8px; font-weight: bold;">NEW</span>' : ''}${isHidden ? ' <span style="background:#6c757d; color:white; font-size:0.7rem; border-radius:20px; padding:2px 8px;">ARCHIVED</span>' : ''}</td>
                         <td class="order-customer"><strong>${order.customer_name || '-'}</strong></td>
                         <td>${order.customer_phone || '-'}</td>
                         <td style="max-width: 200px; font-size: 0.85rem;">${order.customer_address || '-'}</td>
@@ -139,12 +167,64 @@
                                 <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
                             </select>
                         </td>
+                        <td>
+                            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                ${hideBtn}
+                                ${deleteBtn}
+                            </div>
+                        </td>
                     `;
                     tbody.appendChild(tr);
                 });
             } catch (e) {
                 showToast('Failed to load orders', 'error');
             }
+        }
+        
+        async function toggleHideOrder(orderId) {
+            if (!confirm('Are you sure you want to hide/archive this order?')) return;
+            try {
+                const res = await fetch(`/admin/api/orders/${orderId}/hide`, { method: 'POST' });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.error || 'Failed to hide order');
+                showToast(result.message);
+                loadOrders();
+            } catch (e) {
+                showToast(e.message, 'error');
+            }
+        }
+        
+        async function deleteOrder(orderId) {
+            if (!confirm('Are you sure you want to PERMANENTLY DELETE this order? This action cannot be undone!')) return;
+            try {
+                const res = await fetch(`/admin/api/orders/${orderId}`, { method: 'DELETE' });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.error || 'Failed to delete order');
+                showToast('Order deleted permanently');
+                loadOrders();
+            } catch (e) {
+                showToast(e.message, 'error');
+            }
+        }
+        
+        function toggleOrderFilter(filter) {
+            currentFilter = filter;
+            const activeBtn = document.getElementById('showActiveBtn');
+            const archivedBtn = document.getElementById('showArchivedBtn');
+            
+            if (filter === 'active') {
+                activeBtn.style.background = 'var(--primary)';
+                activeBtn.style.color = 'white';
+                archivedBtn.style.background = 'transparent';
+                archivedBtn.style.color = 'var(--text)';
+            } else {
+                archivedBtn.style.background = 'var(--primary)';
+                archivedBtn.style.color = 'white';
+                activeBtn.style.background = 'transparent';
+                activeBtn.style.color = 'var(--text)';
+            }
+            
+            loadOrders();
         }
 
         async function updateOrderStatus(orderId, status) {
