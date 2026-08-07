@@ -129,7 +129,9 @@ def init_db():
         'password_hash': generate_password_hash('jainzee123'),
         'global_discount': '0',
         'upi_id': '',
-        'upi_qr_code': ''
+        'upi_qr_code': '',
+        'homepage_video_url': '',
+        'global_discount_percent': '0'
     }
     for k, v in default_settings.items():
         cur.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (k, v))
@@ -194,6 +196,21 @@ def api_site():
         data[r['key']] = r['value']
     data.pop('password_hash', None)
     return jsonify(data)
+
+@app.route('/admin/api/settings')
+def admin_api_settings():
+    """Public endpoint to fetch all settings (no login required for frontend)"""
+    try:
+        conn = get_db()
+        rows = conn.execute('SELECT key, value FROM settings').fetchall()
+        conn.close()
+        data = {}
+        for r in rows:
+            data[r['key']] = r['value']
+        data.pop('password_hash', None)
+        return jsonify({'success': True, 'data': data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/products')
 def api_products():
@@ -475,10 +492,12 @@ def admin_api_site():
                 editable_keys = ['shop_name_en', 'shop_name_hi', 'tagline_en', 'tagline_hi',
                                  'address_en', 'address_hi', 'phone', 'whatsapp', 'email',
                                  'hours_en', 'hours_hi', 'about_en', 'about_hi', 'logo',
-                                 'global_discount', 'upi_id']
+                                 'global_discount', 'global_discount_percent', 'upi_id',
+                                 'homepage_video_url']
                 for key in editable_keys:
                     if key in data:
-                        conn.execute('UPDATE settings SET value=? WHERE key=?', (str(data[key]), key))
+                        # Use INSERT OR REPLACE to ensure persistence even for new keys
+                        conn.execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', (key, str(data[key])))
                 
                 # Handle UPI QR code upload - convert to Base64 for permanent storage
                 qr_file = request.files.get('upi_qr_code')
@@ -491,7 +510,7 @@ def admin_api_site():
                     data_url = f'data:{mime_type};base64,{base64_data}'
                     
                     # Store Base64 string in database (permanent, never lost)
-                    conn.execute('UPDATE settings SET value=? WHERE key=?', (data_url, 'upi_qr_data'))
+                    conn.execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ('upi_qr_data', data_url))
                 
                 conn.commit()
                 conn.close()
@@ -678,9 +697,16 @@ def api_checkout():
     import json as json_mod
     items_json = json_mod.dumps(cart)
     
-    # Fetch global discount from settings
-    global_discount_row = conn.execute("SELECT value FROM settings WHERE key='global_discount'").fetchone()
-    global_discount_percent = float(global_discount_row['value']) if global_discount_row else 0
+    # Fetch global discount from settings (use global_discount_percent, fallback to global_discount for legacy)
+    global_discount_percent = 0
+    try:
+        global_discount_row = conn.execute("SELECT value FROM settings WHERE key='global_discount_percent'").fetchone()
+        if global_discount_row is None or not str(global_discount_row['value'] or '').strip():
+            global_discount_row = conn.execute("SELECT value FROM settings WHERE key='global_discount'").fetchone()
+        if global_discount_row and str(global_discount_row['value'] or '').strip():
+            global_discount_percent = float(str(global_discount_row['value']).replace('%', '').strip()) or 0
+    except (ValueError, TypeError):
+        global_discount_percent = 0
     
     # Calculate total with only admin-set global discount
     # NOTE: item prices in cart are ALREADY the final discounted prices - do NOT double-deduct MRP savings

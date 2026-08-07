@@ -322,6 +322,50 @@ async function fetchSiteData() {
     }
 }
 
+// Load saved settings on page init - ensures persistence after refresh
+async function loadSiteSettings() {
+    try {
+        const res = await fetch('/admin/api/settings');
+        const result = await res.json();
+        if (!result.success) return;
+        const settings = result.data || {};
+
+        // Apply homepage video URL
+        if (settings.homepage_video_url) {
+            const videoSource = document.getElementById('mainBannerVideoSource');
+            const videoEl = document.getElementById('mainBannerVideo');
+            const videoCard = document.getElementById('videoBannerCard');
+            if (videoSource) {
+                videoSource.src = settings.homepage_video_url;
+                if (videoEl) videoEl.load();
+                if (videoCard) videoCard.style.display = '';
+            }
+        }
+
+        // Apply global discount percent (used by cart/checkout calculations)
+        if (settings.global_discount_percent) {
+            window.globalDiscountPercent = parseFloat(settings.global_discount_percent) || 0;
+        }
+
+        // Apply UPI QR data (Base64) for checkout
+        if (settings.upi_qr_data) {
+            window.upiQrData = settings.upi_qr_data;
+            const qrImage = document.getElementById('upiQrCodeImage');
+            if (qrImage) {
+                qrImage.src = settings.upi_qr_data;
+                qrImage.style.display = '';
+            }
+        }
+
+        // Apply UPI ID
+        if (settings.upi_id) {
+            window.upiId = settings.upi_id;
+        }
+    } catch (e) {
+        console.error('Failed to load site settings:', e);
+    }
+}
+
 async function fetchProducts() {
     try {
         const res = await fetch('/api/products');
@@ -380,16 +424,14 @@ function applySiteData() {
         navLogo.onerror = null;
     }
     
-    // Hero logo: show if logo exists, otherwise hide gracefully
+    // Hero logo: ALWAYS keep visible - use admin logo if set, otherwise keep the default logo.svg from HTML
     if (heroLogo) {
         if (logo) {
             heroLogo.src = logo;
-            heroLogo.style.display = 'inline-block';
-            heroLogo.style.visibility = 'visible';
-            heroLogo.style.opacity = '1';
-        } else {
-            heroLogo.style.display = 'none';
         }
+        heroLogo.style.display = 'inline-block';
+        heroLogo.style.visibility = 'visible';
+        heroLogo.style.opacity = '1';
     }
 }
 
@@ -585,7 +627,8 @@ function setLanguage(lang) {
 
 function setText(id, text) {
     const el = document.getElementById(id);
-    if (el && text !== undefined && text !== null) {
+    // Only update if text is a non-empty value - never wipe default HTML content
+    if (el && text !== undefined && text !== null && String(text).trim() !== '') {
         el.textContent = text;
     }
 }
@@ -644,6 +687,9 @@ function init() {
 
     // Load factory & company media
     loadGeneralMedia();
+
+    // Load saved settings (video, discount, QR) - ensures persistence after refresh
+    loadSiteSettings();
 
     // Load data
     fetchSiteData().then(() => fetchProducts());

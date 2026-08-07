@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 """Test script to verify POST /api/cart functionality"""
+import sys
+import io
+
+# Ensure UTF-8 output on Windows consoles (cp1252 can't encode emoji checkmarks)
+if sys.stdout.encoding and sys.stdout.encoding.lower() not in ('utf-8', 'utf8'):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
 import urllib.request
 import urllib.parse
 import json

@@ -13,7 +13,7 @@
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-logo">
-                <img id="navLogo" src="" alt="Logo" class="nav-logo-img" onerror="this.style.display='none'">
+                <img id="navLogo" src="{{ url_for('static', filename='images/logo.svg') }}" alt="Jainzee Logo" class="nav-logo-img" style="display: inline-block !important; visibility: visible !important; opacity: 1 !important; height: 45px !important; width: auto !important; max-height: 50px;">
                 <span id="navShopName" class="nav-shop-name">Jainzee Food Processing Industries</span>
             </div>
             <div class="nav-right">
@@ -186,7 +186,8 @@
             try {
                 const res = await fetch('/api/site');
                 const data = await res.json();
-                globalDiscountPercent = parseFloat(data.global_discount) || 0;
+                // Use global_discount_percent (fallback to legacy global_discount)
+                globalDiscountPercent = parseFloat(String(data.global_discount_percent || data.global_discount || '0').replace('%', '')) || 0;
             } catch(e) {
                 console.error('Failed to load discount:', e);
                 globalDiscountPercent = 0;

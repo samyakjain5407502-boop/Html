@@ -411,7 +411,10 @@ function updateDashboardStats() {
 async function loadSettings() {
     try {
         const res = await fetch('/admin/api/site');
-        const data = await res.json();
+        const result = await res.json();
+        // The API returns {success: true, data: {...}} - read the nested data object!
+        // Only fall back to result if data is missing entirely (not just empty)
+        const data = (result && result.data) ? result.data : result;
 
         // Shop info
         setVal('sShopNameEn', data.shop_name_en);
@@ -434,12 +437,15 @@ async function loadSettings() {
         setVal('sLogoUrl', data.logo || '');
         if (data.logo) {
             const preview = document.getElementById('sLogoPreview');
-            preview.querySelector('img').src = data.logo;
-            preview.style.display = 'block';
+            if (preview) {
+                preview.querySelector('img').src = data.logo;
+                preview.style.display = 'block';
+            }
         }
 
         // Discount & Payment
-        setVal('sGlobalDiscount', data.global_discount || '0');
+        // Use global_discount_percent (canonical) with fallback to legacy global_discount
+        setVal('sGlobalDiscount', data.global_discount_percent || data.global_discount || '0');
         setVal('sUpiId', data.upi_id || '');
         
         // UPI QR Code preview (Base64 permanent storage)
@@ -457,12 +463,21 @@ async function loadSettings() {
 
 function setVal(id, value) {
     const el = document.getElementById(id);
-    if (el) el.value = value || '';
+    // NEVER overwrite with undefined - use empty string fallback safely
+    if (el && value !== undefined && value !== null) el.value = value || '';
 }
 
 async function saveSettings() {
+    // Guard: if the form contains NO data at all (e.g. failed loadSettings), abort - never wipe settings
+    const shopNameEn = document.getElementById('sShopNameEn');
+    if (!shopNameEn || shopNameEn.value.trim() === '') {
+        showToast('❌ Settings form is empty. Please reload the page first - save ABORTED to protect your data.', 'error');
+        await loadSettings();
+        return;
+    }
+
     const data = {
-        shop_name_en: document.getElementById('sShopNameEn').value.trim(),
+        shop_name_en: shopNameEn.value.trim(),
         shop_name_hi: document.getElementById('sShopNameHi').value.trim(),
         tagline_en: document.getElementById('sTaglineEn').value.trim(),
         tagline_hi: document.getElementById('sTaglineHi').value.trim(),
@@ -477,6 +492,7 @@ async function saveSettings() {
         hours_hi: document.getElementById('sHoursHi').value.trim(),
         logo: document.getElementById('sLogoUrl').value.trim(),
         global_discount: document.getElementById('sGlobalDiscount').value.trim(),
+        global_discount_percent: document.getElementById('sGlobalDiscount').value.trim(),
         upi_id: document.getElementById('sUpiId').value.trim()
     };
 
