@@ -1405,12 +1405,32 @@ body {
 }
 
 @media (max-width: 768px) {
+    /* Navbar & Header */
+    .nav-container {
+        padding: 10px 15px;
+        flex-wrap: wrap;
+    }
+
+    .nav-logo {
+        gap: 8px;
+    }
+
+    .nav-logo-img {
+        height: 35px;
+        max-height: 40px;
+    }
+
     .nav-shop-name {
-        font-size: 0.9rem;
-        max-width: 180px;
+        font-size: 0.85rem;
+        max-width: 150px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+
+    .nav-right {
+        gap: 8px;
+        flex-wrap: wrap;
     }
 
     .lang-toggle {
@@ -1431,28 +1451,268 @@ body {
         display: flex;
     }
 
+    /* Hero */
     .hero-content h1 {
         font-size: 1.9rem;
     }
 
-    .products-grid {
-        grid-template-columns: 1fr;
+    .hero-content p {
+        font-size: 1rem;
     }
 
+    .hero-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .btn {
+        padding: 12px 25px;
+        font-size: 0.9rem;
+    }
+
+    /* Products */
+    .products-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .product-image {
+        height: 200px;
+    }
+
+    .product-info {
+        padding: 20px;
+    }
+
+    .product-info h3 {
+        font-size: 1.2rem;
+    }
+
+    .product-price {
+        font-size: 1.3rem;
+    }
+
+    /* Modals - Full width on mobile */
+    .modal-content {
+        width: 95%;
+        max-width: 95%;
+        max-height: 90vh;
+        margin: 20px auto;
+    }
+
+    .modal-header {
+        padding: 15px;
+    }
+
+    .modal-header h3 {
+        font-size: 1.2rem;
+    }
+
+    .modal-body {
+        padding: 15px;
+    }
+
+    .modal-footer {
+        padding: 15px;
+        flex-direction: column;
+    }
+
+    /* My Orders Modal */
+    #myOrdersModal .modal-content {
+        max-width: 95%;
+    }
+
+    /* Cart & Checkout */
+    .cart-section,
+    .checkout-section {
+        padding: 120px 15px 60px;
+    }
+
+    .cart-item {
+        flex-direction: column;
+        gap: 15px;
+        padding: 20px;
+    }
+
+    .cart-item img {
+        width: 100%;
+        height: auto;
+        max-height: 200px;
+    }
+
+    .checkout-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .checkout-form,
+    .checkout-summary {
+        padding: 25px 20px;
+    }
+
+    /* Tables - Convert to cards */
+    .admin-table {
+        font-size: 0.85rem;
+    }
+
+    .admin-table thead {
+        display: none;
+    }
+
+    .admin-table tbody tr {
+        display: block;
+        margin-bottom: 15px;
+        border: 1px solid rgba(184,134,11,0.2);
+        border-radius: 10px;
+        padding: 15px;
+        background: white;
+    }
+
+    .admin-table tbody td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border: none;
+    }
+
+    .admin-table tbody td:before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--dark);
+        margin-right: 10px;
+    }
+
+    /* Order cards in admin */
+    .order-card {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 15px;
+        border: 1px solid rgba(184,134,11,0.2);
+    }
+
+    .order-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(184,134,11,0.1);
+    }
+
+    .order-card-body {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .order-card-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+    }
+
+    .order-card-label {
+        font-weight: 600;
+        color: var(--text-light);
+        font-size: 0.85rem;
+    }
+
+    .order-card-value {
+        color: var(--text);
+        font-size: 0.9rem;
+        text-align: right;
+    }
+
+    /* Review section on product cards */
+    .review-section {
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+
+    .rating-display {
+        font-size: 0.9rem;
+    }
+
+    .stars {
+        font-size: 0.9rem;
+    }
+
+    .rating-text {
+        font-size: 0.8rem;
+    }
+
+    /* Sections */
     .products-section,
     .features-section,
     .about-section,
     .contact-section {
-        padding: 70px 0;
+        padding: 60px 0;
     }
 
     .section-header h2 {
         font-size: 1.8rem;
     }
 
-    .mobile-menu .lang-toggle {
-        display: flex;
-        margin-bottom: 10px;
+    .section-header p {
+        font-size: 0.95rem;
+    }
+
+    .about-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+
+    .about-image {
+        min-height: 250px;
+    }
+
+    .contact-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .footer-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+
+    .footer-bottom {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    /* Floating button */
+    .floating-edit-btn {
+        bottom: 15px;
+        right: 15px;
+        padding: 10px 15px;
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-content h1 {
+        font-size: 1.6rem;
+    }
+
+    .hero-logo {
+        max-height: 80px;
+    }
+
+    .btn {
+        padding: 12px 20px;
+        font-size: 0.85rem;
+    }
+
+    .product-info {
+        padding: 15px;
+    }
+
+    .modal-content {
+        width: 98%;
+        max-width: 98%;
+        margin: 10px auto;
     }
 }
 

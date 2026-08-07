@@ -345,20 +345,40 @@ async function openMyOrdersModal() {
         
         orders.forEach(order => {
             const statusClass = getStatusClass(order.status_display);
+            
+            // Build item breakdown HTML
+            let itemsHtml = '';
+            if (order.item_breakdown && order.item_breakdown.length > 0) {
+                itemsHtml = '<div style="margin-bottom: 10px;">';
+                order.item_breakdown.forEach(item => {
+                    itemsHtml += `
+                        <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(184,134,11,0.05); font-size: 0.9rem;">
+                            <div style="flex: 1;">
+                                <span style="color: var(--text); font-weight: 500;">${item.name}</span>
+                                ${item.variant ? `<span style="color: var(--text-light); font-size: 0.85rem;"> (${item.variant})</span>` : ''}
+                                <span style="color: var(--text-light);"> x${item.quantity}</span>
+                            </div>
+                            <span style="color: var(--text); font-weight: 600; margin-left: 10px;">${item.total}</span>
+                        </div>
+                    `;
+                });
+                itemsHtml += '</div>';
+            }
+            
             html += `
                 <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid rgba(184,134,11,0.1); box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                         <div>
                             <strong style="color: var(--dark); font-size: 1.1rem;">Order #${order.id}</strong>
-                            <p style="color: var(--text-light); font-size: 0.85rem; margin-top: 4px;">${order.created_at}</p>
+                            <p style="color: var(--text-light); font-size: 0.85rem; margin-top: 4px;">
+                                <i class="far fa-clock"></i> ${order.formatted_date || order.created_at}
+                            </p>
                         </div>
                         <span class="order-status-badge ${statusClass}" style="padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">
                             ${order.status_display}
                         </span>
                     </div>
-                    <div style="margin-bottom: 10px;">
-                        <p style="color: var(--text); font-size: 0.95rem; line-height: 1.6;">${order.item_summary}</p>
-                    </div>
+                    ${itemsHtml}
                     <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(184,134,11,0.1); margin-bottom: 10px;">
                         <span style="color: var(--text-light); font-size: 0.9rem;">Total Amount</span>
                         <strong style="color: var(--primary-dark); font-size: 1.2rem;">${order.total}</strong>
@@ -635,27 +655,74 @@ function generateStars(rating) {
     return stars;
 }
 
-function openReviewForm(productId) {
+function openReviewsModal(productId) {
     currentReviewProductId = productId;
-    currentReviewRating = 0;
     
-    const modal = document.getElementById('reviewModal');
+    const modal = document.getElementById('reviewsModal');
     if (!modal) return;
     
-    // Reset form
+    // Set product ID for review form
     document.getElementById('reviewProductId').value = productId;
     document.getElementById('reviewRating').value = 0;
     document.getElementById('reviewText').value = '';
-    
-    // Reset star display
     updateStarDisplay(0);
     
+    // Show modal
     modal.classList.add('active');
+    
+    // Load reviews into modal
+    loadReviewsIntoModal(productId);
+}
+
+function closeReviewsModal() {
+    const modal = document.getElementById('reviewsModal');
+    if (modal) modal.classList.remove('active');
+}
+
+async function loadReviewsIntoModal(productId) {
+    const reviewsContent = document.getElementById('reviewsModalContent');
+    if (!reviewsContent) return;
+    
+    reviewsContent.innerHTML = '<p style="text-align: center; padding: 20px; color: var(--text-light);">Loading reviews...</p>';
+    
+    try {
+        const res = await fetch(`/api/products/${productId}/reviews`);
+        const data = await res.json();
+        
+        if (!data.reviews || !data.reviews.length) {
+            reviewsContent.innerHTML = '<p class="no-reviews">No reviews yet. Be the first to review!</p>';
+            return;
+        }
+        
+        let html = '<div class="reviews-list">';
+        data.reviews.forEach(review => {
+            html += `
+                <div class="review-item">
+                    <div class="review-header">
+                        <span class="review-author">${review.customer_name}</span>
+                        <span class="review-date">${new Date(review.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div class="review-rating">${generateStars(review.rating)}</div>
+                    ${review.review_text ? `<p class="review-text">${review.review_text}</p>` : ''}
+                </div>
+            `;
+        });
+        html += '</div>';
+        reviewsContent.innerHTML = html;
+        
+    } catch (e) {
+        reviewsContent.innerHTML = '<p style="text-align: center; padding: 20px; color: #dc3545;">Failed to load reviews.</p>';
+        console.error('Error loading reviews into modal:', e);
+    }
+}
+
+// Alias for backward compatibility
+function openReviewForm(productId) {
+    openReviewsModal(productId);
 }
 
 function closeReviewModal() {
-    const modal = document.getElementById('reviewModal');
-    if (modal) modal.classList.remove('active');
+    closeReviewsModal();
 }
 
 function setRating(rating) {
@@ -787,9 +854,9 @@ function renderProducts() {
             stockHtml = '<span class="stock-badge stock-out" style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;"><i class="fas fa-times-circle"></i> ' + outText + '</span>';
         }
 
-        // Rating display
+        // Rating display (compact - just average and count)
         const ratingHtml = `
-            <div class="rating-display" id="rating-${p.id}">
+            <div class="rating-display" id="rating-${p.id}" style="cursor: pointer;" onclick="event.stopPropagation(); openReviewsModal(${p.id})">
                 <div class="stars">
                     <i class="fas fa-star star-empty"></i>
                     <i class="fas fa-star star-empty"></i>
@@ -797,8 +864,11 @@ function renderProducts() {
                     <i class="fas fa-star star-empty"></i>
                     <i class="fas fa-star star-empty"></i>
                 </div>
-                <span class="rating-text">No reviews yet</span>
+                <span class="rating-text">No reviews</span>
             </div>
+            <button class="btn btn-outline" style="width: 100%; margin-top: 8px; padding: 6px; font-size: 0.8rem; border: 1px solid var(--primary); color: var(--primary);" onclick="event.stopPropagation(); openReviewsModal(${p.id})">
+                <i class="fas fa-comments"></i> Read Reviews
+            </button>
         `;
 
         // Grades
@@ -860,11 +930,11 @@ function renderProducts() {
                 
                 <!-- Review Section -->
                 <div class="review-section">
-                    <div id="reviews-${p.id}">
+                    <div id="reviews-${p.id}" style="display: none;">
                         <p class="no-reviews">Loading reviews...</p>
                     </div>
-                    <button class="btn btn-outline" style="width: 100%; margin-top: 10px; padding: 8px; font-size: 0.85rem; border: 2px solid var(--primary); color: var(--primary);" onclick="event.stopPropagation(); openReviewForm(${p.id})">
-                        <i class="fas fa-star"></i> Write a Review
+                    <button class="btn btn-outline" style="width: 100%; margin-top: 8px; padding: 6px; font-size: 0.8rem; border: 1px solid var(--primary); color: var(--primary);" onclick="event.stopPropagation(); openReviewsModal(${p.id})">
+                        <i class="fas fa-comments"></i> Read Reviews
                     </button>
                 </div>
                 

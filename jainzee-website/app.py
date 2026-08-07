@@ -2,7 +2,7 @@ import os
 import re
 import json
 import sqlite3
-from datetime import timedelta
+from datetime import timedelta, datetime
 from functools import wraps
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -369,26 +369,67 @@ def api_my_orders():
     orders = []
     for row in rows:
         order = dict(row)
-        # Parse items to get summary
+        
+        # Format date/time as DD Mon YYYY, HH:MM AM/PM
+        try:
+            dt = datetime.strptime(order.get('created_at', ''), '%Y-%m-%d %H:%M:%S')
+            order['formatted_date'] = dt.strftime('%d %b %Y, %I:%M %p')
+        except:
+            order['formatted_date'] = order.get('created_at', 'N/A')
+        
+        # Parse items to get structured breakdown
         try:
             import json as json_mod
             items = json_mod.loads(order.get('items', '[]'))
-            # Create a summary of items
-            item_summary = []
+            # Create structured item breakdown
+            item_breakdown = []
             for item in items:
                 product_id = item.get('product_id')
                 qty = item.get('quantity', 1)
-                # Get product name
+                grade_index = item.get('grade_index', 0)
+                
+                # Get product details
                 conn = get_db()
-                product = conn.execute('SELECT name_en, name_hi FROM products WHERE id=?', (product_id,)).fetchone()
+                product = conn.execute('SELECT name_en, price, weight, grades FROM products WHERE id=?', (product_id,)).fetchone()
                 conn.close()
+                
                 if product:
                     name = product['name_en']
-                    item_summary.append(f"{name} x{qty}")
+                    price_str = product['price'] or '₹0'
+                    price = float(re.sub(r'[₹,\s]', '', price_str) or 0)
+                    
+                    # Get weight/variant
+                    weight = product['weight'] or ''
+                    variant = ''
+                    try:
+                        grades = json_mod.loads(product['grades'] or '[]')
+                        if grades and grade_index < len(grades):
+                            variant = grades[grade_index].get('name', '')
+                    except:
+                        pass
+                    
+                    item_total = price * qty
+                    
+                    item_breakdown.append({
+                        'name': name,
+                        'variant': variant or weight,
+                        'quantity': qty,
+                        'unit_price': f"₹{price:.2f}",
+                        'total': f"₹{item_total:.2f}"
+                    })
                 else:
-                    item_summary.append(f"Product #{product_id} x{qty}")
-            order['item_summary'] = ', '.join(item_summary) if item_summary else 'No items'
+                    item_breakdown.append({
+                        'name': f"Product #{product_id}",
+                        'variant': '',
+                        'quantity': qty,
+                        'unit_price': '₹0.00',
+                        'total': '₹0.00'
+                    })
+            
+            order['item_breakdown'] = item_breakdown
+            order['item_summary'] = f"{len(item_breakdown)} item(s)" if item_breakdown else 'No items'
         except:
+            order['item_breakdown'] = []
             order['item_summary'] = 'Order details unavailable'
         
         # Format status for display

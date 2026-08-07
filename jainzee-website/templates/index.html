@@ -268,38 +268,50 @@
         </div>
     </div>
 
-    <!-- ===== REVIEW MODAL ===== -->
-    <div class="modal-overlay" id="reviewModal">
-        <div class="modal-content" style="max-width: 500px; background: var(--card-bg); border: 1px solid rgba(255,215,0,0.3);">
+    <!-- ===== REVIEWS MODAL (Read Reviews + Write Review) ===== -->
+    <div class="modal-overlay" id="reviewsModal">
+        <div class="modal-content" style="max-width: 600px; background: var(--card-bg); border: 1px solid rgba(255,215,0,0.3);">
             <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,215,0,0.15); padding-bottom: 20px;">
-                <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.5rem;">Write a Review</h3>
-                <button class="btn-sm btn-sm-delete" onclick="closeReviewModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light);">
+                <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.5rem;">Product Reviews</h3>
+                <button class="btn-sm btn-sm-delete" onclick="closeReviewsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light);">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="modal-body" style="padding: 20px 0;">
-                <input type="hidden" id="reviewProductId">
-                <input type="hidden" id="reviewRating" value="0">
+            <div class="modal-body" style="padding: 20px 0; max-height: 60vh; overflow-y: auto;">
+                <!-- Write Review Form (Top) -->
+                <div style="padding: 0 20px 20px; border-bottom: 1px solid rgba(184,134,11,0.1); margin-bottom: 20px;">
+                    <h4 style="color: var(--dark); margin-bottom: 15px; font-size: 1.1rem;">Write a Review</h4>
+                    <input type="hidden" id="reviewProductId">
+                    <input type="hidden" id="reviewRating" value="0">
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px; font-size: 0.9rem;">Your Rating</label>
+                        <div class="star-rating-input" onclick="setRating(event)">
+                            <span class="star" data-rating="1" onmouseenter="setRating(1)" onmouseleave="updateStarDisplay(currentReviewRating)"><i class="fas fa-star"></i></span>
+                            <span class="star" data-rating="2" onmouseenter="setRating(2)" onmouseleave="updateStarDisplay(currentReviewRating)"><i class="fas fa-star"></i></span>
+                            <span class="star" data-rating="3" onmouseenter="setRating(3)" onmouseleave="updateStarDisplay(currentReviewRating)"><i class="fas fa-star"></i></span>
+                            <span class="star" data-rating="4" onmouseenter="setRating(4)" onmouseleave="updateStarDisplay(currentReviewRating)"><i class="fas fa-star"></i></span>
+                            <span class="star" data-rating="5" onmouseenter="setRating(5)" onmouseleave="updateStarDisplay(currentReviewRating)"><i class="fas fa-star"></i></span>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px; font-size: 0.9rem;">Your Review (Optional)</label>
+                        <textarea id="reviewText" class="review-textarea" placeholder="Share your experience with this product..." style="min-height: 60px;"></textarea>
+                    </div>
+                    
+                    <button class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 0.9rem;" onclick="submitReview()">
+                        <i class="fas fa-check"></i> Submit Review
+                    </button>
+                </div>
                 
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 10px;">Your Rating</label>
-                    <div class="star-rating-input" onclick="setRating(event)">
-                        <span class="star" data-rating="1" onmouseenter="setRating(1)" onmouseleave="updateStarDisplay(currentReviewRating)"><i class="fas fa-star"></i></span>
-                        <span class="star" data-rating="2" onmouseenter="setRating(2)" onmouseleave="updateStarDisplay(currentReviewRating)"><i class="fas fa-star"></i></span>
-                        <span class="star" data-rating="3" onmouseenter="setRating(3)" onmouseleave="updateStarDisplay(currentReviewRating)"><i class="fas fa-star"></i></span>
-                        <span class="star" data-rating="4" onmouseenter="setRating(4)" onmouseleave="updateStarDisplay(currentReviewRating)"><i class="fas fa-star"></i></span>
-                        <span class="star" data-rating="5" onmouseenter="setRating(5)" onmouseleave="updateStarDisplay(currentReviewRating)"><i class="fas fa-star"></i></span>
+                <!-- Reviews List (Bottom) -->
+                <div id="reviewsModalList" style="padding: 0 20px;">
+                    <h4 style="color: var(--dark); margin-bottom: 15px; font-size: 1.1rem;">Customer Reviews</h4>
+                    <div id="reviewsModalContent">
+                        <p style="text-align: center; padding: 20px; color: var(--text-light);">Loading reviews...</p>
                     </div>
                 </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 10px;">Your Review (Optional)</label>
-                    <textarea id="reviewText" class="review-textarea" placeholder="Share your experience with this product..."></textarea>
-                </div>
-                
-                <button class="btn btn-primary" style="width: 100%; padding: 12px;" onclick="submitReview()">
-                    <i class="fas fa-check"></i> Submit Review
-                </button>
             </div>
         </div>
     </div>
