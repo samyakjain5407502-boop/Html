@@ -304,6 +304,10 @@ async function checkAuthStatus() {
                 }
                 if (nameText) nameText.textContent = customerName;
                 if (myOrdersBtn) myOrdersBtn.style.display = 'inline-flex';
+                
+                // Show My Orders in mobile menu
+                const mobileMyOrders = document.getElementById('mobileMyOrdersLink');
+                if (mobileMyOrders) mobileMyOrders.style.display = 'flex';
             }
         }
     } catch (e) {
