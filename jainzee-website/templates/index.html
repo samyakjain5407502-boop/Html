@@ -31,6 +31,9 @@
                 <span id="customerNameDisplay" class="customer-name-display" style="display: none;">
                     <i class="fas fa-user-check"></i> <span id="customerNameText"></span>
                 </span>
+                <a href="#" class="customer-panel-btn" id="myOrdersBtn" style="display: none; background: #17a2b8;">
+                    <i class="fas fa-box"></i> <span>My Orders</span>
+                </a>
                 <a href="/admin" class="admin-panel-btn" id="adminPanelBtn" style="display:none;">
                     <i class="fas fa-edit"></i> <span data-i18n="edit_website">Edit Website</span>
                 </a>
@@ -246,6 +249,24 @@
         <i class="fas fa-edit"></i>
         <span data-i18n="edit_website">Edit Website</span>
     </a>
+
+    <!-- ===== MY ORDERS MODAL ===== -->
+    <div class="modal-overlay" id="myOrdersModal">
+        <div class="modal-content" style="max-width: 800px; background: var(--card-bg); border: 1px solid rgba(255,215,0,0.3);">
+            <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,215,0,0.15); padding-bottom: 20px;">
+                <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.5rem;">My Orders</h3>
+                <button class="btn-sm btn-sm-delete" onclick="closeMyOrdersModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light);">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 20px 0; max-height: 60vh; overflow-y: auto;">
+                <div id="myOrdersList">
+                    <!-- Orders will be loaded here -->
+                    <p style="text-align: center; padding: 40px; color: var(--text-light);">Loading orders...</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- ===== PRODUCT SELECTION MODAL ===== -->
     <div class="modal-overlay" id="productModal">

@@ -294,6 +294,7 @@ async function checkAuthStatus() {
                 const loginBtn = document.getElementById('customerLoginBtn');
                 const nameDisplay = document.getElementById('customerNameDisplay');
                 const nameText = document.getElementById('customerNameText');
+                const myOrdersBtn = document.getElementById('myOrdersBtn');
                 
                 if (loginBtn) loginBtn.style.display = 'none';
                 if (nameDisplay) {
@@ -302,12 +303,114 @@ async function checkAuthStatus() {
                     nameDisplay.style.gap = '8px';
                 }
                 if (nameText) nameText.textContent = customerName;
+                if (myOrdersBtn) myOrdersBtn.style.display = 'inline-flex';
             }
         }
     } catch (e) {
         console.error('Failed to check auth status:', e);
     }
 }
+
+// ==================== MY ORDERS MODAL ====================
+
+async function openMyOrdersModal() {
+    const modal = document.getElementById('myOrdersModal');
+    const ordersList = document.getElementById('myOrdersList');
+    
+    if (!modal) return;
+    
+    // Show modal with loading state
+    modal.classList.add('active');
+    ordersList.innerHTML = '<p style="text-align: center; padding: 40px; color: var(--text-light);">Loading orders...</p>';
+    
+    try {
+        const res = await fetch('/api/my-orders');
+        if (!res.ok) {
+            if (res.status === 401) {
+                ordersList.innerHTML = '<p style="text-align: center; padding: 40px; color: var(--text-light);">Please login to view your orders</p>';
+                return;
+            }
+            throw new Error('Failed to load orders');
+        }
+        
+        const orders = await res.json();
+        
+        if (!orders.length) {
+            ordersList.innerHTML = '<p style="text-align: center; padding: 40px; color: var(--text-light);">No past orders found</p>';
+            return;
+        }
+        
+        // Display orders
+        let html = '<div style="display: flex; flex-direction: column; gap: 15px;">';
+        
+        orders.forEach(order => {
+            const statusClass = getStatusClass(order.status_display);
+            html += `
+                <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid rgba(184,134,11,0.1); box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                        <div>
+                            <strong style="color: var(--dark); font-size: 1.1rem;">Order #${order.id}</strong>
+                            <p style="color: var(--text-light); font-size: 0.85rem; margin-top: 4px;">${order.created_at}</p>
+                        </div>
+                        <span class="order-status-badge ${statusClass}" style="padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">
+                            ${order.status_display}
+                        </span>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <p style="color: var(--text); font-size: 0.95rem; line-height: 1.6;">${order.item_summary}</p>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(184,134,11,0.1);">
+                        <span style="color: var(--text-light); font-size: 0.9rem;">Total Amount</span>
+                        <strong style="color: var(--primary-dark); font-size: 1.2rem;">${order.total}</strong>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        ordersList.innerHTML = html;
+        
+    } catch (e) {
+        console.error('Error loading orders:', e);
+        ordersList.innerHTML = '<p style="text-align: center; padding: 40px; color: #dc3545;">Failed to load orders. Please try again.</p>';
+    }
+}
+
+function closeMyOrdersModal() {
+    const modal = document.getElementById('myOrdersModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function getStatusClass(status) {
+    switch(status) {
+        case 'Pending':
+            return 'status-pending';
+        case 'Processing':
+            return 'status-processing';
+        case 'Dispatched':
+            return 'status-dispatched';
+        case 'Delivered':
+            return 'status-delivered';
+        case 'Cancelled':
+            return 'status-cancelled';
+        default:
+            return 'status-pending';
+    }
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal-overlay')) {
+        e.target.classList.remove('active');
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+    }
+});
 
 // ==================== MAIN BANNER VIDEO ====================
 
@@ -716,6 +819,15 @@ function init() {
 
     // Load data
     fetchSiteData().then(() => fetchProducts());
+
+    // My Orders button click handler
+    const myOrdersBtn = document.getElementById('myOrdersBtn');
+    if (myOrdersBtn) {
+        myOrdersBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openMyOrdersModal();
+        });
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

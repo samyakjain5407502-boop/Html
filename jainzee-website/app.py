@@ -341,6 +341,64 @@ def api_customer_orders():
         conn.close()
         return jsonify({'id': order_id, 'message': 'Order placed successfully!'}), 201
 
+@app.route('/api/my-orders', methods=['GET'])
+def api_my_orders():
+    """Get orders for the currently logged-in customer"""
+    if not session.get('customer_id'):
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    conn = get_db()
+    rows = conn.execute(
+        'SELECT id, items, total, status, created_at FROM orders WHERE customer_id=? ORDER BY id DESC',
+        (session['customer_id'],)
+    ).fetchall()
+    conn.close()
+    
+    orders = []
+    for row in rows:
+        order = dict(row)
+        # Parse items to get summary
+        try:
+            import json as json_mod
+            items = json_mod.loads(order.get('items', '[]'))
+            # Create a summary of items
+            item_summary = []
+            for item in items:
+                product_id = item.get('product_id')
+                qty = item.get('quantity', 1)
+                # Get product name
+                conn = get_db()
+                product = conn.execute('SELECT name_en, name_hi FROM products WHERE id=?', (product_id,)).fetchone()
+                conn.close()
+                if product:
+                    name = product['name_en']
+                    item_summary.append(f"{name} x{qty}")
+                else:
+                    item_summary.append(f"Product #{product_id} x{qty}")
+            order['item_summary'] = ', '.join(item_summary) if item_summary else 'No items'
+        except:
+            order['item_summary'] = 'Order details unavailable'
+        
+        # Format status for display
+        status = order.get('status', 'pending')
+        if status.startswith('pending_'):
+            status = 'Pending'
+        elif status == 'confirmed':
+            status = 'Processing'
+        elif status == 'shipped':
+            status = 'Dispatched'
+        elif status == 'delivered':
+            status = 'Delivered'
+        elif status == 'cancelled':
+            status = 'Cancelled'
+        else:
+            status = status.replace('_', ' ').title()
+        order['status_display'] = status
+        
+        orders.append(order)
+    
+    return jsonify(orders)
+
 # ---------------- ADMIN ORDERS ----------------
 
 @app.route('/admin/orders')
