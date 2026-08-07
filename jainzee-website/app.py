@@ -465,7 +465,73 @@ def admin_api_orders():
     conn = get_db()
     rows = conn.execute('SELECT * FROM orders ORDER BY id DESC').fetchall()
     conn.close()
-    return jsonify([dict(r) for r in rows])
+    
+    # Enrich orders with product details
+    import json as json_mod
+    enriched_orders = []
+    for order in rows:
+        order_dict = dict(order)
+        
+        # Parse items and enrich with product details
+        try:
+            items = json_mod.loads(order_dict.get('items', '[]'))
+            enriched_items = []
+            for item in items:
+                product_id = item.get('product_id')
+                quantity = item.get('quantity', 1)
+                grade_index = item.get('grade_index', 0)
+                
+                # Get product details
+                conn = get_db()
+                product = conn.execute('SELECT name_en, price, weight, grades FROM products WHERE id=?', (product_id,)).fetchone()
+                conn.close()
+                
+                if product:
+                    name = product['name_en']
+                    price_str = product['price'] or '₹0'
+                    price = float(re.sub(r'[₹,\s]', '', price_str) or 0)
+                    
+                    # Get variant/weight
+                    variant = product['weight'] or ''
+                    try:
+                        grades = json_mod.loads(product['grades'] or '[]')
+                        if grades and grade_index < len(grades):
+                            variant = grades[grade_index].get('name', variant)
+                    except:
+                        pass
+                    
+                    item_total = price * quantity
+                    
+                    enriched_items.append({
+                        'name': name,
+                        'variant': variant,
+                        'quantity': quantity,
+                        'unit_price': f"₹{price:.2f}",
+                        'total': f"₹{item_total:.2f}"
+                    })
+                else:
+                    enriched_items.append({
+                        'name': f"Product #{product_id}",
+                        'variant': '',
+                        'quantity': quantity,
+                        'unit_price': '₹0.00',
+                        'total': '₹0.00'
+                    })
+            
+            order_dict['items_parsed'] = enriched_items
+        except:
+            order_dict['items_parsed'] = []
+        
+        # Format date/time
+        try:
+            dt = datetime.strptime(order_dict.get('created_at', ''), '%Y-%m-%d %H:%M:%S')
+            order_dict['formatted_date'] = dt.strftime('%d %b %Y, %I:%M %p')
+        except:
+            order_dict['formatted_date'] = order_dict.get('created_at', 'N/A')
+        
+        enriched_orders.append(order_dict)
+    
+    return jsonify(enriched_orders)
 
 @app.route('/admin/api/orders/<int:oid>', methods=['PUT'])
 @login_required

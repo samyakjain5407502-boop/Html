@@ -96,22 +96,40 @@
                 }
                 tbody.innerHTML = '';
                 orders.forEach(order => {
-                    let items = [];
-                    try { items = JSON.parse(order.items); } catch(e) {}
                     const tr = document.createElement('tr');
                     tr.setAttribute('data-order-id', order.id);
                     const isPending = String(order.status || '').startsWith('pending');
                     tr.style.cssText = isPending ? 'background: #fff8e1;' : '';
+                    
+                    // Use enriched items_parsed if available, otherwise fallback to raw items
+                    let itemsHtml = '';
+                    if (order.items_parsed && order.items_parsed.length > 0) {
+                        itemsHtml = order.items_parsed.map(item => `
+                            <div style="padding: 4px 0; border-bottom: 1px solid #f0e8d8;">
+                                <strong style="color: #2c1810;">${item.name}</strong>
+                                ${item.variant ? `<span style="color: #8a7362; font-size: 0.8rem;"> (${item.variant})</span>` : ''}
+                                <br><span style="color: #8a7362; font-size: 0.85rem;">Qty: ${item.quantity} × ${item.unit_price} = <strong>${item.total}</strong></span>
+                            </div>
+                        `).join('');
+                    } else {
+                        // Fallback to raw items
+                        let items = [];
+                        try { items = JSON.parse(order.items || '[]'); } catch(e) {}
+                        itemsHtml = items.map(item => `<div>• ${item.name || 'Item'} x${item.quantity || 1}</div>`).join('');
+                    }
+                    
                     tr.innerHTML = `
-                        <td><strong>#${order.id}</strong>${isPending ? ' <span class="order-status-select" style="background:#ffc107; color:#000; font-size:0.7rem; border-radius:20px; padding:2px 8px;">NEW</span>' : ''}</td>
+                        <td><strong>#${order.id}</strong>${isPending ? ' <span class="order-status-select" style="background:#ffc107; color:#000; font-size:0.7rem; border-radius:20px; padding:2px 8px; font-weight: bold;">NEW</span>' : ''}</td>
                         <td class="order-customer"><strong>${order.customer_name || '-'}</strong></td>
                         <td>${order.customer_phone || '-'}</td>
                         <td style="max-width: 200px; font-size: 0.85rem;">${order.customer_address || '-'}</td>
-                        <td class="order-items-list">
-                            ${items.map(item => `<div>• ${item.name} (${item.grade || 'Standard'}) x${item.qty} - ${item.price}</div>`).join('')}
+                        <td class="order-items-list" style="min-width: 250px;">
+                            ${itemsHtml || '<span style="color: #8a7362;">No items</span>'}
                         </td>
-                        <td><strong style="color: #b8860b;">${order.total}</strong></td>
-                        <td style="font-size: 0.8rem;">${order.created_at}</td>
+                        <td><strong style="color: #b8860b; font-size: 1rem;">${order.total}</strong></td>
+                        <td style="font-size: 0.8rem; white-space: nowrap;">
+                            <i class="far fa-clock"></i> ${order.formatted_date || order.created_at}
+                        </td>
                         <td>
                             <select class="order-status-select" onchange="updateOrderStatus(${order.id}, this.value)">
                                 <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Pending</option>

@@ -926,14 +926,20 @@ function renderProducts() {
                 ${videoHtml}
                 <p class="product-desc">${desc || ''}</p>
                 ${stockHtml}
-                ${ratingHtml}
                 
-                <!-- Review Section -->
-                <div class="review-section">
-                    <div id="reviews-${p.id}" style="display: none;">
-                        <p class="no-reviews">Loading reviews...</p>
+                <!-- Compact Rating Box -->
+                <div class="rating-box" style="background: white; border: 1px solid rgba(184,134,11,0.15); border-radius: 10px; padding: 12px; margin-top: 10px; cursor: pointer;" onclick="event.stopPropagation(); openReviewsModal(${p.id})">
+                    <div class="rating-display" id="rating-${p.id}" style="margin-bottom: 8px;">
+                        <div class="stars">
+                            <i class="fas fa-star star-empty"></i>
+                            <i class="fas fa-star star-empty"></i>
+                            <i class="fas fa-star star-empty"></i>
+                            <i class="fas fa-star star-empty"></i>
+                            <i class="fas fa-star star-empty"></i>
+                        </div>
+                        <span class="rating-text">No reviews</span>
                     </div>
-                    <button class="btn btn-outline" style="width: 100%; margin-top: 8px; padding: 6px; font-size: 0.8rem; border: 1px solid var(--primary); color: var(--primary);" onclick="event.stopPropagation(); openReviewsModal(${p.id})">
+                    <button class="btn btn-outline" style="width: 100%; padding: 6px; font-size: 0.8rem; border: 1px solid var(--primary); color: var(--primary); background: transparent;" onclick="event.stopPropagation(); openReviewsModal(${p.id})">
                         <i class="fas fa-comments"></i> Read Reviews
                     </button>
                 </div>
