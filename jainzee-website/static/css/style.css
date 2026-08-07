@@ -1546,51 +1546,178 @@ body {
 }
 
 @media (max-width: 768px) {
-    /* Navbar & Header */
+    /* Navbar & Header - Symmetrical Single Row Layout */
     .nav-container {
-        padding: 10px 15px;
-        flex-wrap: wrap;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 8px 12px !important;
+        flex-wrap: nowrap !important;
+        white-space: nowrap !important;
+        height: 50px !important;
     }
 
-    .nav-logo {
-        gap: 8px;
+    /* LEFT ZONE: User Icon + Hamburger */
+    .nav-left {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        flex: 1 !important;
+        justify-content: flex-start !important;
+    }
+
+    .nav-icon-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 36px !important;
+        height: 36px !important;
+        padding: 0 !important;
+        background: rgba(255,255,255,0.15) !important;
+        color: white !important;
+        border-radius: 50% !important;
+        text-decoration: none !important;
+        font-size: 1rem !important;
+        transition: all 0.3s !important;
+    }
+
+    .nav-icon-btn:hover {
+        background: rgba(255,255,255,0.25) !important;
+        transform: scale(1.1) !important;
+    }
+
+    .nav-icon-btn i {
+        margin: 0 !important;
+        font-size: 1rem !important;
+    }
+
+    /* Hide text labels on mobile - icons only */
+    .nav-icon-btn span,
+    .customer-panel-btn span,
+    .admin-panel-btn span,
+    .nav-shop-name {
+        display: none !important;
+    }
+
+    /* Show short brand name in center */
+    .nav-shop-name {
+        display: inline-block !important;
+        font-size: 0.9rem !important;
+        font-weight: 700 !important;
+        color: white !important;
+    }
+
+    /* Hamburger menu */
+    .hamburger {
+        display: flex !important;
+        width: 32px !important;
+        height: 32px !important;
+        padding: 4px !important;
+    }
+
+    .hamburger span {
+        width: 20px !important;
+        height: 2px !important;
+    }
+
+    /* CENTER ZONE: Brand Logo & Title */
+    .nav-center {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        flex: 0 0 auto !important;
+        margin: 0 auto !important;
+        text-align: center !important;
     }
 
     .nav-logo-img {
-        height: 35px;
-        max-height: 40px;
+        height: 28px !important;
+        max-height: 32px !important;
+        width: auto !important;
+        display: inline-block !important;
     }
 
-    .nav-shop-name {
-        font-size: 0.85rem;
-        max-width: 150px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
+    /* RIGHT ZONE: My Orders + Cart */
     .nav-right {
-        gap: 8px;
-        flex-wrap: wrap;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        flex: 1 !important;
+        justify-content: flex-end !important;
     }
 
-    .lang-toggle {
-        display: none;
+    /* Cart badge positioning */
+    .cart-count-badge {
+        position: absolute !important;
+        top: -4px !important;
+        right: -4px !important;
+        background: #ff4444 !important;
+        color: white !important;
+        padding: 2px 6px !important;
+        border-radius: 50% !important;
+        font-size: 0.65rem !important;
+        font-weight: 700 !important;
+        min-width: 16px !important;
+        height: 16px !important;
+        line-height: 12px !important;
+        text-align: center !important;
     }
 
-    .admin-panel-btn,
-    .customer-panel-btn,
-    .whatsapp-share-btn {
-        display: none;
+    .cart-icon-btn {
+        position: relative !important;
     }
 
-    .hamburger {
-        display: flex;
+    /* Customer name display - icon only */
+    .customer-name-display {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 36px !important;
+        height: 36px !important;
+        background: #28a745 !important;
+        color: white !important;
+        border-radius: 50% !important;
+        font-size: 1rem !important;
     }
 
-    .mobile-menu.active {
-        display: flex;
+    .customer-name-display span {
+        display: none !important;
     }
+
+    /* Hide admin panel button on mobile (shown in hamburger menu) */
+    #adminPanelBtn,
+    #floatingEditBtn,
+    #footerAdminLink {
+        display: none !important;
+    }
+
+    /* Mobile menu */
+    .mobile-menu {
+        position: absolute !important;
+        top: 50px !important;
+        left: 0 !important;
+        right: 0 !important;
+        background: var(--dark) !important;
+        padding: 15px !important;
+        z-index: 999 !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+    }
+
+    .mobile-menu a {
+        padding: 12px 15px !important;
+        border-radius: 8px !important;
+        margin-bottom: 5px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+    }
+
+    .mobile-menu a:hover {
+        background: rgba(255,255,255,0.1) !important;
+    }
+}
 
     /* Hero */
     .hero-content h1 {
@@ -1833,31 +1960,6 @@ body {
 }
 
 @media (max-width: 480px) {
-    .hero-content h1 {
-        font-size: 1.6rem;
-    }
-
-    .hero-logo {
-        max-height: 80px;
-    }
-
-    .btn {
-        padding: 12px 20px;
-        font-size: 0.85rem;
-    }
-
-    .product-info {
-        padding: 15px;
-    }
-
-    .modal-content {
-        width: 98%;
-        max-width: 98%;
-        margin: 10px auto;
-    }
-}
-
-@media (max-width: 480px) {
     .hero-buttons {
         flex-direction: column;
         align-items: center;
@@ -1874,6 +1976,16 @@ body {
     .btn {
         padding: 14px 30px;
         font-size: 0.9rem;
+    }
+
+    .product-info {
+        padding: 15px;
+    }
+
+    .modal-content {
+        width: 98%;
+        max-width: 98%;
+        margin: 10px auto;
     }
 }
 

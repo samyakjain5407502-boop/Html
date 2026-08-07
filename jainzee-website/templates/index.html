@@ -13,40 +13,34 @@
     <!-- ===== NAVBAR ===== -->
     <nav class="navbar">
         <div class="nav-container">
-            <div class="nav-logo">
-                <img id="navLogo" src="{{ url_for('static', filename='images/logo.svg') }}" alt="Jainzee Logo" class="nav-logo-img" style="display: inline-block !important; visibility: visible !important; opacity: 1 !important; height: 45px !important; width: auto !important; max-height: 50px;">
-                <span id="navShopName" class="nav-shop-name">Jainzee Food Processing Industries</span>
-            </div>
-            <div class="nav-right">
-                <!-- Always visible icons on mobile -->
-                <a href="/cart" class="admin-panel-btn" id="cartLink" style="background: var(--rich-gradient); color: #1a0f08; display: inline-flex !important;">
-                    <i class="fas fa-shopping-cart"></i> <span data-i18n="cart_title">Cart</span>
-                    <span class="cart-count-badge" id="cartBadge" style="display: none;">0</span>
-                </a>
-                <a href="/customer" class="customer-panel-btn" id="customerLoginBtn" style="display: inline-flex !important;">
-                    <i class="fas fa-user"></i> <span data-i18n="customer_login">Customer Login</span>
+            <!-- LEFT ZONE: User Icon + Hamburger -->
+            <div class="nav-left">
+                <a href="/customer" class="nav-icon-btn" id="customerLoginBtn" title="Customer Login">
+                    <i class="fas fa-user"></i>
                 </a>
                 <span id="customerNameDisplay" class="customer-name-display" style="display: none;">
-                    <i class="fas fa-user-check"></i> <span id="customerNameText"></span>
+                    <i class="fas fa-user-check"></i>
                 </span>
-                
-                <!-- Hidden on mobile, shown in hamburger menu -->
-                <div class="lang-toggle" id="langToggle" style="display: none;">
-                    <button class="lang-btn active" data-lang="en">🇬🇧 English</button>
-                    <button class="lang-btn" data-lang="hi">🇮🇳 हिन्दी</button>
-                </div>
-                <a href="#" class="whatsapp-share-btn" onclick="shareOnWhatsApp(event)" style="display: none;">
-                    <i class="fab fa-whatsapp"></i> <span data-i18n="share_whatsapp">Share</span>
-                </a>
-                <a href="/admin" class="admin-panel-btn" id="adminPanelBtn" style="display:none;">
-                    <i class="fas fa-edit"></i> <span data-i18n="edit_website">Edit Website</span>
-                </a>
-                <a href="#" class="customer-panel-btn" id="myOrdersBtn" style="display: none; background: #17a2b8;">
-                    <i class="fas fa-box"></i> <span>My Orders</span>
-                </a>
                 <button class="hamburger" id="hamburger" aria-label="Menu">
                     <span></span><span></span><span></span>
                 </button>
+            </div>
+            
+            <!-- CENTER ZONE: Brand Logo & Title -->
+            <div class="nav-center">
+                <img id="navLogo" src="{{ url_for('static', filename='images/logo.svg') }}" alt="Jainzee Logo" class="nav-logo-img">
+                <span id="navShopName" class="nav-shop-name">Jainzee</span>
+            </div>
+            
+            <!-- RIGHT ZONE: My Orders + Cart -->
+            <div class="nav-right">
+                <a href="#" class="nav-icon-btn" id="myOrdersBtn" style="display: none;" title="My Orders">
+                    <i class="fas fa-box"></i>
+                </a>
+                <a href="/cart" class="nav-icon-btn cart-icon-btn" id="cartLink" title="Cart">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count-badge" id="cartBadge" style="display: none;">0</span>
+                </a>
             </div>
         </div>
         <div class="mobile-menu" id="mobileMenu">
