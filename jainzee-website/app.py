@@ -905,68 +905,139 @@ def api_order_invoice(order_id):
         spaceAfter=4
     )
     
-    # Company name
-    shop_name = settings.get('shop_name_en', 'Jainzee Food Processing Industries')
-    elements.append(Paragraph(shop_name, title_style))
-    elements.append(Spacer(1, 12))
+    # ===== RETAIL RECEIPT STYLE INVOICE =====
     
-    # Company details
+    # Company Header - Bold, Uppercase, Black
+    company_header_style = ParagraphStyle(
+        'CompanyHeader',
+        parent=styles['Normal'],
+        fontSize=20,
+        textColor=colors.black,
+        alignment=TA_CENTER,
+        spaceAfter=6,
+        fontName='Helvetica-Bold'
+    )
+    
+    shop_name = settings.get('shop_name_en', 'JAINZEE FOOD PROCESSING INDUSTRIES').upper()
+    elements.append(Paragraph(shop_name, company_header_style))
+    elements.append(Spacer(1, 4))
+    
+    # Tagline
+    tagline_style = ParagraphStyle(
+        'Tagline',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.black,
+        alignment=TA_CENTER,
+        spaceAfter=8,
+        fontName='Helvetica'
+    )
+    tagline = settings.get('tagline_en', 'Pure & Premium Dry Fruits')
+    elements.append(Paragraph(f"Tax Invoice / Cash Memo", tagline_style))
+    elements.append(Spacer(1, 6))
+    
+    # Company Contact Info
+    contact_style = ParagraphStyle(
+        'ContactInfo',
+        parent=styles['Normal'],
+        fontSize=9,
+        textColor=colors.black,
+        alignment=TA_CENTER,
+        spaceAfter=3,
+        fontName='Helvetica'
+    )
+    
     address = settings.get('address_en', 'Siyaganj, Indore, Madhya Pradesh 452001')
     phone = settings.get('phone', '+91 98260 00000')
     email = settings.get('email', 'info@jainzee.in')
     
-    elements.append(Paragraph(f"Address: {address}", normal_style))
-    elements.append(Paragraph(f"Phone: {phone}", normal_style))
-    elements.append(Paragraph(f"Email: {email}", normal_style))
-    elements.append(Spacer(1, 20))
+    elements.append(Paragraph(f"Address: {address}", contact_style))
+    elements.append(Paragraph(f"Phone: {phone} | Email: {email}", contact_style))
+    elements.append(Spacer(1, 10))
     
-    # Invoice title
-    invoice_title = ParagraphStyle(
-        'InvoiceTitle',
-        parent=styles['Heading2'],
-        fontSize=16,
-        textColor=colors.HexColor('#b8860b'),
-        alignment=TA_CENTER,
-        spaceAfter=20,
-        fontName='Helvetica-Bold'
-    )
-    elements.append(Paragraph("INVOICE", invoice_title))
+    # Dashed horizontal line
+    line_data = [['', '', '']]
+    line_table = Table(line_data, colWidths=[2.5*inch, 2*inch, 2.5*inch])
+    line_table.setStyle(TableStyle([
+        ('LINEABOVE', (0, 0), (-1, 0), 2, colors.black),
+        ('TOPPADDING', (0, 0), (-1, 0), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 0),
+    ]))
+    elements.append(line_table)
     elements.append(Spacer(1, 12))
     
-    # Order details table
-    order_data = [
-        ['Invoice #:', f"INV-{order['id']:06d}"],
-        ['Order #:', str(order['id'])],
-        ['Date:', order['created_at']],
-        ['Customer Name:', order['customer_name']],
-        ['Phone:', order['customer_phone']],
-        ['Address:', order['customer_address']]
+    # Invoice Details Section - Two columns
+    invoice_info_style = ParagraphStyle(
+        'InvoiceInfo',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.black,
+        alignment=TA_LEFT,
+        spaceAfter=4,
+        fontName='Helvetica'
+    )
+    
+    invoice_info_bold_style = ParagraphStyle(
+        'InvoiceInfoBold',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.black,
+        alignment=TA_LEFT,
+        spaceAfter=4,
+        fontName='Helvetica-Bold'
+    )
+    
+    # Format date
+    try:
+        dt = datetime.strptime(order['created_at'], '%Y-%m-%d %H:%M:%S')
+        formatted_date = dt.strftime('%d %b %Y, %I:%M %p')
+    except:
+        formatted_date = order['created_at']
+    
+    # Left side - Invoice details
+    left_data = [
+        [Paragraph("<b>Invoice No:</b>", invoice_info_bold_style), Paragraph(f"INV-{order['id']:06d}", invoice_info_style)],
+        [Paragraph("<b>Order No:</b>", invoice_info_bold_style), Paragraph(f"#{order['id']}", invoice_info_style)],
+        [Paragraph("<b>Date & Time:</b>", invoice_info_bold_style), Paragraph(formatted_date, invoice_info_style)],
     ]
     
-    order_table = Table(order_data, colWidths=[2.5*inch, 4*inch])
-    order_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#b8860b')),
-        ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#2c1810')),
-        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+    left_table = Table(left_data, colWidths=[1.5*inch, 2.5*inch])
+    left_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
     ]))
-    elements.append(order_table)
-    elements.append(Spacer(1, 20))
     
-    # Items table
-    elements.append(Paragraph("Order Items:", header_style))
-    elements.append(Spacer(1, 8))
+    # Right side - Customer details
+    right_data = [
+        [Paragraph("<b>Customer Name:</b>", invoice_info_bold_style), Paragraph(order['customer_name'], invoice_info_style)],
+        [Paragraph("<b>Phone:</b>", invoice_info_bold_style), Paragraph(order['customer_phone'], invoice_info_style)],
+        [Paragraph("<b>Address:</b>", invoice_info_bold_style), Paragraph(order['customer_address'], invoice_info_style)],
+    ]
+    
+    right_table = Table(right_data, colWidths=[1.3*inch, 2.7*inch])
+    right_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    
+    # Combine left and right
+    combined_data = [[left_table, right_table]]
+    combined_table = Table(combined_data, colWidths=[4*inch, 4*inch])
+    combined_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+    ]))
+    elements.append(combined_table)
+    elements.append(Spacer(1, 15))
+    
+    # Items table header with black borders
+    items_data = [['Item Name', 'Qty', 'Unit Price (₹)', 'Total (₹)']]
     
     # Calculate subtotal
     subtotal = 0
-    items_data = [['Item', 'Qty', 'Price', 'Total']]
-    
     for item in items:
         product_id = item.get('product_id')
         qty = item.get('quantity', 1)
@@ -994,10 +1065,6 @@ def api_order_invoice(order_id):
             f"₹{item_total:.2f}"
         ])
     
-    # Add subtotal, discount, and total rows
-    items_data.append(['', '', '', ''])
-    items_data.append(['', '', 'Subtotal:', f"₹{subtotal:.2f}"])
-    
     # Check for discount
     discount_percent = 0
     try:
@@ -1009,54 +1076,85 @@ def api_order_invoice(order_id):
     discount_amount = (subtotal * discount_percent) / 100
     final_total = subtotal - discount_amount
     
-    if discount_percent > 0:
-        items_data.append(['', '', f'Discount ({discount_percent}%):', f"-₹{discount_amount:.2f}"])
-    
-    items_data.append(['', '', 'Grand Total:', f"₹{final_total:.2f}"])
-    
+    # Items table with black borders
     items_table = Table(items_data, colWidths=[3*inch, 1*inch, 1.5*inch, 1.5*inch])
     items_table.setStyle(TableStyle([
         # Header row
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#b8860b')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 11),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('TOPPADDING', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('TOPPADDING', (0, 0), (-1, 0), 10),
+        ('LINEABOVE', (0, 0), (-1, 0), 1.5, colors.black),
+        ('LINEBELOW', (0, 0), (-1, 0), 1, colors.black),
         
         # Data rows
         ('FONTNAME', (0, 1), (-1, -4), 'Helvetica'),
         ('FONTSIZE', (0, 1), (-1, -4), 10),
         ('ALIGN', (2, 1), (-1, -1), 'RIGHT'),
         ('ALIGN', (1, 1), (1, -1), 'CENTER'),
-        ('TEXTCOLOR', (0, 1), (-1, -4), colors.HexColor('#2c1810')),
+        ('TEXTCOLOR', (0, 1), (-1, -4), colors.black),
         ('BOTTOMPADDING', (0, 1), (-1, -4), 8),
         ('TOPPADDING', (0, 1), (-1, -4), 8),
-        
-        # Total rows
-        ('FONTNAME', (2, -3), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (2, -3), (-1, -1), 11),
-        ('TEXTCOLOR', (2, -3), (-1, -1), colors.HexColor('#b8860b')),
-        ('LINEABOVE', (2, -3), (-1, -3), 1, colors.HexColor('#e8e0d5')),
-        ('LINEABOVE', (2, -1), (-1, -1), 2, colors.HexColor('#b8860b')),
-        ('BOTTOMPADDING', (2, -1), (-1, -1), 12),
-        ('TOPPADDING', (2, -1), (-1, -1), 12),
+        ('LINEBELOW', (0, -4), (-1, -4), 0.5, colors.lightgrey),
     ]))
     elements.append(items_table)
-    elements.append(Spacer(1, 30))
+    elements.append(Spacer(1, 12))
+    
+    # Totals section - Right aligned
+    totals_data = [
+        ['', '', 'Subtotal:', f"₹{subtotal:.2f}"],
+    ]
+    
+    if discount_percent > 0:
+        totals_data.append(['', '', f'Discount ({discount_percent}%):', f"-₹{discount_amount:.2f}"])
+    
+    totals_data.append(['', '', 'Grand Total:', f"₹{final_total:.2f}"])
+    
+    totals_table = Table(totals_data, colWidths=[3*inch, 1*inch, 1.5*inch, 1.5*inch])
+    totals_table.setStyle(TableStyle([
+        ('FONTNAME', (2, 0), (2, -2), 'Helvetica-Bold'),
+        ('FONTNAME', (3, 0), (3, -2), 'Helvetica-Bold'),
+        ('FONTSIZE', (2, 0), (3, -2), 11),
+        ('TEXTCOLOR', (2, 0), (3, -2), colors.black),
+        ('ALIGN', (2, 0), (3, -1), 'RIGHT'),
+        ('BOTTOMPADDING', (0, 0), (-1, -2), 6),
+        ('TOPPADDING', (0, 0), (-1, -2), 6),
+        ('LINEABOVE', (2, 0), (3, 0), 1, colors.black),
+        ('LINEBELOW', (2, -1), (3, -1), 2, colors.black),
+        ('FONTNAME', (2, -1), (3, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (2, -1), (3, -1), 13),
+        ('TEXTCOLOR', (2, -1), (3, -1), colors.black),
+        ('BOTTOMPADDING', (2, -1), (3, -1), 10),
+        ('TOPPADDING', (2, -1), (3, -1), 10),
+    ]))
+    elements.append(totals_table)
+    elements.append(Spacer(1, 25))
     
     # Footer
+    footer_line_data = [['', '', '']]
+    footer_line_table = Table(footer_line_data, colWidths=[2.5*inch, 2*inch, 2.5*inch])
+    footer_line_table.setStyle(TableStyle([
+        ('LINEABOVE', (0, 0), (-1, 0), 1.5, colors.black),
+        ('TOPPADDING', (0, 0), (-1, 0), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+    ]))
+    elements.append(footer_line_table)
+    elements.append(Spacer(1, 8))
+    
     footer_style = ParagraphStyle(
         'Footer',
         parent=styles['Normal'],
         fontSize=9,
-        textColor=colors.HexColor('#8a7362'),
+        textColor=colors.black,
         alignment=TA_CENTER,
-        spaceAfter=6
+        spaceAfter=4,
+        fontName='Helvetica'
     )
-    elements.append(Paragraph("Thank you for your business!", footer_style))
-    elements.append(Paragraph("For any queries, contact us at " + email, footer_style))
+    elements.append(Paragraph("Thank you for shopping with Jainzee Food Processing Industries!", footer_style))
+    elements.append(Paragraph("For any queries, contact us at " + phone + " | " + email, footer_style))
     
     # Build PDF
     doc.build(elements)
