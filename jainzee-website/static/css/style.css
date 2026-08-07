@@ -193,6 +193,19 @@ body {
     margin-left: 8px;
 }
 
+.customer-name-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #28a745;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 3px 10px rgba(40,167,69,0.3);
+}
+
 /* Cart icon styling */
 .admin-panel-btn .fa-shopping-cart,
 .cart-icon {

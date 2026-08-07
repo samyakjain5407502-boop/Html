@@ -64,6 +64,17 @@
 
     <div class="toast-container" id="toastContainer"></div>
 
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    <style>
+        .new-order-flash {
+            animation: newOrderFlash 3s ease;
+            background: #fff8dc !important;
+        }
+        @keyframes newOrderFlash {
+            0% { background: #ffeb3b; }
+            100% { background: transparent; }
+        }
+    </style>
     <script>
         function showToast(message, type = 'success') {
             const container = document.getElementById('toastContainer');
@@ -88,8 +99,11 @@
                     let items = [];
                     try { items = JSON.parse(order.items); } catch(e) {}
                     const tr = document.createElement('tr');
+                    tr.setAttribute('data-order-id', order.id);
+                    const isPending = String(order.status || '').startsWith('pending');
+                    tr.style.cssText = isPending ? 'background: #fff8e1;' : '';
                     tr.innerHTML = `
-                        <td><strong>#${order.id}</strong></td>
+                        <td><strong>#${order.id}</strong>${isPending ? ' <span class="order-status-select" style="background:#ffc107; color:#000; font-size:0.7rem; border-radius:20px; padding:2px 8px;">NEW</span>' : ''}</td>
                         <td class="order-customer"><strong>${order.customer_name || '-'}</strong></td>
                         <td>${order.customer_phone || '-'}</td>
                         <td style="max-width: 200px; font-size: 0.85rem;">${order.customer_address || '-'}</td>
@@ -130,7 +144,10 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', loadOrders);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadOrders();
+            // The polling is handled by admin.js (loaded above) - it also updates the badge
+        });
     </script>
 </body>
 </html>

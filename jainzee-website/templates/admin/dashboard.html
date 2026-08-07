@@ -49,9 +49,31 @@
                     <div class="number" id="statLowStock">-</div>
                 </div>
             </div>
+            <div class="stat-card" id="newOrdersCard" style="cursor: pointer; position: relative;" onclick="window.location.href='/admin/orders'">
+                <div class="stat-icon red"><i class="fas fa-bell"></i></div>
+                <div class="stat-info">
+                    <h3>New / Pending Orders</h3>
+                    <div class="number" id="newOrdersCount">-</div>
+                </div>
+                <span class="new-orders-badge pulse" id="newOrdersBadge" style="display:none; position: absolute; top: 12px; right: 12px; background: #dc3545; color: white; border-radius: 50px; padding: 2px 10px; font-size: 0.75rem; font-weight: 700;">0</span>
+            </div>
         </div>
 
+        <style>
+            .stat-icon.red { background: #dc3545; }
+            .new-orders-badge.pulse { animation: badgePulse 1.5s infinite; }
+            @keyframes badgePulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.15); }
+            }
+        </style>
+
         <div class="dashboard-actions">
+            <a href="{{ url_for('admin_orders_page') }}" class="action-card">
+                <i class="fas fa-shopping-cart"></i>
+                <h3>View Orders</h3>
+                <p>Review, confirm and update customer orders</p>
+            </a>
             <a href="{{ url_for('admin_products_page') }}" class="action-card">
                 <i class="fas fa-box-open"></i>
                 <h3>Manage Products</h3>
@@ -73,5 +95,27 @@
     <div class="toast-container" id="toastContainer"></div>
 
     <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    <script>
+        // Load recent orders count onto the dashboard card
+        document.addEventListener('DOMContentLoaded', () => {
+            const refreshStats = async () => {
+                try {
+                    const res = await fetch('/admin/api/orders');
+                    if (!res.ok) return;
+                    const orders = await res.json();
+                    const pendingCount = orders.filter(o => String(o.status || '').startsWith('pending')).length;
+                    const countEl = document.getElementById('newOrdersCount');
+                    const badge = document.getElementById('newOrdersBadge');
+                    if (countEl) countEl.textContent = pendingCount;
+                    if (badge) {
+                        badge.textContent = pendingCount;
+                        badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+                    }
+                } catch (e) {}
+            };
+            refreshStats();
+            setInterval(refreshStats, 10000); // Refresh every 10 seconds
+        });
+    </script>
 </body>
 </html>

@@ -390,6 +390,79 @@ async function saveQuickStock() {
     }
 }
 
+// ==================== ORDER ALERTS & LIVE POLLING ====================
+
+let lastKnownOrderCount = null;
+let newOrderAlertEnabled = true;
+
+// Play a subtle chime when a new order arrives
+function playOrderChime() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.value = 0.15;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.15);
+        osc.stop(ctx.currentTime + 0.3);
+    } catch (e) {
+        // Audio not supported - ignore
+    }
+}
+
+// Highlight a new order row / card with a visual pulse
+function flashNewOrder(orderId) {
+    const row = document.querySelector(`[data-order-id="${orderId}"]`);
+    const card = document.querySelector(`[data-order-card-id="${orderId}"]`);
+    const el = row || card;
+    if (el) {
+        el.classList.add('new-order-flash');
+        setTimeout(() => el.classList.remove('new-order-flash'), 3000);
+    }
+}
+
+// Poll /admin/api/orders every 10 seconds to detect new/unfulfilled orders
+async function pollOrdersForAlerts() {
+    // Only run on pages that have an orders table or an orders alert badge
+    if (!document.getElementById('ordersTableBody') && !document.getElementById('newOrdersBadge')) return;
+
+    try {
+        const res = await fetch('/admin/api/orders');
+        if (!res.ok || res.status === 302) return; // Not logged in or error
+        const orders = await res.json();
+        const pendingCount = orders.filter(o => String(o.status || '').startsWith('pending')).length;
+
+        // Update the "New Orders" badge if present
+        const badge = document.getElementById('newOrdersBadge');
+        if (badge) {
+            badge.textContent = pendingCount;
+            badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+        }
+
+        // Detect new orders (first poll establishes baseline, subsequent polls alert)
+        if (lastKnownOrderCount !== null) {
+            if (orders.length > lastKnownOrderCount) {
+                const newOnes = orders.slice(0, orders.length - lastKnownOrderCount);
+                newOnes.forEach(o => {
+                    if (String(o.status || '').startsWith('pending')) {
+                        flashNewOrder(o.id);
+                        if (newOrderAlertEnabled) playOrderChime();
+                        showToast('🔔 New order #' + o.id + ' received!', 'success');
+                    }
+                });
+            }
+        }
+        lastKnownOrderCount = orders.length;
+    } catch (e) {
+        // Silent - polling continues
+    }
+}
+
 // ==================== DASHBOARD STATS ====================
 
 function updateDashboardStats() {
@@ -632,6 +705,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             uploadMainVideo(fileInput.files[0]);
         });
+    }
+
+    // Start order alert polling (every 10 seconds) on admin dashboard & orders pages
+    if (document.getElementById('ordersTableBody') || document.getElementById('newOrdersBadge')) {
+        pollOrdersForAlerts(); // First poll establishes baseline
+        setInterval(pollOrdersForAlerts, 10000);
     }
 });
 

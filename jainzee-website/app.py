@@ -2,6 +2,7 @@ import os
 import re
 import json
 import sqlite3
+from datetime import timedelta
 from functools import wraps
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -14,9 +15,11 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'mp4', 'webm',
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'mov', 'avi'}
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'jainzee-secret-key-change-in-production')
+app.secret_key = os.environ.get('SECRET_KEY', 'jainzee_permanent_secret_key_2026')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
+# Keep customer & admin logged in for 30 days (persistent sessions)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -242,19 +245,22 @@ def api_customer_register():
     data = request.get_json() or {}
     name = data.get('name', '').strip()
     phone = data.get('phone', '').strip()
+    email = data.get('email', '').strip()
     password = data.get('password', '')
-    if not name or not phone or not password:
-        return jsonify({'error': 'Name, phone and password are required'}), 400
+    # Accept either phone OR email as the login identifier (simplified 3-field form)
+    if not name or (not phone and not email) or not password:
+        return jsonify({'error': 'Name, email/phone and password are required'}), 400
     if len(password) < 4:
         return jsonify({'error': 'Password must be at least 4 characters'}), 400
     conn = get_db()
     try:
         cur = conn.execute(
             'INSERT INTO customers (name, phone, email, address, password_hash) VALUES (?, ?, ?, ?, ?)',
-            (name, phone, data.get('email', ''), data.get('address', ''), generate_password_hash(password))
+            (name, phone, email, data.get('address', ''), generate_password_hash(password))
         )
         conn.commit()
         customer_id = cur.lastrowid
+        session.permanent = True  # Keep logged in for 30 days
         session['customer_id'] = customer_id
         session['customer_name'] = name
         conn.close()
@@ -266,16 +272,26 @@ def api_customer_register():
 @app.route('/api/customer/login', methods=['POST'])
 def api_customer_login():
     data = request.get_json() or {}
-    phone = data.get('phone', '').strip()
+    identifier = data.get('phone', '') or data.get('email', '') or data.get('identifier', '')
+    identifier = identifier.strip()
     password = data.get('password', '')
+    if not identifier or not password:
+        return jsonify({'error': 'Email/phone and password are required'}), 400
     conn = get_db()
-    row = conn.execute('SELECT * FROM customers WHERE phone=?', (phone,)).fetchone()
+    # Login by phone OR email
+    row = conn.execute('SELECT * FROM customers WHERE phone=? OR email=?', (identifier, identifier)).fetchone()
     conn.close()
     if not row or not check_password_hash(row['password_hash'], password):
-        return jsonify({'error': 'Invalid phone or password'}), 400
+        return jsonify({'error': 'Invalid email/phone or password'}), 400
+    session.permanent = True  # Keep logged in for 30 days
     session['customer_id'] = row['id']
     session['customer_name'] = row['name']
     return jsonify({'id': row['id'], 'name': row['name'], 'message': 'Login successful'})
+
+# Alias endpoint: POST /api/login (same as customer login, for frontend convenience)
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    return api_customer_login()
 
 @app.route('/api/customer/logout', methods=['POST'])
 def api_customer_logout():

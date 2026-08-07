@@ -97,28 +97,23 @@
                     </button>
                 </div>
 
-                <!-- Register Form -->
+                <!-- Register Form (simplified: only 3 mandatory fields) -->
                 <div class="auth-form" id="registerForm">
                     <div class="form-group">
                         <label>Full Name</label>
                         <input type="text" id="regName" placeholder="Your name">
                     </div>
                     <div class="form-group">
-                        <label>Phone Number</label>
-                        <input type="text" id="regPhone" placeholder="e.g. 9826000000">
-                    </div>
-                    <div class="form-group">
-                        <label>Email (optional)</label>
-                        <input type="email" id="regEmail" placeholder="you@email.com">
-                    </div>
-                    <div class="form-group">
-                        <label>Address</label>
-                        <textarea id="regAddress" placeholder="Your delivery address"></textarea>
+                        <label>Email or Phone Number</label>
+                        <input type="text" id="regPhone" placeholder="you@email.com or 9826000000">
                     </div>
                     <div class="form-group">
                         <label>Password</label>
                         <input type="password" id="regPassword" placeholder="Create password (min 4 chars)">
                     </div>
+                    <p style="font-size: 0.8rem; color: #8a7362; margin-bottom: 15px;">
+                        <i class="fas fa-info-circle"></i> Address is collected at checkout.
+                    </p>
                     <button class="btn btn-success btn-block" onclick="customerRegister()">
                         <i class="fas fa-user-plus"></i> Register
                     </button>
@@ -183,15 +178,17 @@
 
         // ==================== AUTH ====================
         async function customerRegister() {
+            const identifier = document.getElementById('regPhone').value.trim();
+            // Determine if the identifier is an email or phone
+            const isEmail = identifier.includes('@');
             const data = {
                 name: document.getElementById('regName').value.trim(),
-                phone: document.getElementById('regPhone').value.trim(),
-                email: document.getElementById('regEmail').value.trim(),
-                address: document.getElementById('regAddress').value.trim(),
+                phone: isEmail ? '' : identifier,
+                email: isEmail ? identifier : '',
                 password: document.getElementById('regPassword').value
             };
-            if (!data.name || !data.phone || !data.password) {
-                showToast('Name, phone and password are required!', 'error');
+            if (!data.name || !identifier || !data.password) {
+                showToast('Name, email/phone and password are required!', 'error');
                 return;
             }
             try {

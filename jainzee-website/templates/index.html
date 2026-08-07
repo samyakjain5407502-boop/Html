@@ -25,9 +25,12 @@
                 <a href="#" class="whatsapp-share-btn" onclick="shareOnWhatsApp(event)">
                     <i class="fab fa-whatsapp"></i> <span data-i18n="share_whatsapp">Share</span>
                 </a>
-                <a href="/customer" class="customer-panel-btn">
+                <a href="/customer" class="customer-panel-btn" id="customerLoginBtn">
                     <i class="fas fa-user"></i> <span data-i18n="customer_login">Customer Login</span>
                 </a>
+                <span id="customerNameDisplay" class="customer-name-display" style="display: none;">
+                    <i class="fas fa-user-check"></i> <span id="customerNameText"></span>
+                </span>
                 <a href="/admin" class="admin-panel-btn" id="adminPanelBtn" style="display:none;">
                     <i class="fas fa-edit"></i> <span data-i18n="edit_website">Edit Website</span>
                 </a>

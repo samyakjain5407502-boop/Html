@@ -270,6 +270,8 @@ async function checkAuthStatus() {
     try {
         const res = await fetch('/api/auth/status');
         const data = await res.json();
+        
+        // Handle admin login
         if (data.admin_logged_in) {
             // Show admin edit buttons
             const adminBtn = document.getElementById('adminPanelBtn');
@@ -280,6 +282,27 @@ async function checkAuthStatus() {
             if (mobileAdmin) mobileAdmin.style.display = '';
             if (floatingBtn) floatingBtn.style.display = '';
             if (footerAdmin) footerAdmin.style.display = '';
+        }
+        
+        // Handle customer login - show customer name in header
+        if (data.customer_logged_in) {
+            // Fetch customer details
+            const customerRes = await fetch('/api/customer/me');
+            const customerData = await customerRes.json();
+            if (customerData.logged_in && customerData.customer) {
+                const customerName = customerData.customer.name;
+                const loginBtn = document.getElementById('customerLoginBtn');
+                const nameDisplay = document.getElementById('customerNameDisplay');
+                const nameText = document.getElementById('customerNameText');
+                
+                if (loginBtn) loginBtn.style.display = 'none';
+                if (nameDisplay) {
+                    nameDisplay.style.display = 'inline-flex';
+                    nameDisplay.style.alignItems = 'center';
+                    nameDisplay.style.gap = '8px';
+                }
+                if (nameText) nameText.textContent = customerName;
+            }
         }
     } catch (e) {
         console.error('Failed to check auth status:', e);
