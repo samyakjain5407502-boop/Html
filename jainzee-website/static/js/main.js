@@ -386,7 +386,7 @@ async function openMyOrdersModal() {
             }
             
             html += `
-                <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid rgba(184,134,11,0.1); box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <div style="background: #EFF5EF; border-radius: 12px; padding: 20px; border: 1px solid rgba(184,134,11,0.1); box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                         <div>
                             <strong style="color: var(--dark); font-size: 1.1rem;">Order #${order.id}</strong>
@@ -974,7 +974,7 @@ function renderProducts() {
                 ${stockHtml}
                 
                 <!-- Compact Rating Box -->
-                <div class="rating-box" style="background: white; border: 1px solid rgba(184,134,11,0.15); border-radius: 10px; padding: 12px; margin-top: 10px; cursor: pointer;" onclick="event.stopPropagation(); openReviewsModal(${p.id})">
+                <div class="rating-box" style="background: #EFF5EF; border: 1px solid rgba(184,134,11,0.15); border-radius: 10px; padding: 12px; margin-top: 10px; cursor: pointer;" onclick="event.stopPropagation(); openReviewsModal(${p.id})">
                     <div class="rating-display" id="rating-${p.id}" style="margin-bottom: 8px;">
                         <div class="stars">
                             <i class="fas fa-star star-empty"></i>
@@ -992,7 +992,7 @@ function renderProducts() {
                 
                 <!-- Inline Quantity & Weight Selector -->
                 <div style="display: flex; gap: 10px; margin-top: 15px; align-items: center;">
-                    <input type="number" id="${qtyId}" min="1" max="${stockNum || 999}" value="1" style="width: 70px; padding: 8px; text-align: center; border: 2px solid #e8e0d5; border-radius: 8px; background: white; color: var(--text); font-size: 0.9rem;" onclick="event.stopPropagation();">
+                    <input type="number" id="${qtyId}" min="1" max="${stockNum || 999}" value="1" style="width: 70px; padding: 8px; text-align: center; border: 2px solid #e8e0d5; border-radius: 8px; background: #EFF5EF; color: var(--text); font-size: 0.9rem;" onclick="event.stopPropagation();">
                     <select id="${weightId}" class="grade-select" style="flex: 1; padding: 8px; font-size: 0.9rem;" onclick="event.stopPropagation();">
                         ${weightOptions}
                     </select>

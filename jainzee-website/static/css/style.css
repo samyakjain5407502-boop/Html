@@ -8,8 +8,8 @@
     --primary: #D48C2B;
     --primary-dark: #B97824;
     --primary-light: #F4B95A;
-    --bg-light: #FFFFFF;
-    --bg-cream: #F8F9FA;
+    --bg-light: #EFF5EF;
+    --bg-cream: #E8F0E8;
     --dark: #121212;
     --text: #FFFFFF;
     --text-light: #E0E0E0;
@@ -26,7 +26,7 @@ html {
 body {
     font-family: 'Poppins', 'Mukta', sans-serif;
     background: var(--bg-light);
-    color: var(--text);
+    color: #1a1a1a;
     line-height: 1.6;
     overflow-x: hidden;
 }
@@ -349,7 +349,7 @@ body {
 }
 
 .review-item {
-    background: white;
+    background: var(--bg-light);
     padding: 15px;
     border-radius: 10px;
     border: 1px solid rgba(184,134,11,0.1);
@@ -647,7 +647,7 @@ body {
 }
 
 .product-card {
-    background: var(--white);
+    background: var(--bg-light);
     border-radius: var(--radius);
     overflow: hidden;
     box-shadow: var(--shadow);
@@ -956,7 +956,7 @@ body {
 }
 
 .contact-card {
-    background: var(--white);
+    background: var(--bg-light);
     border-radius: var(--radius);
     padding: 35px 25px;
     text-align: center;
@@ -1135,7 +1135,7 @@ body {
 }
 
 .modal-content {
-    background: var(--white);
+    background: var(--bg-light);
     border-radius: var(--radius);
     box-shadow: 0 30px 80px rgba(0,0,0,0.6);
     max-width: 600px;
@@ -1197,7 +1197,7 @@ body {
     align-items: center;
     gap: 20px;
     padding: 25px;
-    background: var(--white);
+    background: var(--bg-light);
     border-radius: var(--radius);
     margin-bottom: 20px;
     border: 1px solid rgba(184,134,11,0.1);
@@ -1212,7 +1212,7 @@ body {
 }
 
 .cart-summary-card {
-    background: var(--white);
+    background: var(--bg-light);
     border-radius: var(--radius);
     padding: 35px;
     border: 1px solid rgba(184,134,11,0.1);
@@ -1247,7 +1247,7 @@ body {
 }
 
 .checkout-form {
-    background: var(--white);
+    background: var(--bg-light);
     border-radius: var(--radius);
     padding: 40px;
     border: 1px solid rgba(184,134,11,0.1);
@@ -1255,7 +1255,7 @@ body {
 }
 
 .checkout-summary {
-    background: var(--white);
+    background: var(--bg-light);
     border-radius: var(--radius);
     padding: 35px;
     border: 1px solid rgba(184,134,11,0.1);
@@ -1301,7 +1301,7 @@ body {
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.3s;
-    background: white;
+    background: var(--bg-light);
 }
 
 .payment-option:hover {
@@ -1347,7 +1347,7 @@ body {
 }
 
 .media-card {
-    background: var(--white);
+    background: var(--bg-light);
     border-radius: var(--radius);
     overflow: hidden;
     box-shadow: var(--shadow);
@@ -2041,7 +2041,7 @@ body {
 
     /* Order cards in admin */
     .order-card {
-        background: white;
+        background: var(--bg-light);
         border-radius: 10px;
         padding: 15px;
         margin-bottom: 15px;
