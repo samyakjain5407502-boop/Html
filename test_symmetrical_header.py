@@ -144,7 +144,7 @@ def test_symmetrical_header():
         # Check for white-space: nowrap
         if 'white-space: nowrap' in css_content or 'white-space:nowrap' in css_content:
             print("[SUCCESS] white-space: nowrap found (prevents wrapping)")
-        else else:
+        else:
             print("[ERROR] white-space: nowrap not found!")
             return False
         
