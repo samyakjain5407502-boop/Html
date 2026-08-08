@@ -5,17 +5,17 @@
 }
 
 :root {
-    --primary: #b8860b;
-    --primary-dark: #8b6508;
-    --primary-light: #ffd700;
-    --bg-light: #fffdf5;
-    --bg-cream: #fdf6e3;
-    --dark: #2c1810;
-    --text: #4a3728;
-    --text-light: #8a7362;
+    --primary: #D48C2B;
+    --primary-dark: #B97824;
+    --primary-light: #F4B95A;
+    --bg-light: #FFFFFF;
+    --bg-cream: #F8F9FA;
+    --dark: #121212;
+    --text: #FFFFFF;
+    --text-light: #E0E0E0;
     --white: #ffffff;
-    --shadow: 0 10px 30px rgba(0,0,0,0.08);
-    --shadow-hover: 0 20px 40px rgba(184,134,11,0.15);
+    --shadow: 0 10px 30px rgba(0,0,0,0.3);
+    --shadow-hover: 0 20px 40px rgba(212,140,43,0.3);
     --radius: 16px;
 }
 
@@ -49,9 +49,9 @@ body {
     left: 0;
     right: 0;
     z-index: 1000;
-    background: rgba(44, 24, 16, 0.95);
+    background: #121212;
     backdrop-filter: blur(10px);
-    box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 20px rgba(0,0,0,0.3);
     transition: all 0.3s ease;
 }
 
@@ -482,7 +482,7 @@ body {
     align-items: center;
     justify-content: center;
     position: relative;
-    background: linear-gradient(135deg, #2c1810 0%, #5a3d2b 40%, #b8860b 100%);
+    background: #121212;
     padding: 80px 20px;
 }
 
@@ -490,15 +490,13 @@ body {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: 
-        radial-gradient(circle at 20% 50%, rgba(255,215,0,0.08) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(255,215,0,0.05) 0%, transparent 40%);
+    background: #121212;
 }
 
 .hero-overlay {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.25);
+    background: rgba(0,0,0,0.3);
 }
 
 .hero-content {
@@ -828,7 +826,7 @@ body {
 
 /* ===== FEATURES ===== */
 .features-section {
-    background: linear-gradient(135deg, var(--dark) 0%, #5a3d2b 100%);
+    background: #121212;
 }
 
 .features-section .section-header h2 {
@@ -1007,7 +1005,7 @@ body {
 
 /* ===== FOOTER ===== */
 .footer {
-    background: var(--dark);
+    background: #121212;
     color: var(--white);
     padding: 70px 0 25px;
 }
