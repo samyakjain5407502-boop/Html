@@ -10,7 +10,9 @@ const translations = {
         'nav_home': 'Home',
         'nav_products': 'Products',
         'nav_about': 'About Us',
-        'nav_contact': 'Contact',
+        'nav_factory': 'Factory Tour',
+        'nav_contact': 'Contact Us',
+        'nav_login': 'Login / Register',
         'explore_products': 'Explore Products',
         'contact_us': 'Contact Us',
         'our_products': 'Our Premium Products',
@@ -50,7 +52,9 @@ const translations = {
         'nav_home': 'होम',
         'nav_products': 'उत्पाद',
         'nav_about': 'हमारे बारे में',
-        'nav_contact': 'संपर्क',
+        'nav_factory': 'फैक्ट्री टूर',
+        'nav_contact': 'संपर्क करें',
+        'nav_login': 'लॉगिन / रजिस्टर',
         'explore_products': 'उत्पाद देखें',
         'contact_us': 'संपर्क करें',
         'our_products': 'हमारे प्रीमियम उत्पाद',
@@ -556,6 +560,7 @@ function applySiteData() {
     setText('heroShopName', currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en);
     setText('navShopName', currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en);
     setText('mobileNavShopName', currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en);
+    setText('mobileMenuTitle', currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en);
     setText('footerShopName', currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en);
     setText('footerName', currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en);
     document.title = (currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en) + ' - Dry Fruits';
@@ -596,6 +601,30 @@ function applySiteData() {
         }
         // Remove any onerror that hides the logo
         navLogo.onerror = null;
+    }
+    
+    // Mobile nav logo: use same logo as desktop
+    const mobileNavLogo = document.getElementById('mobileNavLogo');
+    if (mobileNavLogo) {
+        mobileNavLogo.style.display = 'inline-block';
+        mobileNavLogo.style.visibility = 'visible';
+        mobileNavLogo.style.opacity = '1';
+        if (logo) {
+            mobileNavLogo.src = logo;
+        }
+        mobileNavLogo.onerror = null;
+    }
+    
+    // Mobile menu sidebar logo: use same logo as desktop
+    const mobileMenuLogo = document.getElementById('mobileMenuLogo');
+    if (mobileMenuLogo) {
+        mobileMenuLogo.style.display = 'inline-block';
+        mobileMenuLogo.style.visibility = 'visible';
+        mobileMenuLogo.style.opacity = '1';
+        if (logo) {
+            mobileMenuLogo.src = logo;
+        }
+        mobileMenuLogo.onerror = null;
     }
     
     // Hero logo: ALWAYS keep visible - use admin logo if set, otherwise keep the default logo.svg from HTML
@@ -1043,25 +1072,79 @@ function setupNavbar() {
     const hamburger = document.getElementById('hamburger');
     const mobileHamburger = document.getElementById('mobileHamburger');
     const mobileMenu = document.getElementById('mobileMenu');
+    const mobileMenuClose = document.getElementById('mobileMenuClose');
+    const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
 
-    if (hamburger) {
-        hamburger.addEventListener('click', () => {
-            mobileMenu.classList.toggle('active');
+    // Open mobile sidebar
+    function openMobileMenu() {
+        if (!mobileMenu) return;
+        mobileMenu.classList.add('active');
+        if (mobileMenuOverlay) mobileMenuOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // Close mobile sidebar
+    function closeMobileMenu() {
+        if (!mobileMenu) return;
+        mobileMenu.classList.remove('active');
+        if (mobileMenuOverlay) mobileMenuOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    // Desktop hamburger hidden on mobile, but toggle still works
+    if (hamburger && mobileMenu) {
+        hamburger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (mobileMenu.classList.contains('active')) {
+                closeMobileMenu();
+            } else {
+                openMobileMenu();
+            }
         });
     }
 
     // Mobile hamburger toggle (2-row mobile layout)
-    if (mobileHamburger) {
-        mobileHamburger.addEventListener('click', () => {
-            mobileMenu.classList.toggle('active');
+    if (mobileHamburger && mobileMenu) {
+        mobileHamburger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (mobileMenu.classList.contains('active')) {
+                closeMobileMenu();
+            } else {
+                openMobileMenu();
+            }
+        });
+    }
+
+    // Close sidebar with X button
+    if (mobileMenuClose) {
+        mobileMenuClose.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeMobileMenu();
+        });
+    }
+
+    // Close sidebar when clicking outside (overlay)
+    if (mobileMenuOverlay) {
+        mobileMenuOverlay.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeMobileMenu();
         });
     }
 
     // Close menu when clicking a link
-    mobileMenu.querySelectorAll('a').forEach(link => {
-        link.addEventListener('click', () => {
-            mobileMenu.classList.remove('active');
+    if (mobileMenu) {
+        mobileMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                closeMobileMenu();
+            });
         });
+    }
+
+    // Close sidebar with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeMobileMenu();
+        }
     });
 
     // Mobile My Orders button - open modal

@@ -58,7 +58,7 @@
             </button>
             <div class="mobile-brand">
                 <img id="mobileNavLogo" src="{{ url_for('static', filename='images/logo.svg') }}" alt="Jainzee Logo" class="nav-logo-img">
-                <span id="mobileNavShopName" class="nav-shop-name">Jainzee Food</span>
+                <span id="mobileNavShopName" class="nav-shop-name">Jainzee Food Processing Industries</span>
             </div>
             <div class="mobile-actions">
                 <a href="/cart" class="mobile-cart-btn" id="mobileCartLink" title="Cart">
@@ -70,12 +70,42 @@
                 </a>
             </div>
         </div>
+        <!-- Left sidebar mobile menu -->
         <div class="mobile-menu" id="mobileMenu">
-            <a href="/" data-i18n="nav_home">Home</a>
-            <a href="/#products" data-i18n="nav_products">Products</a>
-            <a href="/#about" data-i18n="nav_about">About Us</a>
-            <a href="/#contact" data-i18n="nav_contact">Contact</a>
+            <div class="mobile-menu-header">
+                <div class="mobile-menu-brand">
+                    <img id="mobileMenuLogo" src="{{ url_for('static', filename='images/logo.svg') }}" alt="Jainzee Logo" class="nav-logo-img">
+                    <span class="mobile-menu-title" id="mobileMenuTitle">Jainzee Food Processing Industries</span>
+                </div>
+                <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Close menu">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Navigation Links -->
+            <nav class="mobile-menu-links">
+                <a href="/#home"><i class="fas fa-home"></i> <span data-i18n="nav_home">Home</span></a>
+                <a href="/#products"><i class="fas fa-box-open"></i> <span data-i18n="nav_products">Products</span></a>
+                <a href="/#about"><i class="fas fa-info-circle"></i> <span data-i18n="nav_about">About Us</span></a>
+                <a href="/#factoryMedia"><i class="fas fa-industry"></i> <span data-i18n="nav_factory">Factory Tour</span></a>
+                <a href="/#contact"><i class="fas fa-envelope"></i> <span data-i18n="nav_contact">Contact Us</span></a>
+                <a href="/customer" class="mobile-menu-login"><i class="fas fa-user"></i> <span data-i18n="nav_login">Login / Register</span></a>
+            </nav>
+            
+            <!-- Hidden navbar items moved to hamburger menu -->
+            <div class="mobile-menu-extras">
+                <div class="lang-toggle" style="display: flex; justify-content: center; margin: 10px 0;">
+                    <button class="lang-btn active" data-lang="en">🇬🇧 English</button>
+                    <button class="lang-btn" data-lang="hi">🇮🇳 हिन्दी</button>
+                </div>
+                
+                <a href="#" class="mobile-whatsapp-link" onclick="shareOnWhatsApp(event)"><i class="fab fa-whatsapp"></i> <span data-i18n="share_whatsapp">Share</span></a>
+                <a href="/admin" class="mobile-admin-link" id="mobileAdminLink" style="display:none;"><i class="fas fa-edit"></i> <span data-i18n="edit_website">Edit Website</span></a>
+                <a href="#" class="mobile-customer-link" id="mobileMyOrdersLink" style="display: none;"><i class="fas fa-box"></i> <span>My Orders</span></a>
+            </div>
         </div>
+        <!-- Overlay for closing sidebar when clicking outside -->
+        <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
     </nav>
 
     <!-- ===== CHECKOUT SECTION ===== -->
