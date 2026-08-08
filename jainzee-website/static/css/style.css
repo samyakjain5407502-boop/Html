@@ -77,6 +77,7 @@ body {
     display: inline-block;
     visibility: visible;
     opacity: 1;
+    flex-shrink: 0;
 }
 
 .nav-shop-name {
@@ -89,6 +90,7 @@ body {
     opacity: 1;
     white-space: nowrap;
     flex-shrink: 0;
+    line-height: 1.2;
 }
 
 .nav-right {
@@ -1650,15 +1652,15 @@ body {
     }
 
     .mobile-brand .nav-logo-img {
-        height: 28px !important;
-        max-height: 32px !important;
+        height: 36px !important;
+        max-height: 40px !important;
         width: auto !important;
         display: inline-block !important;
     }
 
     .mobile-brand .nav-shop-name {
         display: inline-block !important;
-        font-size: 0.9rem !important;
+        font-size: 1.1rem !important;
         font-weight: 700 !important;
         color: white !important;
         white-space: nowrap !important;
@@ -1681,25 +1683,25 @@ body {
         flex-direction: column !important;
         align-items: center !important;
         justify-content: center !important;
-        gap: 2px !important;
-        width: 50px !important;
-        height: 50px !important;
+        gap: 3px !important;
+        width: 56px !important;
+        height: 56px !important;
         background: rgba(255,255,255,0.15) !important;
         color: white !important;
         border-radius: 8px !important;
         text-decoration: none !important;
-        font-size: 0.7rem !important;
+        font-size: 0.75rem !important;
         position: relative !important;
         transition: all 0.3s !important;
     }
 
     .mobile-cart-btn i,
     .mobile-orders-btn i {
-        font-size: 1.2rem !important;
+        font-size: 1.4rem !important;
     }
 
     .mobile-btn-text {
-        font-size: 0.65rem !important;
+        font-size: 0.75rem !important;
         font-weight: 600 !important;
         line-height: 1.1 !important;
         white-space: nowrap !important;
