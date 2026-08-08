@@ -67,7 +67,9 @@ body {
 .nav-logo {
     display: flex;
     align-items: center;
+    flex-direction: row;
     gap: 12px;
+    flex-shrink: 0;
 }
 
 .nav-logo-img {
@@ -91,6 +93,7 @@ body {
     white-space: nowrap;
     flex-shrink: 0;
     line-height: 1.2;
+    vertical-align: middle;
 }
 
 .nav-right {
@@ -2181,12 +2184,12 @@ body {
     }
 
     .mobile-brand .nav-logo-img {
-        height: 24px !important;
-        max-height: 28px !important;
+        height: 30px !important;
+        max-height: 34px !important;
     }
 
     .mobile-brand .nav-shop-name {
-        font-size: 0.78rem !important;
+        font-size: 0.9rem !important;
         max-width: 60% !important;
         letter-spacing: 0 !important;
     }
@@ -2201,9 +2204,9 @@ body {
 
     .mobile-cart-btn,
     .mobile-orders-btn {
-        width: 44px !important;
-        height: 44px !important;
-        font-size: 0.65rem !important;
+        width: 48px !important;
+        height: 48px !important;
+        font-size: 0.72rem !important;
     }
 
     .mobile-cart-btn i,
