@@ -53,20 +53,26 @@
         
         <!-- MOBILE: Main row with hamburger, logo, cart, orders -->
         <div class="mobile-main-row" id="mobileMainRow">
-            <button class="hamburger" id="mobileHamburger" aria-label="Menu">
-                <span></span><span></span><span></span>
-            </button>
-            <div class="mobile-brand">
-                <img id="mobileNavLogo" src="{{ url_for('static', filename='images/logo.svg') }}" alt="Jainzee Logo" class="nav-logo-img">
-                <span id="mobileNavShopName" class="nav-shop-name">Jainzee Food Processing Industries</span>
+            <div class="nav-left">
+                <button class="hamburger" id="mobileHamburger" aria-label="Menu">
+                    <span></span><span></span><span></span>
+                </button>
             </div>
-            <div class="mobile-actions">
+            <div class="nav-center">
+                <div class="mobile-brand">
+                    <img id="mobileNavLogo" src="{{ url_for('static', filename='images/logo.svg') }}" alt="Jainzee Logo" class="nav-logo-img">
+                    <span id="mobileNavShopName" class="nav-shop-name">Jainzee Food Processing Industries</span>
+                </div>
+            </div>
+            <div class="nav-right">
                 <a href="/cart" class="mobile-cart-btn" id="mobileCartLink" title="Cart">
                     <i class="fas fa-shopping-cart"></i>
+                    <span class="mobile-btn-text" data-i18n="cart_title">Cart</span>
                     <span class="cart-count-badge" id="mobileCartBadge" style="display: none;">0</span>
                 </a>
                 <a href="#" class="mobile-orders-btn" id="mobileOrdersBtn" title="My Orders">
                     <i class="fas fa-box"></i>
+                    <span class="mobile-btn-text">My Orders</span>
                 </a>
             </div>
         </div>

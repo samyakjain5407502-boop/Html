@@ -87,6 +87,8 @@ body {
     display: inline-block;
     visibility: visible;
     opacity: 1;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .nav-right {
@@ -1596,11 +1598,34 @@ body {
     /* MOBILE: Main row */
     .mobile-main-row {
         display: flex !important;
+        flex-direction: row !important;
         align-items: center !important;
         justify-content: space-between !important;
         padding: 8px 12px !important;
         height: 50px !important;
         background: rgba(44, 24, 16, 0.95) !important;
+    }
+
+    /* 3-zone mobile header layout */
+    .nav-left {
+        display: flex !important;
+        align-items: center !important;
+        flex-shrink: 0 !important;
+    }
+
+    .nav-center {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex: 1 !important;
+        min-width: 0 !important;
+    }
+
+    .nav-right {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        flex-shrink: 0 !important;
     }
 
     .mobile-main-row .hamburger {
@@ -1620,7 +1645,6 @@ body {
         display: flex !important;
         align-items: center !important;
         gap: 6px !important;
-        flex: 1 !important;
         justify-content: center !important;
         min-width: 0 !important;
     }
@@ -1654,23 +1678,37 @@ body {
     .mobile-cart-btn,
     .mobile-orders-btn {
         display: inline-flex !important;
+        flex-direction: column !important;
         align-items: center !important;
         justify-content: center !important;
-        width: 36px !important;
-        height: 36px !important;
+        gap: 2px !important;
+        width: 50px !important;
+        height: 50px !important;
         background: rgba(255,255,255,0.15) !important;
         color: white !important;
-        border-radius: 50% !important;
+        border-radius: 8px !important;
         text-decoration: none !important;
-        font-size: 1rem !important;
+        font-size: 0.7rem !important;
         position: relative !important;
         transition: all 0.3s !important;
+    }
+
+    .mobile-cart-btn i,
+    .mobile-orders-btn i {
+        font-size: 1.2rem !important;
+    }
+
+    .mobile-btn-text {
+        font-size: 0.65rem !important;
+        font-weight: 600 !important;
+        line-height: 1.1 !important;
+        white-space: nowrap !important;
     }
 
     .mobile-cart-btn:hover,
     .mobile-orders-btn:hover {
         background: rgba(255,255,255,0.25) !important;
-        transform: scale(1.1) !important;
+        transform: scale(1.05) !important;
     }
 
     .mobile-cart-btn .cart-count-badge {
@@ -2161,9 +2199,14 @@ body {
 
     .mobile-cart-btn,
     .mobile-orders-btn {
-        width: 32px !important;
-        height: 32px !important;
-        font-size: 0.9rem !important;
+        width: 44px !important;
+        height: 44px !important;
+        font-size: 0.65rem !important;
+    }
+
+    .mobile-cart-btn i,
+    .mobile-orders-btn i {
+        font-size: 1rem !important;
     }
 
     .mobile-menu {
