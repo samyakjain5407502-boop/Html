@@ -117,6 +117,18 @@ async function updateCartCount() {
             badge.textContent = data.count;
             badge.style.display = data.count > 0 ? '' : 'none';
         }
+        // Update mobile cart badge
+        const mobileCartLink = document.getElementById('mobileCartLink');
+        if (mobileCartLink) {
+            let mobileBadge = mobileCartLink.querySelector('.cart-count-badge');
+            if (!mobileBadge) {
+                mobileBadge = document.createElement('span');
+                mobileBadge.className = 'cart-count-badge';
+                mobileCartLink.appendChild(mobileBadge);
+            }
+            mobileBadge.textContent = data.count;
+            mobileBadge.style.display = data.count > 0 ? '' : 'none';
+        }
     } catch(e) {}
 }
 
@@ -543,6 +555,7 @@ function applySiteData() {
     // Shop name
     setText('heroShopName', currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en);
     setText('navShopName', currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en);
+    setText('mobileNavShopName', currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en);
     setText('footerShopName', currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en);
     setText('footerName', currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en);
     document.title = (currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en) + ' - Dry Fruits';
@@ -1028,10 +1041,18 @@ function setText(id, text) {
 
 function setupNavbar() {
     const hamburger = document.getElementById('hamburger');
+    const mobileHamburger = document.getElementById('mobileHamburger');
     const mobileMenu = document.getElementById('mobileMenu');
 
     if (hamburger) {
         hamburger.addEventListener('click', () => {
+            mobileMenu.classList.toggle('active');
+        });
+    }
+
+    // Mobile hamburger toggle (2-row mobile layout)
+    if (mobileHamburger) {
+        mobileHamburger.addEventListener('click', () => {
             mobileMenu.classList.toggle('active');
         });
     }
@@ -1042,6 +1063,15 @@ function setupNavbar() {
             mobileMenu.classList.remove('active');
         });
     });
+
+    // Mobile My Orders button - open modal
+    const mobileOrdersBtn = document.getElementById('mobileOrdersBtn');
+    if (mobileOrdersBtn) {
+        mobileOrdersBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openMyOrdersModal();
+        });
+    }
 
     // Navbar scroll effect
     window.addEventListener('scroll', () => {

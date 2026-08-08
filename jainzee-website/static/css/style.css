@@ -95,72 +95,10 @@ body {
     gap: 16px;
 }
 
-/* Desktop-only header elements */
-.nav-left {
+/* Mobile-only header elements (hidden on desktop) */
+.mobile-login-bar,
+.mobile-main-row {
     display: none;
-}
-
-.nav-links {
-    display: flex;
-    align-items: center;
-    gap: 25px;
-    margin-left: 30px;
-}
-
-.nav-links a {
-    color: var(--white);
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 0.95rem;
-    transition: color 0.3s;
-    position: relative;
-}
-
-.nav-links a:hover {
-    color: var(--primary-light);
-}
-
-.nav-links a::after {
-    content: '';
-    position: absolute;
-    bottom: -5px;
-    left: 0;
-    width: 0;
-    height: 2px;
-    background: var(--primary-light);
-    transition: width 0.3s;
-}
-
-.nav-links a:hover::after {
-    width: 100%;
-}
-
-.nav-btn-label {
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-.nav-icon-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255,255,255,0.1);
-    color: var(--white);
-    padding: 8px 16px;
-    border-radius: 50px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-decoration: none;
-    transition: all 0.3s;
-}
-
-.nav-icon-btn:hover {
-    background: rgba(255,255,255,0.2);
-    transform: translateY(-2px);
-}
-
-.nav-icon-btn i {
-    font-size: 1rem;
 }
 
 .lang-toggle {
@@ -1614,116 +1552,114 @@ body {
 }
 
 @media (max-width: 768px) {
-    /* Navbar & Header - Symmetrical Single Row Layout */
+    /* Hide desktop navbar container on mobile */
     .nav-container {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        padding: 8px 12px !important;
-        flex-wrap: nowrap !important;
-        white-space: nowrap !important;
-        height: 50px !important;
-    }
-
-    /* LEFT ZONE: User Icon + Hamburger */
-    .nav-left {
-        display: flex !important;
-        align-items: center !important;
-        gap: 8px !important;
-        flex: 1 !important;
-        justify-content: flex-start !important;
-    }
-
-    .nav-icon-btn {
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        width: 36px !important;
-        height: 36px !important;
-        padding: 0 !important;
-        background: rgba(255,255,255,0.15) !important;
-        color: white !important;
-        border-radius: 50% !important;
-        text-decoration: none !important;
-        font-size: 1rem !important;
-        transition: all 0.3s !important;
-    }
-
-    .nav-icon-btn:hover {
-        background: rgba(255,255,255,0.25) !important;
-        transform: scale(1.1) !important;
-    }
-
-    .nav-icon-btn i {
-        margin: 0 !important;
-        font-size: 1rem !important;
-    }
-
-    /* Hide text labels on mobile - icons only */
-    .nav-icon-btn span,
-    .customer-panel-btn span,
-    .admin-panel-btn span,
-    .nav-shop-name {
         display: none !important;
     }
 
-    /* Show short brand name in center */
-    .nav-shop-name {
-        display: inline-block !important;
-        font-size: 0.9rem !important;
-        font-weight: 700 !important;
-        color: white !important;
+    /* MOBILE: Login/Register top bar */
+    .mobile-login-bar {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: var(--primary) !important;
+        padding: 6px 12px !important;
+        text-align: center !important;
     }
 
-    /* Hamburger menu */
-    .hamburger {
+    .mobile-login-bar a {
+        color: white !important;
+        text-decoration: none !important;
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+    }
+
+    .mobile-login-bar a i {
+        font-size: 0.9rem !important;
+    }
+
+    /* MOBILE: Main row */
+    .mobile-main-row {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 8px 12px !important;
+        height: 50px !important;
+        background: rgba(44, 24, 16, 0.95) !important;
+    }
+
+    .mobile-main-row .hamburger {
         display: flex !important;
         width: 32px !important;
         height: 32px !important;
         padding: 4px !important;
+        flex-shrink: 0 !important;
     }
 
-    .hamburger span {
+    .mobile-main-row .hamburger span {
         width: 20px !important;
         height: 2px !important;
     }
 
-    /* CENTER ZONE: Brand Logo & Title */
-    .nav-center {
+    .mobile-brand {
         display: flex !important;
         align-items: center !important;
+        gap: 6px !important;
+        flex: 1 !important;
         justify-content: center !important;
-        gap: 6px !important;
-        flex: 0 0 auto !important;
-        margin: 0 auto !important;
-        text-align: center !important;
+        min-width: 0 !important;
     }
 
-    .nav-center .nav-logo {
-        display: flex !important;
-        align-items: center !important;
-        gap: 6px !important;
-    }
-
-    .nav-logo-img {
+    .mobile-brand .nav-logo-img {
         height: 28px !important;
         max-height: 32px !important;
         width: auto !important;
         display: inline-block !important;
     }
 
-    /* RIGHT ZONE: My Orders + Cart */
-    .nav-right {
+    .mobile-brand .nav-shop-name {
+        display: inline-block !important;
+        font-size: 0.9rem !important;
+        font-weight: 700 !important;
+        color: white !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .mobile-actions {
         display: flex !important;
         align-items: center !important;
         gap: 10px !important;
-        flex: 1 !important;
-        justify-content: flex-end !important;
+        flex-shrink: 0 !important;
     }
 
-    /* Cart badge positioning */
-    .cart-count-badge {
+    .mobile-cart-btn,
+    .mobile-orders-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 36px !important;
+        height: 36px !important;
+        background: rgba(255,255,255,0.15) !important;
+        color: white !important;
+        border-radius: 50% !important;
+        text-decoration: none !important;
+        font-size: 1rem !important;
+        position: relative !important;
+        transition: all 0.3s !important;
+    }
+
+    .mobile-cart-btn:hover,
+    .mobile-orders-btn:hover {
+        background: rgba(255,255,255,0.25) !important;
+        transform: scale(1.1) !important;
+    }
+
+    .mobile-cart-btn .cart-count-badge {
         position: absolute !important;
         top: -4px !important;
         right: -4px !important;
@@ -1737,30 +1673,15 @@ body {
         height: 16px !important;
         line-height: 12px !important;
         text-align: center !important;
+        margin-left: 0 !important;
     }
 
-    .cart-icon-btn {
-        position: relative !important;
-    }
-
-    /* Customer name display - icon only */
-    .customer-name-display {
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        width: 36px !important;
-        height: 36px !important;
-        background: #28a745 !important;
-        color: white !important;
-        border-radius: 50% !important;
-        font-size: 1rem !important;
-    }
-
-    .customer-name-display span {
-        display: none !important;
-    }
-
-    /* Hide admin panel button on mobile (shown in hamburger menu) */
+    /* Hide desktop-only elements on mobile */
+    .lang-toggle,
+    .whatsapp-share-btn,
+    .customer-panel-btn,
+    .admin-panel-btn,
+    .customer-name-display,
     #adminPanelBtn,
     #floatingEditBtn,
     #footerAdminLink {
@@ -1770,7 +1691,7 @@ body {
     /* Mobile menu */
     .mobile-menu {
         position: absolute !important;
-        top: 50px !important;
+        top: 100% !important;
         left: 0 !important;
         right: 0 !important;
         background: var(--dark) !important;
@@ -1790,16 +1711,6 @@ body {
 
     .mobile-menu a:hover {
         background: rgba(255,255,255,0.1) !important;
-    }
-
-    /* Hide desktop nav links on mobile */
-    .nav-links {
-        display: none !important;
-    }
-
-    /* Hide text labels on mobile - icons only */
-    .nav-btn-label {
-        display: none !important;
     }
 
     /* Hero */
