@@ -1746,6 +1746,126 @@ body {
         display: none !important;
     }
 
+    /* ===== MOBILE GOLD OVERRIDES - Force all brown buttons/accents to Shining Gold ===== */
+    .btn-primary,
+    .btn,
+    .admin-panel-btn,
+    .customer-panel-btn,
+    .whatsapp-share-btn,
+    .mobile-cart-btn,
+    .mobile-orders-btn,
+    .mobile-menu .mobile-admin-link,
+    .mobile-menu .mobile-customer-link,
+    .mobile-menu .mobile-whatsapp-link,
+    .mobile-menu-links .mobile-menu-login,
+    .mobile-login-bar,
+    .floating-edit-btn,
+    .cart-count-badge,
+    .product-badge,
+    .lang-btn.active,
+    button.add-to-cart,
+    .add-to-cart-btn,
+    .btn-add-to-cart,
+    .add-to-cart,
+    button[onclick*="addToCart"],
+    .product-card button,
+    .modal-footer button,
+    .checkout-btn-container .btn,
+    .proceed-checkout-btn .btn {
+        background: linear-gradient(135deg, #FFD700 0%, #D4AC0D 100%) !important;
+        color: #000000 !important;
+        font-weight: 700 !important;
+        box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5) !important;
+        border: none !important;
+    }
+
+    /* Ensure icons inside gold buttons are black too */
+    .btn-primary i,
+    .btn-primary .fa-shopping-cart,
+    .admin-panel-btn i,
+    .customer-panel-btn i,
+    .whatsapp-share-btn i,
+    .mobile-cart-btn i,
+    .mobile-orders-btn i,
+    .mobile-menu .mobile-admin-link i,
+    .mobile-menu .mobile-customer-link i,
+    .mobile-menu .mobile-whatsapp-link i,
+    .mobile-menu-links .mobile-menu-login i,
+    .floating-edit-btn i,
+    .cart-count-badge,
+    .product-badge,
+    .lang-btn.active,
+    button.add-to-cart i,
+    .add-to-cart-btn i,
+    .btn-add-to-cart i,
+    .add-to-cart i,
+    button[onclick*="addToCart"] i,
+    .product-card button i,
+    .modal-footer button i {
+        color: #000000 !important;
+    }
+
+    /* Mobile login bar - gold background with black text */
+    .mobile-login-bar a,
+    .mobile-login-bar a i {
+        color: #000000 !important;
+    }
+
+    /* Mobile menu login button - gold with black text */
+    .mobile-menu-links .mobile-menu-login,
+    .mobile-menu-links .mobile-menu-login i {
+        color: #000000 !important;
+    }
+
+    /* Mobile cart/orders buttons - gold with black text */
+    .mobile-cart-btn,
+    .mobile-orders-btn {
+        background: linear-gradient(135deg, #FFD700 0%, #D4AC0D 100%) !important;
+        color: #000000 !important;
+    }
+
+    .mobile-cart-btn .mobile-btn-text,
+    .mobile-orders-btn .mobile-btn-text {
+        color: #000000 !important;
+    }
+
+    /* Mobile cart badge - gold with black text */
+    .mobile-cart-btn .cart-count-badge {
+        background: #FFD700 !important;
+        color: #000000 !important;
+    }
+
+    /* Keep mobile menu sidebar background matte black */
+    .mobile-menu {
+        background: linear-gradient(180deg, #121212 0%, #121212 100%) !important;
+    }
+
+    /* Keep mobile main row background matte black */
+    .mobile-main-row {
+        background: rgba(18, 18, 18, 0.95) !important;
+    }
+
+    /* Keep product cards crisp white on mobile */
+    .product-card,
+    .cart-item,
+    .cart-summary-card,
+    .checkout-form,
+    .checkout-summary,
+    .contact-card,
+    .media-card {
+        background: #FFFFFF !important;
+    }
+
+    /* Keep hero/header/footer matte black on mobile */
+    .hero,
+    .hero::before,
+    .features-section,
+    .footer,
+    .navbar {
+        background: #121212 !important;
+    }
+
+
     /* Mobile menu - left sidebar */
     .mobile-menu {
         position: fixed !important;
