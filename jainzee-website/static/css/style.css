@@ -5,9 +5,9 @@
 }
 
 :root {
-    --primary: #FFD700;
-    --primary-dark: #D49B00;
-    --primary-light: #F3C623;
+    --primary: #FFC000;
+    --primary-dark: #D4AC0D;
+    --primary-light: #FFE259;
     --bg-light: #F8F9FA;
     --bg-cream: #F0F2F5;
     --dark: #121212;
@@ -559,16 +559,18 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #FFD700 0%, #D49B00 100%);
+    background: linear-gradient(135deg, #FFE259 0%, #FFA751 100%);
     color: #000000;
-    box-shadow: 0 5px 20px rgba(255,215,0,0.4);
+    font-weight: 700;
+    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.6);
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, #F3C623 0%, #FFD700 100%);
+    background: linear-gradient(135deg, #FFD700 0%, #D4AC0D 100%);
     color: #000000;
+    font-weight: 700;
     transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(255,215,0,0.5);
+    box-shadow: 0 8px 30px rgba(255, 215, 0, 0.8);
 }
 
 .btn-outline {
