@@ -327,22 +327,86 @@ def api_customer_logout():
 def api_auth_google():
     """Google OAuth endpoint - redirects to Google OAuth consent screen"""
     # Google OAuth 2.0 configuration
-    # Note: For production, replace with your actual Google Cloud Console credentials
-    client_id = os.environ.get('GOOGLE_CLIENT_ID', 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com')
+    # Get client ID from environment variable or use placeholder
+    client_id = os.environ.get('GOOGLE_CLIENT_ID', '').strip()
+    
+    # Validate client ID
+    if not client_id or client_id == 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com' or 'YOUR_' in client_id:
+        # Return a user-friendly error page instead of redirecting to Google with invalid credentials
+        return '''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Google Sign In - Configuration Required</title>
+            <style>
+                body {
+                    font-family: 'Poppins', sans-serif;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    min-height: 100vh;
+                    margin: 0;
+                    background: #f5f5f5;
+                }
+                .message {
+                    text-align: center;
+                    padding: 40px;
+                    background: white;
+                    border-radius: 16px;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+                    max-width: 500px;
+                }
+                .error { color: #dc3545; }
+                .info { color: #17a2b8; }
+            </style>
+        </head>
+        <body>
+            <div class="message">
+                <h2 class="error">⚠️ Google Sign In Not Configured</h2>
+                <p>Google OAuth is not yet configured for this website.</p>
+                <p class="info">To enable Google Sign In:</p>
+                <ol style="text-align: left; margin: 20px auto; max-width: 300px;">
+                    <li>Go to <a href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a></li>
+                    <li>Create OAuth 2.0 credentials</li>
+                    <li>Set the GOOGLE_CLIENT_ID environment variable</li>
+                </ol>
+                <p>Please use phone/email login instead, or contact the administrator.</p>
+                <button onclick="window.close()" style="padding: 10px 20px; background: #b8860b; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; margin-top: 20px;">Close</button>
+            </div>
+            <script>
+                // Notify parent window of the error
+                if (window.opener) {
+                    window.opener.postMessage({
+                        type: 'google-auth-error',
+                        error: 'Google Sign In is not configured. Please use phone/email login.'
+                    }, window.location.origin);
+                }
+            </script>
+        </body>
+        </html>
+        ''', 400
+    
+    # Build the redirect URI dynamically
     redirect_uri = url_for('api_auth_google_callback', _external=True)
     
-    # Google OAuth URL with required scopes
-    # Requesting: profile (name, picture), email
-    scope = 'profile email'
+    # Properly encode the redirect URI for the OAuth URL
+    from urllib.parse import quote
+    encoded_redirect_uri = quote(redirect_uri, safe='')
     
+    # Google OAuth URL with required scopes
+    # Using response_type=code for authorization code flow (more secure)
+    scope = 'openid email profile'
+    encoded_scope = quote(scope, safe='')
+    
+    # Construct OAuth URL with properly encoded parameters
     google_auth_url = (
-        'https://accounts.google.com/o/oauth2/v2/auth?'
+        f'https://accounts.google.com/o/oauth2/v2/auth?'
         f'client_id={client_id}&'
-        f'redirect_uri={redirect_uri}&'
-        f'response_type=token&'
-        f'scope={scope}&'
-        'access_type=offline&'
-        'prompt=consent'
+        f'redirect_uri={encoded_redirect_uri}&'
+        f'response_type=code&'
+        f'scope={encoded_scope}&'
+        f'access_type=offline&'
+        f'prompt=consent'
     )
     
     return redirect(google_auth_url)

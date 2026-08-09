@@ -256,13 +256,20 @@
         // ==================== GOOGLE AUTH ====================
         
         async function googleSignIn() {
-            // Open Google OAuth popup
+            // Open Google OAuth popup with properly encoded parameters
             const width = 500, height = 600;
             const left = (window.screen.width - width) / 2;
             const top = (window.screen.height - height) / 2;
             
+            // Construct the OAuth URL with proper encoding
+            const redirectUri = encodeURIComponent(window.location.origin + '/api/auth/google/callback');
+            const scope = encodeURIComponent('openid email profile');
+            const clientId = encodeURIComponent('YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com');
+            
+            const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
+            
             const popup = window.open(
-                '/api/auth/google',
+                googleAuthUrl,
                 'Google Sign In',
                 `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
             );
