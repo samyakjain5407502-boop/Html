@@ -325,21 +325,124 @@ def api_customer_logout():
 
 @app.route('/api/auth/google')
 def api_auth_google():
-    """Google OAuth endpoint - opens a simple popup for Google sign-in"""
-    # Note: This is a basic implementation. For production, use google-auth library
-    # and configure OAuth credentials in Google Cloud Console
-    return render_template('customer.html')
+    """Google OAuth endpoint - redirects to Google OAuth consent screen"""
+    # Google OAuth 2.0 configuration
+    # Note: For production, replace with your actual Google Cloud Console credentials
+    client_id = os.environ.get('GOOGLE_CLIENT_ID', 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com')
+    redirect_uri = url_for('api_auth_google_callback', _external=True)
+    
+    # Google OAuth URL with required scopes
+    # Requesting: profile (name, picture), email
+    scope = 'profile email'
+    
+    google_auth_url = (
+        'https://accounts.google.com/o/oauth2/v2/auth?'
+        f'client_id={client_id}&'
+        f'redirect_uri={redirect_uri}&'
+        f'response_type=token&'
+        f'scope={scope}&'
+        'access_type=offline&'
+        'prompt=consent'
+    )
+    
+    return redirect(google_auth_url)
+
+@app.route('/api/auth/google/token', methods=['POST'])
+def api_auth_google_token():
+    """Exchange Google OAuth token for user info and create/login customer"""
+    data = request.get_json() or {}
+    access_token = data.get('access_token')
+    
+    if not access_token:
+        return jsonify({'error': 'No access token provided'}), 400
+    
+    try:
+        # Fetch user info from Google
+        import requests as req
+        userinfo_url = 'https://www.googleapis.com/oauth2/v2/userinfo'
+        headers = {'Authorization': f'Bearer {access_token}'}
+        
+        # Use urllib instead of requests to avoid dependency issues
+        import urllib.request
+        import json as json_mod
+        
+        req_obj = urllib.request.Request(userinfo_url, headers=headers)
+        with urllib.request.urlopen(req_obj, timeout=10) as response:
+            user_info = json_mod.loads(response.read().decode('utf-8'))
+        
+        # Extract user details
+        google_id = user_info.get('id', '')
+        email = user_info.get('email', '')
+        name = user_info.get('name', '')
+        picture = user_info.get('picture', '')
+        
+        if not email or not name:
+            return jsonify({'error': 'Could not retrieve user information from Google'}), 400
+        
+        # Check if customer exists with this email or create new one
+        conn = get_db()
+        customer = conn.execute(
+            'SELECT * FROM customers WHERE email=? OR phone=?',
+            (email, email)
+        ).fetchone()
+        
+        if customer:
+            # Existing customer - log them in
+            customer_id = customer['id']
+            session.permanent = True
+            session['customer_id'] = customer_id
+            session['customer_name'] = customer['name']
+            conn.close()
+            return jsonify({
+                'logged_in': True,
+                'customer': {
+                    'id': customer_id,
+                    'name': customer['name'],
+                    'email': customer['email']
+                }
+            })
+        else:
+            # New customer - create account
+            # Generate a random password (user will login via Google in future)
+            import secrets
+            random_password = secrets.token_urlsafe(32)
+            
+            cur = conn.execute(
+                'INSERT INTO customers (name, email, phone, password_hash) VALUES (?, ?, ?, ?)',
+                (name, email, email, generate_password_hash(random_password))
+            )
+            conn.commit()
+            customer_id = cur.lastrowid
+            
+            # Log them in
+            session.permanent = True
+            session['customer_id'] = customer_id
+            session['customer_name'] = name
+            conn.close()
+            
+            return jsonify({
+                'logged_in': True,
+                'customer': {
+                    'id': customer_id,
+                    'name': name,
+                    'email': email
+                }
+            })
+    
+    except Exception as e:
+        print(f"Google OAuth error: {e}")
+        return jsonify({'error': 'Failed to authenticate with Google. Please try again.'}), 500
 
 @app.route('/api/auth/google/callback')
 def api_auth_google_callback():
-    """Google OAuth callback endpoint"""
-    # This would handle the OAuth callback in a full implementation
-    # For now, return a simple success page that communicates with parent window
+    """Google OAuth callback endpoint - handles the popup window"""
+    # This page receives the OAuth token from Google via URL fragment
+    # It extracts the token and sends it to the parent window via postMessage
     return '''
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Google Sign In</title>
+        <title>Google Sign In - Processing</title>
         <style>
             body {
                 font-family: 'Poppins', sans-serif;
@@ -359,36 +462,55 @@ def api_auth_google_callback():
             }
             .success { color: #28a745; }
             .error { color: #dc3545; }
+            .spinner {
+                border: 3px solid #f3f3f3;
+                border-top: 3px solid #4285F4;
+                border-radius: 50%;
+                width: 30px;
+                height: 30px;
+                animation: spin 1s linear infinite;
+                margin: 20px auto;
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
         </style>
     </head>
     <body>
         <div class="message">
-            <h2 id="status">Processing...</h2>
-            <p>You can close this window.</p>
+            <h2 id="status">Signing in with Google...</h2>
+            <div class="spinner"></div>
+            <p>Please wait while we complete your sign-in.</p>
         </div>
         <script>
-            // Get token from URL params (in real implementation)
-            const params = new URLSearchParams(window.location.search);
-            const token = params.get('token');
+            // Extract access_token from URL hash (Google OAuth 2.0 implicit flow)
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            const accessToken = params.get('access_token');
             const error = params.get('error');
             
-            if (token) {
-                document.getElementById('status').textContent = 'Sign in successful!';
-                document.getElementById('status').className = 'success';
-                
-                // Send success message to parent window
+            if (accessToken) {
+                // Send success message to parent window with the token
                 if (window.opener) {
                     window.opener.postMessage({
                         type: 'google-auth-success',
-                        token: token
+                        token: accessToken
                     }, window.location.origin);
                 }
                 
-                // Auto-close after 1 second
-                setTimeout(() => window.close(), 1000);
+                document.getElementById('status').textContent = 'Sign in successful!';
+                document.getElementById('status').className = 'success';
+                document.querySelector('.spinner').style.display = 'none';
+                document.querySelector('p').textContent = 'You can close this window.';
+                
+                // Auto-close after 1.5 seconds
+                setTimeout(() => window.close(), 1500);
             } else if (error) {
                 document.getElementById('status').textContent = 'Sign in failed: ' + error;
                 document.getElementById('status').className = 'error';
+                document.querySelector('.spinner').style.display = 'none';
+                document.querySelector('p').textContent = 'Please try again or close this window.';
                 
                 // Send error message to parent window
                 if (window.opener) {
@@ -402,6 +524,9 @@ def api_auth_google_callback():
             } else {
                 document.getElementById('status').textContent = 'No token received';
                 document.getElementById('status').className = 'error';
+                document.querySelector('.spinner').style.display = 'none';
+                document.querySelector('p').textContent = 'Authentication failed. Please close and try again.';
+                
                 setTimeout(() => window.close(), 2000);
             }
         </script>

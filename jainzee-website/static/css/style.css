@@ -530,7 +530,8 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    opacity: 0.3;
+    opacity: 1;
+    z-index: 1;
 }
 
 .hero-video-container::after {
@@ -540,8 +541,9 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(180deg, rgba(18,18,18,0.7) 0%, rgba(18,18,18,0.9) 100%);
+    background: rgba(18,18,18,0.6);
     pointer-events: none;
+    z-index: 2;
 }
 
 .hero-content {

@@ -274,9 +274,26 @@
                 if (event.data.type === 'google-auth-success') {
                     window.removeEventListener('message', handler);
                     
-                    // Fetch customer data
-                    await loadCustomerDashboard();
-                    showToast('Welcome, ' + event.data.name + '!');
+                    // Exchange token for user info and create/login customer
+                    try {
+                        const res = await fetch('/api/auth/google/token', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ access_token: event.data.token })
+                        });
+                        
+                        const data = await res.json();
+                        
+                        if (res.ok && data.logged_in) {
+                            await loadCustomerDashboard();
+                            showToast('Welcome, ' + data.customer.name + '!');
+                        } else {
+                            showToast(data.error || 'Google sign in failed', 'error');
+                        }
+                    } catch (e) {
+                        showToast('Authentication error. Please try again.', 'error');
+                        console.error('Google auth error:', e);
+                    }
                     
                     if (popup) popup.close();
                 } else if (event.data.type === 'google-auth-error') {
