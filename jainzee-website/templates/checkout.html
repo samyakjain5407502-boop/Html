@@ -33,7 +33,7 @@
                 <a href="/admin" class="admin-panel-btn" id="adminPanelBtn" style="display:none;">
                     <i class="fas fa-edit"></i> <span data-i18n="edit_website">Edit Website</span>
                 </a>
-                <a href="#" class="customer-panel-btn" id="myOrdersBtn" style="display: none; background: #17a2b8;">
+                <a href="#" class="customer-panel-btn" id="myOrdersBtn" style="display: none;">
                     <i class="fas fa-box"></i> <span>My Orders</span>
                 </a>
                 <a href="/cart" class="admin-panel-btn" id="cartLink">
@@ -527,7 +527,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             applyCheckoutTranslations();
             loadCheckout();
-            document.getElementById('currentYear').textContent = new Date().getFullYear();
+            const cyEl = document.getElementById('currentYear');
+            if (cyEl) cyEl.textContent = new Date().getFullYear();
         });
     </script>
 </body>
