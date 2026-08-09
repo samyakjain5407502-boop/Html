@@ -95,6 +95,23 @@
                     <button class="btn btn-primary btn-block" onclick="customerLogin()">
                         <i class="fas fa-sign-in-alt"></i> Login
                     </button>
+                    
+                    <!-- Divider -->
+                    <div style="text-align: center; margin: 20px 0; position: relative;">
+                        <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: #e8e0d5;"></div>
+                        <span style="background: white; padding: 0 15px; position: relative; color: #8a7362; font-size: 0.85rem;">OR</span>
+                    </div>
+                    
+                    <!-- Google Sign In Button -->
+                    <button class="btn btn-google btn-block" onclick="googleSignIn()" style="background: white; color: #757575; border: 2px solid #e8e0d5; box-shadow: none;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" style="margin-right: 8px;">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.03 2.53-2.16 3.31v2.77h3.49c2.04-1.88 3.24-4.64 3.24-7.89z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.49-2.77c-.98.66-2.23 1.06-3.79 1.06-2.91 0-5.37-1.96-6.25-4.63H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.75 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.72-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.64 0 3.11.56 4.27 1.67l3.2-3.2C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.57 2.84c.88-2.67 3.34-4.53 6.25-4.53z"/>
+                        </svg>
+                        Sign in with Google
+                    </button>
                 </div>
 
                 <!-- Register Form (simplified: only 3 mandatory fields) -->
@@ -234,6 +251,40 @@
             await fetch('/api/customer/logout', { method: 'POST' });
             showToast('Logged out successfully');
             location.reload();
+        }
+
+        // ==================== GOOGLE AUTH ====================
+        
+        async function googleSignIn() {
+            // Open Google OAuth popup
+            const width = 500, height = 600;
+            const left = (window.screen.width - width) / 2;
+            const top = (window.screen.height - height) / 2;
+            
+            const popup = window.open(
+                '/api/auth/google',
+                'Google Sign In',
+                `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+            );
+            
+            // Listen for messages from popup
+            window.addEventListener('message', async function handler(event) {
+                if (event.origin !== window.location.origin) return;
+                
+                if (event.data.type === 'google-auth-success') {
+                    window.removeEventListener('message', handler);
+                    
+                    // Fetch customer data
+                    await loadCustomerDashboard();
+                    showToast('Welcome, ' + event.data.name + '!');
+                    
+                    if (popup) popup.close();
+                } else if (event.data.type === 'google-auth-error') {
+                    window.removeEventListener('message', handler);
+                    showToast(event.data.error || 'Google sign in failed', 'error');
+                    if (popup) popup.close();
+                }
+            });
         }
 
         // ==================== DASHBOARD ====================

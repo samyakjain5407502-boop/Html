@@ -470,19 +470,21 @@ async function loadMainBannerVideo() {
         // Check if main_banner_video.mp4 exists by making a HEAD-like request
         const res = await fetch('/static/uploads/main_banner_video.mp4', { method: 'HEAD' });
         if (res.ok) {
-            const card = document.getElementById('videoBannerCard');
-            const video = document.getElementById('mainBannerVideo');
-            const source = document.getElementById('mainBannerVideoSource');
-            if (card && video && source) {
+            const heroVideoContainer = document.getElementById('heroVideoContainer');
+            const heroVideo = document.getElementById('heroVideo');
+            const heroVideoSource = document.getElementById('heroVideoSource');
+            
+            if (heroVideoContainer && heroVideo && heroVideoSource) {
                 // Add cache-busting timestamp so new uploads show immediately
                 const url = '/static/uploads/main_banner_video.mp4?t=' + Date.now();
-                source.src = url;
-                video.load();
-                card.style.display = '';
+                heroVideoSource.src = url;
+                heroVideo.load();
+                heroVideo.play().catch(e => console.log('Video autoplay prevented:', e));
+                heroVideoContainer.style.display = '';
             }
         }
     } catch (e) {
-        // Video doesn't exist yet - keep banner hidden
+        // Video doesn't exist yet - keep hero video hidden
         console.log('No banner video uploaded yet');
     }
 }
@@ -665,6 +667,7 @@ async function loadProductReviews(productId) {
         // Display reviews list
         if (!data.reviews.length) {
             reviewsContainer.innerHTML = '<p class="no-reviews">No reviews yet. Be the first to review!</p>';
+            reviewsContainer.style.display = 'block';
             return;
         }
         
@@ -683,6 +686,7 @@ async function loadProductReviews(productId) {
         });
         html += '</div>';
         reviewsContainer.innerHTML = html;
+        reviewsContainer.style.display = 'block';
         
     } catch (e) {
         console.error('Error loading reviews:', e);
@@ -816,8 +820,9 @@ async function submitReview() {
         alert('Review submitted successfully!');
         closeReviewModal();
         
-        // Reload reviews
+        // Reload reviews on product card and in modal
         loadProductReviews(currentReviewProductId);
+        loadReviewsIntoModal(currentReviewProductId);
         
     } catch (e) {
         alert('Error: ' + e.message);
@@ -990,9 +995,19 @@ function renderProducts() {
                     </button>
                 </div>
                 
+                <!-- Reviews Container - dynamically populated by loadProductReviews -->
+                <div id="reviews-${p.id}" class="review-section" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,215,0,0.1); display: none;">
+                    <div class="reviews-list" style="max-height: 200px; overflow-y: auto;"></div>
+                </div>
+                
+                <!-- Reviews Container - dynamically populated by loadProductReviews -->
+                <div id="reviews-${p.id}" class="review-section" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,215,0,0.1); display: none;">
+                    <div class="reviews-list" style="max-height: 200px; overflow-y: auto;"></div>
+                </div>
+                
                 <!-- Inline Quantity & Weight Selector -->
                 <div style="display: flex; gap: 10px; margin-top: 15px; align-items: center;">
-                    <input type="number" id="${qtyId}" min="1" max="${stockNum || 999}" value="1" style="width: 70px; padding: 8px; text-align: center; border: 2px solid #e8e0d5; border-radius: 8px; background: #F8F9FA; color: var(--text); font-size: 0.9rem;" onclick="event.stopPropagation();">
+                    <input type="number" id="${qtyId}" min="1" max="${stockNum || 999}" value="1" style="width: 70px; padding: 8px; text-align: center; border: 2px solid #e8e0d5; border-radius: 8px; background: #F8F9FA; color: #121212; font-size: 0.9rem;" onclick="event.stopPropagation();">
                     <select id="${weightId}" class="grade-select" style="flex: 1; padding: 8px; font-size: 0.9rem;" onclick="event.stopPropagation();">
                         ${weightOptions}
                     </select>
@@ -1014,6 +1029,11 @@ function renderProducts() {
         card.style.opacity = '1';
         card.style.transform = 'translateY(0)';
     });
+    
+    // Refresh reviews display after products are rendered
+    setTimeout(() => {
+        products.forEach(p => loadProductReviews(p.id));
+    }, 100);
 }
 
 function updateGradePrice(select, productId) {

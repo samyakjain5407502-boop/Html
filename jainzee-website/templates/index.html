@@ -121,6 +121,15 @@
     <!-- ===== HERO SECTION ===== -->
     <section class="hero" id="home">
         <div class="hero-overlay"></div>
+        
+        <!-- Hero Video Background (if available) -->
+        <div class="hero-video-container" id="heroVideoContainer" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; z-index: 0;">
+            <video id="heroVideo" autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; opacity: 0.3;">
+                <source src="/static/uploads/main_banner_video.mp4" type="video/mp4" id="heroVideoSource">
+            </video>
+            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(18,18,18,0.7) 0%, rgba(18,18,18,0.9) 100%);"></div>
+        </div>
+        
         <div class="hero-content">
             <img id="heroLogo" src="{{ url_for('static', filename='images/logo.svg') }}" alt="Jainzee Logo" class="hero-logo" style="display: inline-block !important; visibility: visible !important; opacity: 1 !important;">
             <h1 id="heroShopName">Jainzee Food Processing Industries</h1>
@@ -128,23 +137,6 @@
             <div class="hero-buttons">
                 <a href="#products" class="btn btn-primary" data-i18n="explore_products">Explore Products</a>
                 <a href="#contact" class="btn btn-outline" data-i18n="contact_us">Contact Us</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== MAIN PAGE VIDEO BANNER ===== -->
-    <section class="video-banner-section" id="videoBanner">
-        <div class="container">
-            <div class="main-product-video-wrapper">
-                <div class="video-banner-card" id="videoBannerCard" style="display:none;">
-                    <div class="video-banner-icon">
-                        <i class="fas fa-video"></i>
-                    </div>
-                    <video id="mainBannerVideo" controls preload="metadata" playsinline>
-                        <source src="" type="video/mp4" id="mainBannerVideoSource">
-                        Your browser does not support video playback.
-                    </video>
-                </div>
             </div>
         </div>
     </section>

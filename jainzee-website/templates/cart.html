@@ -324,10 +324,10 @@
                         ${itemOldPrice > 0 ? '<span style="color: #999; text-decoration: line-through; font-size: 0.9rem;">' + formatPriceCart(item.old_price) + '</span>' : ''}
                     </div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="number" min="1" max="${item.stock}" value="${item.quantity}" onchange="updateCartQty(${index}, this.value)" style="width: 70px; padding: 8px; text-align: center; border: 2px solid #e8e0d5; border-radius: 8px; background: white; color: var(--text);">
-                            <button onclick="removeFromCart(${index})" style="background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600;"><i class="fas fa-trash"></i></button>
-                        </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="number" min="1" max="${item.stock}" value="${item.quantity}" onchange="updateCartQty(${index}, this.value)" style="width: 70px; padding: 10px; text-align: center; border: 2px solid #e8e0d5; border-radius: 8px; background: white; color: #121212; font-weight: 600; font-size: 1rem;">
+                        <button onclick="removeFromCart(${index})" style="background: #dc3545; color: white; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem;"><i class="fas fa-trash"></i> Remove</button>
+                    </div>
                     </div>
                 `;
             });

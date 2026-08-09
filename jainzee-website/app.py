@@ -321,6 +321,94 @@ def api_customer_logout():
     session.pop('customer_name', None)
     return jsonify({'message': 'Logged out'})
 
+# ---------------- GOOGLE OAUTH =================
+
+@app.route('/api/auth/google')
+def api_auth_google():
+    """Google OAuth endpoint - opens a simple popup for Google sign-in"""
+    # Note: This is a basic implementation. For production, use google-auth library
+    # and configure OAuth credentials in Google Cloud Console
+    return render_template('customer.html')
+
+@app.route('/api/auth/google/callback')
+def api_auth_google_callback():
+    """Google OAuth callback endpoint"""
+    # This would handle the OAuth callback in a full implementation
+    # For now, return a simple success page that communicates with parent window
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Google Sign In</title>
+        <style>
+            body {
+                font-family: 'Poppins', sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                margin: 0;
+                background: #f5f5f5;
+            }
+            .message {
+                text-align: center;
+                padding: 40px;
+                background: white;
+                border-radius: 16px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            }
+            .success { color: #28a745; }
+            .error { color: #dc3545; }
+        </style>
+    </head>
+    <body>
+        <div class="message">
+            <h2 id="status">Processing...</h2>
+            <p>You can close this window.</p>
+        </div>
+        <script>
+            // Get token from URL params (in real implementation)
+            const params = new URLSearchParams(window.location.search);
+            const token = params.get('token');
+            const error = params.get('error');
+            
+            if (token) {
+                document.getElementById('status').textContent = 'Sign in successful!';
+                document.getElementById('status').className = 'success';
+                
+                // Send success message to parent window
+                if (window.opener) {
+                    window.opener.postMessage({
+                        type: 'google-auth-success',
+                        token: token
+                    }, window.location.origin);
+                }
+                
+                // Auto-close after 1 second
+                setTimeout(() => window.close(), 1000);
+            } else if (error) {
+                document.getElementById('status').textContent = 'Sign in failed: ' + error;
+                document.getElementById('status').className = 'error';
+                
+                // Send error message to parent window
+                if (window.opener) {
+                    window.opener.postMessage({
+                        type: 'google-auth-error',
+                        error: error
+                    }, window.location.origin);
+                }
+                
+                setTimeout(() => window.close(), 2000);
+            } else {
+                document.getElementById('status').textContent = 'No token received';
+                document.getElementById('status').className = 'error';
+                setTimeout(() => window.close(), 2000);
+            }
+        </script>
+    </body>
+    </html>
+    '''
+
 @app.route('/api/customer/me')
 def api_customer_me():
     if not session.get('customer_id'):

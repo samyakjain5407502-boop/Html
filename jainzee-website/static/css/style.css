@@ -14,6 +14,7 @@
     --text: #FFFFFF;
     --text-light: #E0E0E0;
     --white: #ffffff;
+    --card-bg: #ffffff;
     --shadow: 0 10px 30px rgba(0,0,0,0.3);
     --shadow-hover: 0 20px 40px rgba(255,215,0,0.3);
     --radius: 16px;
@@ -23,8 +24,10 @@ html {
     scroll-behavior: smooth;
 }
 
+
 body {
     font-family: 'Poppins', 'Mukta', sans-serif;
+
     background: var(--bg-light);
     color: #1a1a1a;
     line-height: 1.6;
@@ -509,6 +512,36 @@ body {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.3);
+    z-index: 1;
+}
+
+/* Hero Video Background */
+.hero-video-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    z-index: 0;
+}
+
+.hero-video-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.3;
+}
+
+.hero-video-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(180deg, rgba(18,18,18,0.7) 0%, rgba(18,18,18,0.9) 100%);
+    pointer-events: none;
 }
 
 .hero-content {
@@ -2661,3 +2694,205 @@ button[onclick*="addToCart"] *,
 .modal-footer button * {
     color: #000000 !important;
 }
+
+/* ===== CONTRAST FIX: Dark text on white/light backgrounds ===== */
+/* Ensure all inputs, selects, quantity values, and text inside white-background
+   cards/containers use dark color (#121212) for crisp visibility */
+.cart-item input[type="number"],
+.cart-item input[type="text"],
+.cart-item select,
+.checkout-form input,
+.checkout-form textarea,
+.checkout-form select,
+.modal-content input,
+.modal-content textarea,
+.modal-content select,
+.review-textarea,
+.grade-select,
+.cart-summary-card input,
+.cart-summary-card select,
+.checkout-summary input,
+.checkout-summary select,
+.checkout-summary span,
+.checkout-summary p,
+.checkout-summary h3,
+.checkout-form label,
+.checkout-form h3,
+.cart-summary-card h3,
+.cart-item h3,
+.cart-item p,
+.cart-item span,
+.modal-header h3,
+.modal-header p,
+.modal-body p,
+.modal-body label,
+.review-form label,
+.review-author,
+.review-text,
+.no-reviews,
+.rating-text,
+.order-card h3,
+.order-card-label,
+.order-card-value,
+.contact-card h3,
+.contact-card p,
+.about-content h2,
+.about-content p,
+.media-card-caption h4,
+.media-card-caption p,
+.section-header h2,
+.section-header p,
+.product-info h3,
+.product-desc,
+.product-weight,
+.grade-selector label,
+.rating-text,
+.no-reviews,
+.cart-summary-card span,
+.cart-summary-card p {
+    color: #121212 !important;
+}
+
+/* Quantity inputs specifically - dark text on white/light backgrounds */
+.cart-item input[type="number"],
+.modal-content input[type="number"],
+.modal-content input[type="text"],
+.modal-content input[type="email"],
+.modal-content input[type="tel"],
+.modal-content textarea,
+.modal-content select,
+.checkout-form input[type="number"],
+.checkout-form input[type="text"],
+.checkout-form input[type="email"],
+.checkout-form input[type="tel"],
+.checkout-form textarea,
+.checkout-form select,
+.review-textarea,
+.grade-select,
+.cart-summary-card input,
+.cart-summary-card select {
+    background: white !important;
+    color: #121212 !important;
+}
+
+/* Select dropdowns on white backgrounds - dark text */
+.modal-content .grade-select,
+.checkout-form select,
+.cart-item select,
+.cart-summary-card select {
+    background: white !important;
+    color: #121212 !important;
+}
+
+/* ===== HERO VIDEO STYLES (Task 4: Video in Hero Section) ===== */
+.hero-video-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+}
+
+.hero-video-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 1000px;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,215,0,0.15);
+    z-index: 1;
+}
+
+.hero-video-wrapper video {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+}
+
+.hero-video-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.15);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.hero-video-wrapper .video-play-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    color: rgba(255,215,0,0.8);
+    font-size: 3rem;
+    opacity: 0.7;
+}
+
+/* Hero content should be above video */
+.hero-content {
+    position: relative;
+    z-index: 2;
+}
+
+/* Dark matte overlay for hero video */
+.hero-video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(18,18,18,0.7);
+    z-index: 1;
+    border-radius: 20px;
+}
+
+/* Responsive hero video */
+@media (max-width: 768px) {
+    .hero-video-container {
+        padding: 60px 10px;
+    }
+    
+    .hero-video-wrapper {
+        border-radius: 16px;
+        max-width: 100%;
+    }
+    
+    .hero-video-wrapper video {
+        max-height: 400px;
+    }
+    
+    .hero-video-wrapper .video-play-icon {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-video-container {
+        padding: 40px 5px;
+    }
+    
+    .hero-video-wrapper {
+        border-radius: 12px;
+    }
+    
+    .hero-video-wrapper video {
+        max-height: 300px;
+    }
+    
+    .hero-video-wrapper .video-play-icon {
+        font-size: 1.5rem;
+    }
+}
+
+
