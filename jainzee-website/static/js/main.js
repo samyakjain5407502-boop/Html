@@ -1175,8 +1175,11 @@ function init() {
         btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
     });
 
-    // Set current year in footer
-    document.getElementById('currentYear').textContent = new Date().getFullYear();
+    // Set current year in footer (safe check - element may not exist on sub-pages)
+    const currentYearEl = document.getElementById('currentYear');
+    if (currentYearEl) {
+        currentYearEl.textContent = new Date().getFullYear();
+    }
 
     setupNavbar();
 

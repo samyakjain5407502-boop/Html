@@ -5,9 +5,9 @@
 }
 
 :root {
-    --primary: #D48C2B;
-    --primary-dark: #B97824;
-    --primary-light: #F4B95A;
+    --primary: #FFD700;
+    --primary-dark: #D49B00;
+    --primary-light: #F3C623;
     --bg-light: #F8F9FA;
     --bg-cream: #F0F2F5;
     --dark: #121212;
@@ -15,7 +15,7 @@
     --text-light: #E0E0E0;
     --white: #ffffff;
     --shadow: 0 10px 30px rgba(0,0,0,0.3);
-    --shadow-hover: 0 20px 40px rgba(212,140,43,0.3);
+    --shadow-hover: 0 20px 40px rgba(255,215,0,0.3);
     --radius: 16px;
 }
 
@@ -130,7 +130,7 @@ body {
 
 .lang-btn.active {
     background: var(--primary);
-    color: white;
+    color: #000000;
 }
 
 .whatsapp-share-btn {
@@ -180,25 +180,25 @@ body {
     align-items: center;
     gap: 6px;
     background: var(--primary);
-    color: white;
+    color: #000000;
     padding: 8px 16px;
     border-radius: 50px;
     font-size: 0.85rem;
     font-weight: 600;
     text-decoration: none;
     transition: all 0.3s;
-    box-shadow: 0 3px 10px rgba(184,134,11,0.3);
+    box-shadow: 0 3px 10px rgba(255,215,0,0.3);
 }
 
 .admin-panel-btn:hover {
     background: var(--primary-dark);
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(184,134,11,0.4);
+    box-shadow: 0 5px 15px rgba(255,215,0,0.4);
 }
 
 .cart-count-badge {
     background: var(--primary);
-    color: white;
+    color: #000000;
     padding: 2px 10px;
     border-radius: 20px;
     font-size: 0.8rem;
@@ -288,7 +288,7 @@ body {
 .review-section {
     margin-top: 15px;
     padding-top: 15px;
-    border-top: 1px solid rgba(184,134,11,0.1);
+    border-top: 1px solid rgba(255,215,0,0.1);
 }
 
 .review-form {
@@ -352,7 +352,7 @@ body {
     background: var(--bg-light);
     padding: 15px;
     border-radius: 10px;
-    border: 1px solid rgba(184,134,11,0.1);
+    border: 1px solid rgba(255,215,0,0.1);
 }
 
 .review-header {
@@ -398,17 +398,17 @@ body {
     color: #ffffff !important;
 }
 
-/* Add to Cart button - ensure white text and icon */
+/* Add to Cart button - ensure dark readable text on golden gradient */
 .btn-primary,
 .btn-primary i,
 .btn-primary .fa-shopping-cart {
-    color: #ffffff !important;
+    color: #000000 !important;
 }
 
 .btn-primary:hover,
 .btn-primary:hover i,
 .btn-primary:hover .fa-shopping-cart {
-    color: #ffffff !important;
+    color: #000000 !important;
 }
 
 .hamburger {
@@ -468,7 +468,7 @@ body {
 
 .mobile-menu .mobile-admin-link {
     background: var(--primary);
-    color: white;
+    color: #000000;
     padding: 10px 15px;
     border-radius: 10px;
     text-align: center;
@@ -559,15 +559,16 @@ body {
 }
 
 .btn-primary {
-    background: var(--primary);
-    color: var(--white);
-    box-shadow: 0 5px 20px rgba(184,134,11,0.4);
+    background: linear-gradient(135deg, #FFD700 0%, #D49B00 100%);
+    color: #000000;
+    box-shadow: 0 5px 20px rgba(255,215,0,0.4);
 }
 
 .btn-primary:hover {
-    background: var(--primary-dark);
+    background: linear-gradient(135deg, #F3C623 0%, #FFD700 100%);
+    color: #000000;
     transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(184,134,11,0.5);
+    box-shadow: 0 8px 25px rgba(255,215,0,0.5);
 }
 
 .btn-outline {
@@ -653,7 +654,7 @@ body {
     box-shadow: var(--shadow);
     transition: all 0.4s ease;
     position: relative;
-    border: 1px solid rgba(184,134,11,0.1);
+    border: 1px solid rgba(255,215,0,0.1);
 }
 
 .product-card:hover {
@@ -694,7 +695,7 @@ body {
     top: 15px;
     left: 15px;
     background: var(--primary);
-    color: white;
+    color: #000000;
     padding: 6px 14px;
     border-radius: 30px;
     font-size: 0.75rem;
@@ -962,7 +963,7 @@ body {
     text-align: center;
     box-shadow: var(--shadow);
     transition: all 0.3s ease;
-    border: 1px solid rgba(184,134,11,0.1);
+    border: 1px solid rgba(255,215,0,0.1);
 }
 
 .contact-card:hover {
@@ -1086,7 +1087,7 @@ body {
     right: 25px;
     z-index: 999;
     background: var(--primary);
-    color: white;
+    color: #000000;
     text-decoration: none;
     padding: 12px 20px;
     border-radius: 50px;
@@ -1095,7 +1096,7 @@ body {
     gap: 8px;
     font-size: 0.9rem;
     font-weight: 600;
-    box-shadow: 0 5px 20px rgba(184,134,11,0.4);
+    box-shadow: 0 5px 20px rgba(255,215,0,0.4);
     transition: all 0.3s ease;
     animation: pulseEdit 2s infinite;
 }
@@ -1103,13 +1104,13 @@ body {
 .floating-edit-btn:hover {
     background: var(--primary-dark);
     transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(184,134,11,0.5);
+    box-shadow: 0 8px 25px rgba(255,215,0,0.5);
     animation: none;
 }
 
 @keyframes pulseEdit {
-    0%, 100% { box-shadow: 0 5px 20px rgba(184,134,11,0.4); }
-    50% { box-shadow: 0 5px 25px rgba(184,134,11,0.7); }
+    0%, 100% { box-shadow: 0 5px 20px rgba(255,215,0,0.4); }
+    50% { box-shadow: 0 5px 25px rgba(255,215,0,0.7); }
 }
 
 /* ===== MODAL ===== */
@@ -1148,7 +1149,7 @@ body {
     display: flex;
     align-items: center;
     gap: 20px;
-    border-bottom: 1px solid rgba(184,134,11,0.15);
+    border-bottom: 1px solid rgba(255,215,0,0.15);
     padding: 25px;
 }
 
@@ -1177,7 +1178,7 @@ body {
 .modal-footer {
     display: flex;
     gap: 15px;
-    border-top: 1px solid rgba(184,134,11,0.15);
+    border-top: 1px solid rgba(255,215,0,0.15);
     padding: 20px;
 }
 
@@ -1200,7 +1201,7 @@ body {
     background: var(--bg-light);
     border-radius: var(--radius);
     margin-bottom: 20px;
-    border: 1px solid rgba(184,134,11,0.1);
+    border: 1px solid rgba(255,215,0,0.1);
     box-shadow: var(--shadow);
 }
 
@@ -1215,7 +1216,7 @@ body {
     background: var(--bg-light);
     border-radius: var(--radius);
     padding: 35px;
-    border: 1px solid rgba(184,134,11,0.1);
+    border: 1px solid rgba(255,215,0,0.1);
     box-shadow: var(--shadow);
     margin-top: 30px;
 }
@@ -1224,7 +1225,7 @@ body {
     display: flex;
     justify-content: space-between;
     padding: 12px 0;
-    border-bottom: 1px solid rgba(184,134,11,0.1);
+    border-bottom: 1px solid rgba(255,215,0,0.1);
 }
 
 .no-products {
@@ -1250,7 +1251,7 @@ body {
     background: var(--bg-light);
     border-radius: var(--radius);
     padding: 40px;
-    border: 1px solid rgba(184,134,11,0.1);
+    border: 1px solid rgba(255,215,0,0.1);
     box-shadow: var(--shadow);
 }
 
@@ -1258,7 +1259,7 @@ body {
     background: var(--bg-light);
     border-radius: var(--radius);
     padding: 35px;
-    border: 1px solid rgba(184,134,11,0.1);
+    border: 1px solid rgba(255,215,0,0.1);
     box-shadow: var(--shadow);
     height: fit-content;
 }
@@ -1281,7 +1282,7 @@ body {
 .checkout-form select:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 4px rgba(184,134,11,0.1);
+    box-shadow: 0 0 0 4px rgba(255,215,0,0.1);
 }
 
 .checkout-form label {
@@ -1351,7 +1352,7 @@ body {
     border-radius: var(--radius);
     overflow: hidden;
     box-shadow: var(--shadow);
-    border: 1px solid rgba(184,134,11,0.1);
+    border: 1px solid rgba(255,215,0,0.1);
     transition: all 0.4s ease;
 }
 
@@ -1527,7 +1528,7 @@ body {
     .admin-table tbody tr {
         display: block;
         margin-bottom: 15px;
-        border: 1px solid rgba(184,134,11,0.2);
+        border: 1px solid rgba(255,215,0,0.2);
         border-radius: 10px;
         padding: 15px;
         background: white;
@@ -1585,7 +1586,7 @@ body {
     }
 
     .mobile-login-bar a {
-        color: white !important;
+        color: #000000 !important;
         text-decoration: none !important;
         font-size: 0.85rem !important;
         font-weight: 600 !important;
@@ -1606,7 +1607,7 @@ body {
         justify-content: space-between !important;
         padding: 8px 12px !important;
         height: 50px !important;
-        background: rgba(44, 24, 16, 0.95) !important;
+        background: rgba(18, 18, 18, 0.95) !important;
     }
 
     /* 3-zone mobile header layout */
@@ -1751,7 +1752,7 @@ body {
         bottom: 0 !important;
         width: 280px !important;
         max-width: 85vw !important;
-        background: linear-gradient(180deg, var(--dark) 0%, #3d2a1c 100%) !important;
+        background: linear-gradient(180deg, var(--dark) 0%, #121212 100%) !important;
         padding: 0 !important;
         z-index: 1500 !important;
         box-shadow: 4px 0 30px rgba(0,0,0,0.4) !important;
@@ -1880,10 +1881,11 @@ body {
         margin-top: 8px !important;
         justify-content: center !important;
         font-weight: 600 !important;
+        color: #000000 !important;
     }
 
     .mobile-menu-links .mobile-menu-login i {
-        color: white !important;
+        color: #000000 !important;
     }
 
     /* Mobile menu extras (lang, whatsapp, admin, orders) */
@@ -2018,7 +2020,7 @@ body {
     .admin-table tbody tr {
         display: block;
         margin-bottom: 15px;
-        border: 1px solid rgba(184,134,11,0.2);
+        border: 1px solid rgba(255,215,0,0.2);
         border-radius: 10px;
         padding: 15px;
         background: white;
@@ -2045,7 +2047,7 @@ body {
         border-radius: 10px;
         padding: 15px;
         margin-bottom: 15px;
-        border: 1px solid rgba(184,134,11,0.2);
+        border: 1px solid rgba(255,215,0,0.2);
     }
 
     .order-card-header {
@@ -2054,7 +2056,7 @@ body {
         align-items: start;
         margin-bottom: 10px;
         padding-bottom: 10px;
-        border-bottom: 1px solid rgba(184,134,11,0.1);
+        border-bottom: 1px solid rgba(255,215,0,0.1);
     }
 
     .order-card-body {
@@ -2217,7 +2219,7 @@ body {
     }
 }
 
-/* Force white text on all Add to Cart buttons and their child elements */
+/* Force black readable text on all Add to Cart buttons and their child elements */
 button.add-to-cart,
 .add-to-cart-btn,
 .btn-add-to-cart,
@@ -2225,7 +2227,7 @@ button.add-to-cart,
 button[onclick*="addToCart"],
 .product-card button,
 .modal-footer button {
-    color: #ffffff !important;
+    color: #000000 !important;
 }
 
 button.add-to-cart *,
@@ -2233,7 +2235,7 @@ button.add-to-cart *,
 .btn-add-to-cart *,
 button[onclick*="addToCart"] *,
 .product-card button * {
-    color: #ffffff !important;
+    color: #000000 !important;
 }
 
 /* ===== EMERGENCY FIX: ENSURE LOGO & NAV VISIBILITY ===== */
