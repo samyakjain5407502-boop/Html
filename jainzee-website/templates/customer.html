@@ -261,12 +261,9 @@
             const left = (window.screen.width - width) / 2;
             const top = (window.screen.height - height) / 2;
             
-            // Construct the OAuth URL with proper encoding
-            const redirectUri = encodeURIComponent(window.location.origin + '/api/auth/google/callback');
-            const scope = encodeURIComponent('openid email profile');
-            const clientId = encodeURIComponent('YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com');
-            
-            const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
+            // Get client ID from server-side configuration
+            // The backend will handle the OAuth flow with proper client ID
+            const googleAuthUrl = '/api/auth/google';
             
             const popup = window.open(
                 googleAuthUrl,

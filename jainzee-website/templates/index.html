@@ -331,12 +331,12 @@
                     
                     <div style="margin-bottom: 15px;">
                         <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px; font-size: 0.9rem;">Your Rating</label>
-                        <div class="star-rating-input" onclick="setRating(event)">
-                            <span class="star" data-rating="1" onmouseenter="setRating(1)" onmouseleave="updateStarDisplay(currentReviewRating)"><i class="fas fa-star"></i></span>
-                            <span class="star" data-rating="2" onmouseenter="setRating(2)" onmouseleave="updateStarDisplay(currentReviewRating)"><i class="fas fa-star"></i></span>
-                            <span class="star" data-rating="3" onmouseenter="setRating(3)" onmouseleave="updateStarDisplay(currentReviewRating)"><i class="fas fa-star"></i></span>
-                            <span class="star" data-rating="4" onmouseenter="setRating(4)" onmouseleave="updateStarDisplay(currentReviewRating)"><i class="fas fa-star"></i></span>
-                            <span class="star" data-rating="5" onmouseenter="setRating(5)" onmouseleave="updateStarDisplay(currentReviewRating)"><i class="fas fa-star"></i></span>
+                        <div class="star-rating-input">
+                            <span class="star" data-rating="1" onmouseenter="setRating(1)" onmouseleave="resetStarDisplay()" onclick="lockRating(1)"><i class="fas fa-star"></i></span>
+                            <span class="star" data-rating="2" onmouseenter="setRating(2)" onmouseleave="resetStarDisplay()" onclick="lockRating(2)"><i class="fas fa-star"></i></span>
+                            <span class="star" data-rating="3" onmouseenter="setRating(3)" onmouseleave="resetStarDisplay()" onclick="lockRating(3)"><i class="fas fa-star"></i></span>
+                            <span class="star" data-rating="4" onmouseenter="setRating(4)" onmouseleave="resetStarDisplay()" onclick="lockRating(4)"><i class="fas fa-star"></i></span>
+                            <span class="star" data-rating="5" onmouseenter="setRating(5)" onmouseleave="resetStarDisplay()" onclick="lockRating(5)"><i class="fas fa-star"></i></span>
                         </div>
                     </div>
                     

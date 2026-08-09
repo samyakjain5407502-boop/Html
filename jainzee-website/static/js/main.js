@@ -644,6 +644,7 @@ function applySiteData() {
 
 let currentReviewProductId = null;
 let currentReviewRating = 0;
+let selectedRating = 0; // Separate variable for locked click selection
 
 async function loadProductReviews(productId) {
     try {
@@ -776,6 +777,14 @@ function closeReviewModal() {
 }
 
 function setRating(rating) {
+    // This function is called on mouse enter for preview
+    // Only update the visual display, do NOT update selectedRating
+    updateStarDisplay(rating);
+}
+
+function lockRating(rating) {
+    // This function is called on click to lock the selection
+    selectedRating = rating;
     currentReviewRating = rating;
     document.getElementById('reviewRating').value = rating;
     updateStarDisplay(rating);
@@ -790,6 +799,11 @@ function updateStarDisplay(rating) {
             star.classList.remove('active');
         }
     });
+}
+
+function resetStarDisplay() {
+    // Reset to the locked selectedRating value
+    updateStarDisplay(selectedRating);
 }
 
 async function submitReview() {
