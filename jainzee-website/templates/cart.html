@@ -141,15 +141,9 @@
                         <span id="cartSubtotal">₹0</span>
                     </div>
 
-                    <div class="summary-row">
-                        <span data-i18n="discount">Discount</span>
-                        <span id="cartDiscount" style="color: #155724;">-₹0</span>
-                    </div>
-
-                    <div class="summary-row">
-                        <span data-i18n="you_save">You Save</span>
-                        <span id="cartYouSave" style="color: #721c24;">₹0</span>
-                        <span id="cartYouSavePercent" style="color: #721c24; font-size: 0.9rem;"></span>
+                    <div class="summary-row" id="cartDiscountRow" style="display: none; background: #f0fdf4; border-radius: 8px; padding: 10px 14px; margin: 4px 0;">
+                        <span id="cartDiscountLabel" style="color: #059669; font-weight: 600;">Discount</span>
+                        <span id="cartDiscount" style="color: #059669; font-weight: 600;">-₹0</span>
                     </div>
 
                     <div class="summary-row" style="border-top: 2px solid rgba(184,134,11,0.3); margin-top: 10px; padding-top: 20px;">
@@ -353,11 +347,19 @@
             // Calculate total savings percentage from original MRP
             const totalSavingsAmount = totalOldMrp - total;
             const totalSavingsPercent = totalOldMrp > 0 ? Math.round((totalSavingsAmount / totalOldMrp) * 100) : 0;
+            const totalDiscount = Math.max(0, totalSavingsAmount);
             
             document.getElementById('cartSubtotal').textContent = formatPriceCart('₹' + subtotal.toFixed(2));
-            document.getElementById('cartDiscount').textContent = '-' + formatPriceCart('₹' + globalDiscountAmount.toFixed(2));
-            document.getElementById('cartYouSave').textContent = formatPriceCart('₹' + totalSavingsAmount.toFixed(2));
-            document.getElementById('cartYouSavePercent').textContent = totalSavingsPercent > 0 ? ' (' + totalSavingsPercent + '%)' : '';
+            // Single-row discount: show only if there is an actual discount
+            const discountLabelEl = document.getElementById('cartDiscountLabel');
+            const discountRowEl = document.getElementById('cartDiscountRow');
+            const hasDiscount = totalDiscount > 0 && totalSavingsPercent > 0;
+            discountRowEl.style.display = hasDiscount ? '' : 'none';
+            if (hasDiscount) {
+                const discountWord = currentLangCart === 'hi' ? 'छूट' : 'Discount';
+                discountLabelEl.textContent = discountWord + ' (' + totalSavingsPercent + '%)';
+                document.getElementById('cartDiscount').textContent = '-' + formatPriceCart('₹' + totalDiscount.toFixed(2));
+            }
             document.getElementById('cartTotal').textContent = formatPriceCart('₹' + total.toFixed(2));
         }
 
