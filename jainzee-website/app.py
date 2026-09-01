@@ -201,24 +201,67 @@ def allowed_file(filename):
 
 # ---------------- JWT HELPERS ----------------
 
+def _get_jwt_secret():
+    """Return the JWT signing secret as clean UTF-8 text.
+
+    Prefers the SECRET_KEY environment variable; falls back to the app
+    secret key, then a default. Guarantees a non-empty str with no
+    encoding artifacts, so PyJWT HMAC signing/verification is stable
+    across restarts and environments.
+    """
+    raw = os.environ.get('SECRET_KEY') or app.secret_key or 'jainzee_permanent_secret_key_2026'
+    if isinstance(raw, bytes):
+        try:
+            raw = raw.decode('utf-8')
+        except UnicodeDecodeError:
+            raw = raw.decode('utf-8', errors='replace')
+    secret = str(raw).strip()
+    if not secret:
+        secret = 'jainzee_permanent_secret_key_2026'
+    return secret
+
+
 def generate_jwt_token(customer_id, customer_name):
     payload = {
         'customer_id': customer_id,
         'customer_name': customer_name,
         'exp': datetime.utcnow() + timedelta(days=30)
     }
-    return jwt.encode(payload, app.secret_key, algorithm='HS256')
+    return jwt.encode(payload, _get_jwt_secret(), algorithm='HS256')
 
 def get_jwt_customer():
     auth_header = request.headers.get('Authorization', '')
     if auth_header.startswith('Bearer '):
-        token = auth_header[7:]
+        token = auth_header[7:].strip()
+        if not token:
+            return None, None
         try:
-            payload = jwt.decode(token, app.secret_key, algorithms=['HS256'])
+            payload = jwt.decode(token, _get_jwt_secret(), algorithms=['HS256'])
             return payload['customer_id'], payload['customer_name']
         except Exception:
             return None, None
     return None, None
+
+# ---------------- LEGAL / POLICY PAGES ----------------
+
+@app.route('/privacy-policy')
+def privacy_policy():
+    return render_template('privacy.html')
+
+@app.route('/terms')
+@app.route('/terms-and-conditions')
+def terms_conditions():
+    return render_template('terms.html')
+
+@app.route('/shipping')
+@app.route('/shipping-policy')
+def shipping_policy():
+    return render_template('shipping.html')
+
+@app.route('/refund')
+@app.route('/refund-policy')
+def refund_policy():
+    return render_template('refund.html')
 
 # ---------------- PUBLIC ROUTES ----------------
 
@@ -312,8 +355,9 @@ def api_customer_register():
         session.permanent = True  # Keep logged in for 30 days
         session['customer_id'] = customer_id
         session['customer_name'] = name
+        token = generate_jwt_token(customer_id, name)
         conn.close()
-        return jsonify({'id': customer_id, 'name': name, 'message': 'Registration successful'}), 201
+        return jsonify({'id': customer_id, 'name': name, 'message': 'Registration successful', 'token': token}), 201
     except sqlite3.IntegrityError:
         conn.close()
         return jsonify({'error': 'Phone number already registered. Please login.'}), 400
@@ -484,9 +528,11 @@ def api_auth_google_token():
             session.permanent = True
             session['customer_id'] = customer_id
             session['customer_name'] = customer['name']
+            token = generate_jwt_token(customer_id, customer['name'])
             conn.close()
             return jsonify({
                 'logged_in': True,
+                'token': token,
                 'customer': {
                     'id': customer_id,
                     'name': customer['name'],
@@ -512,8 +558,10 @@ def api_auth_google_token():
             session['customer_name'] = name
             conn.close()
             
+            token = generate_jwt_token(customer_id, name)
             return jsonify({
                 'logged_in': True,
+                'token': token,
                 'customer': {
                     'id': customer_id,
                     'name': name,

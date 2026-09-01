@@ -226,6 +226,12 @@
                 });
                 const result = await res.json();
                 if (!res.ok) throw new Error(result.error || 'Registration failed');
+                
+                // Store JWT token if provided
+                if (result.token) {
+                    localStorage.setItem('jainzee_token', result.token);
+                }
+                
                 showToast('Registration successful! Welcome ' + result.name + '!');
                 loadCustomerDashboard();
             } catch (e) {
@@ -234,12 +240,15 @@
         }
 
         async function customerLogin() {
+            const identifier = document.getElementById('loginPhone').value.trim();
+            const isEmail = identifier.includes('@');
             const data = {
-                phone: document.getElementById('loginPhone').value.trim(),
+                phone: isEmail ? '' : identifier,
+                email: isEmail ? identifier : '',
                 password: document.getElementById('loginPassword').value
             };
-            if (!data.phone || !data.password) {
-                showToast('Phone and password are required!', 'error');
+            if (!identifier || !data.password) {
+                showToast('Phone/email and password are required!', 'error');
                 return;
             }
             try {
@@ -306,6 +315,10 @@
                         const data = await res.json();
                         
                         if (res.ok && data.logged_in) {
+                            // Store JWT token if provided
+                            if (data.token) {
+                                localStorage.setItem('jainzee_token', data.token);
+                            }
                             await loadCustomerDashboard();
                             showToast('Welcome, ' + data.customer.name + '!');
                         } else {

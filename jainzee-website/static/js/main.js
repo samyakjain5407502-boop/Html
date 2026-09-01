@@ -294,7 +294,7 @@ async function addToCartFromModal() {
 
 async function checkAuthStatus() {
     try {
-        const res = await fetch('/api/auth/status');
+        const res = await authFetch('/api/auth/status');
         const data = await res.json();
         
         // Handle admin login
@@ -874,10 +874,11 @@ function getProductIcon(name) {
 }
 
 function formatPriceDisplay(price) {
-    if (!price) return '';
+    // Treat empty string, null, undefined, and non-numeric values safely
+    if (price === '' || price === null || price === undefined) return '';
     const clean = String(price).replace(/[₹,\s]/g, '');
     const num = parseFloat(clean);
-    if (isNaN(num)) return price;
+    if (isNaN(num) || !isFinite(num)) return '';
     return '₹' + num.toLocaleString('en-IN');
 }
 
@@ -964,12 +965,14 @@ function renderProducts() {
         // Price display with old price + dynamic discount percentage
         let priceHtml = '<div class="product-price" id="price-' + p.id + '">' + formatPriceDisplay(p.price) + '</div>';
         if (p.old_price && p.price) {
-            const oldPriceVal = parseFloat(String(p.old_price).replace(/[₹,\s]/g, '')) || 0;
-            const priceVal = parseFloat(String(p.price).replace(/[₹,\s]/g, '')) || 0;
+            const oldPriceVal = parseFloat(String(p.old_price).replace(/[₹,\s]/g, ''));
+            const priceVal = parseFloat(String(p.price).replace(/[₹,\s]/g, ''));
             let discountText = currentLang === 'hi' ? 'छूट' : 'OFF';
-            if (oldPriceVal > priceVal && priceVal > 0) {
+            // Only compute the badge when both values are valid positive numbers
+            if (!isNaN(oldPriceVal) && !isNaN(priceVal) && isFinite(oldPriceVal) && isFinite(priceVal)
+                && oldPriceVal > priceVal && priceVal > 0) {
                 const discountPercent = Math.round(((oldPriceVal - priceVal) / oldPriceVal) * 100);
-                discountText = discountPercent + '% OFF';
+                discountText = Math.max(0, discountPercent) + '% OFF';
             }
             priceHtml = `
                 <div class="product-price-row">
@@ -1024,11 +1027,6 @@ function renderProducts() {
                     <button class="btn btn-outline" style="width: 100%; padding: 6px; font-size: 0.8rem; border: 1px solid var(--primary); color: var(--primary); background: transparent;" onclick="event.stopPropagation(); openReviewsModal(${p.id})">
                         <i class="fas fa-comments"></i> Read Reviews
                     </button>
-                </div>
-                
-                <!-- Reviews Container - dynamically populated by loadProductReviews -->
-                <div id="reviews-${p.id}" class="review-section" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,215,0,0.1); display: none;">
-                    <div class="reviews-list" style="max-height: 200px; overflow-y: auto;"></div>
                 </div>
                 
                 <!-- Reviews Container - dynamically populated by loadProductReviews -->
