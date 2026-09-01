@@ -344,21 +344,21 @@
             // Item price is ALREADY the final discounted price
             const total = subtotal - globalDiscountAmount;
             
-            // Calculate total savings percentage from original MRP
-            const totalSavingsAmount = totalOldMrp - total;
-            const totalSavingsPercent = totalOldMrp > 0 ? Math.round((totalSavingsAmount / totalOldMrp) * 100) : 0;
-            const totalDiscount = Math.max(0, totalSavingsAmount);
+            // Discount percentage must be computed strictly from the discount
+            // amount shown in this row, against the subtotal — never against MRP.
+            const discountAmount = globalDiscountAmount;
+            const cartDiscountPercent = subtotal > 0 ? Math.round((discountAmount / subtotal) * 100) : 0;
             
             document.getElementById('cartSubtotal').textContent = formatPriceCart('₹' + subtotal.toFixed(2));
             // Single-row discount: show only if there is an actual discount
             const discountLabelEl = document.getElementById('cartDiscountLabel');
             const discountRowEl = document.getElementById('cartDiscountRow');
-            const hasDiscount = totalDiscount > 0 && totalSavingsPercent > 0;
+            const hasDiscount = discountAmount > 0 && cartDiscountPercent > 0;
             discountRowEl.style.display = hasDiscount ? '' : 'none';
             if (hasDiscount) {
                 const discountWord = currentLangCart === 'hi' ? 'छूट' : 'Discount';
-                discountLabelEl.textContent = discountWord + ' (' + totalSavingsPercent + '%)';
-                document.getElementById('cartDiscount').textContent = '-' + formatPriceCart('₹' + totalDiscount.toFixed(2));
+                discountLabelEl.textContent = discountWord + ' (' + cartDiscountPercent + '%)';
+                document.getElementById('cartDiscount').textContent = '-' + formatPriceCart('₹' + discountAmount.toFixed(2));
             }
             document.getElementById('cartTotal').textContent = formatPriceCart('₹' + total.toFixed(2));
         }
