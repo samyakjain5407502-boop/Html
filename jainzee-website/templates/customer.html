@@ -301,15 +301,15 @@
             window.addEventListener('message', async function handler(event) {
                 if (event.origin !== window.location.origin) return;
                 
-                if (event.data.type === 'google-auth-success') {
+                if (event.data.type === 'google-auth-code') {
                     window.removeEventListener('message', handler);
                     
-                    // Exchange token for user info and create/login customer
+                    // Send the authorization code to the server for exchange
                     try {
                         const res = await fetch('/api/auth/google/token', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ access_token: event.data.token })
+                            body: JSON.stringify({ code: event.data.code })
                         });
                         
                         const data = await res.json();

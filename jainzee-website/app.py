@@ -485,22 +485,51 @@ def api_auth_google():
 
 @app.route('/api/auth/google/token', methods=['POST'])
 def api_auth_google_token():
-    """Exchange Google OAuth token for user info and create/login customer"""
+    """Exchange Google OAuth authorization code (or access_token) for user info and create/login customer"""
     data = request.get_json() or {}
-    access_token = data.get('access_token')
+    code = data.get('code', '')
+    access_token = data.get('access_token', '')
     
-    if not access_token:
-        return jsonify({'error': 'No access token provided'}), 400
+    import urllib.request
+    import urllib.parse
+    import json as json_mod
     
     try:
+        # If an authorization code was provided, exchange it for an access token
+        if code and not access_token:
+            client_id = os.environ.get('GOOGLE_CLIENT_ID', '').strip()
+            client_secret = os.environ.get('GOOGLE_CLIENT_SECRET', '').strip()
+            redirect_uri = url_for('api_auth_google_callback', _external=True)
+            
+            if not client_id or not client_secret:
+                return jsonify({'error': 'Google OAuth is not configured'}), 400
+            
+            token_req = urllib.parse.urlencode({
+                'code': code,
+                'client_id': client_id,
+                'client_secret': client_secret,
+                'redirect_uri': redirect_uri,
+                'grant_type': 'authorization_code'
+            }).encode('utf-8')
+            
+            token_req_obj = urllib.request.Request(
+                'https://oauth2.googleapis.com/token',
+                data=token_req,
+                headers={'Content-Type': 'application/x-www-form-urlencoded'}
+            )
+            with urllib.request.urlopen(token_req_obj, timeout=10) as response:
+                token_data = json_mod.loads(response.read().decode('utf-8'))
+            
+            access_token = token_data.get('access_token', '')
+            if not access_token:
+                return jsonify({'error': 'Failed to exchange authorization code with Google'}), 400
+        
+        if not access_token:
+            return jsonify({'error': 'No authorization code or access token provided'}), 400
+        
         # Fetch user info from Google
-        import requests as req
         userinfo_url = 'https://www.googleapis.com/oauth2/v2/userinfo'
         headers = {'Authorization': f'Bearer {access_token}'}
-        
-        # Use urllib instead of requests to avoid dependency issues
-        import urllib.request
-        import json as json_mod
         
         req_obj = urllib.request.Request(userinfo_url, headers=headers)
         with urllib.request.urlopen(req_obj, timeout=10) as response:
@@ -624,18 +653,20 @@ def api_auth_google_callback():
             <p>Please wait while we complete your sign-in.</p>
         </div>
         <script>
-            // Extract access_token from URL hash (Google OAuth 2.0 implicit flow)
-            const hash = window.location.hash.substring(1);
-            const params = new URLSearchParams(hash);
-            const accessToken = params.get('access_token');
-            const error = params.get('error');
+            // Read authorization code from URL query parameters
+            // Google is configured with response_type=code (authorization code flow),
+            // so the callback receives ?code=... (or ?error=...) in the query string,
+            // NOT an access_token in the URL hash fragment.
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const error = urlParams.get('error');
             
-            if (accessToken) {
-                // Send success message to parent window with the token
+            if (code) {
+                // Send the authorization code to the parent window for server-side exchange
                 if (window.opener) {
                     window.opener.postMessage({
-                        type: 'google-auth-success',
-                        token: accessToken
+                        type: 'google-auth-code',
+                        code: code
                     }, window.location.origin);
                 }
                 
