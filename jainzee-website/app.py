@@ -458,8 +458,11 @@ def api_auth_google():
         </html>
         ''', 400
     
-    # Build the redirect URI dynamically
-    redirect_uri = url_for('api_auth_google_callback', _external=True)
+    # Build the redirect URI dynamically - force https (required by Google and to match the registered redirect URI)
+    redirect_uri = url_for('api_auth_google_callback', _external=True, _scheme='https')
+    # Fallback if behind a proxy that injects http
+    if redirect_uri.startswith('http://'):
+        redirect_uri = redirect_uri.replace('http://', 'https://', 1)
     
     # Properly encode the redirect URI for the OAuth URL
     from urllib.parse import quote
@@ -499,15 +502,18 @@ def api_auth_google_token():
         if code and not access_token:
             client_id = os.environ.get('GOOGLE_CLIENT_ID', '').strip()
             client_secret = os.environ.get('GOOGLE_CLIENT_SECRET', '').strip()
-            redirect_uri = url_for('api_auth_google_callback', _external=True)
+            redirect_uri = url_for('api_auth_google_callback', _external=True, _scheme='https')
+            # Fallback if behind a proxy that injects http
+            if redirect_uri.startswith('http://'):
+                redirect_uri = redirect_uri.replace('http://', 'https://', 1)
             
             if not client_id or not client_secret:
                 return jsonify({'error': 'Google OAuth is not configured'}), 400
             
             token_req = urllib.parse.urlencode({
                 'code': code,
-                'client_id': client_id,
-                'client_secret': client_secret,
+                'client_id': os.environ.get('GOOGLE_CLIENT_ID', '').strip(),
+                'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET', '').strip(),
                 'redirect_uri': redirect_uri,
                 'grant_type': 'authorization_code'
             }).encode('utf-8')
@@ -517,8 +523,13 @@ def api_auth_google_token():
                 data=token_req,
                 headers={'Content-Type': 'application/x-www-form-urlencoded'}
             )
-            with urllib.request.urlopen(token_req_obj, timeout=10) as response:
-                token_data = json_mod.loads(response.read().decode('utf-8'))
+            try:
+                with urllib.request.urlopen(token_req_obj, timeout=10) as response:
+                    token_data = json_mod.loads(response.read().decode('utf-8'))
+            except urllib.error.HTTPError as e:
+                # Print the exact error response from Google for easy debugging
+                print(f"Google Token Exchange Error: {e.read().decode('utf-8')}")
+                return jsonify({'error': 'Failed to exchange authorization code with Google'}), 400
             
             access_token = token_data.get('access_token', '')
             if not access_token:
