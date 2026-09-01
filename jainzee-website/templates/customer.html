@@ -180,6 +180,16 @@
             setTimeout(() => toast.remove(), 3000);
         }
 
+        // Authenticated fetch helper - adds Bearer token if available
+        async function authFetch(url, options = {}) {
+            const token = localStorage.getItem('jainzee_token');
+            const headers = { ...(options.headers || {}) };
+            if (token) {
+                headers['Authorization'] = 'Bearer ' + token;
+            }
+            return fetch(url, { ...options, headers });
+        }
+
         // ==================== AUTH TABS ====================
         function switchAuthTab(tab) {
             document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
@@ -240,6 +250,12 @@
                 });
                 const result = await res.json();
                 if (!res.ok) throw new Error(result.error || 'Login failed');
+                
+                // Store JWT token if provided
+                if (result.token) {
+                    localStorage.setItem('jainzee_token', result.token);
+                }
+                
                 showToast('Welcome back, ' + result.name + '!');
                 loadCustomerDashboard();
             } catch (e) {
@@ -248,6 +264,7 @@
         }
 
         async function customerLogout() {
+            localStorage.removeItem('jainzee_token');
             await fetch('/api/customer/logout', { method: 'POST' });
             showToast('Logged out successfully');
             location.reload();
@@ -311,7 +328,7 @@
         // ==================== DASHBOARD ====================
         async function loadCustomerDashboard() {
             try {
-                const res = await fetch('/api/customer/me');
+                const res = await authFetch('/api/customer/me');
                 const data = await res.json();
                 if (data.logged_in) {
                     document.getElementById('authSection').style.display = 'none';
@@ -326,7 +343,7 @@
 
         async function loadOrders() {
             try {
-                const res = await fetch('/api/customer/orders');
+                const res = await authFetch('/api/customer/orders');
                 const orders = await res.json();
                 const grid = document.getElementById('ordersGrid');
                 if (!orders.length) {

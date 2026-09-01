@@ -332,6 +332,13 @@
                 const itemSavings = (oldPrice - itemPrice) * item.quantity;
                 subtotal += itemTotal;
                 totalSavings += itemSavings > 0 ? itemSavings : 0;
+                
+                // Calculate item-level discount percentage
+                let itemDiscountHtml = '';
+                if (oldPrice > 0 && itemPrice > 0 && oldPrice > itemPrice) {
+                    const discountPercent = Math.round(((oldPrice - itemPrice) / oldPrice) * 100);
+                    itemDiscountHtml = '<span style="background: #dc3545; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-left: 8px;">-' + discountPercent + '%</span>';
+                }
 
                 const name = currentLangCheckout === 'hi' ? (item.name_hi || item.name_en) : item.name_en;
                 html += `
@@ -341,7 +348,11 @@
                             <div style="color: var(--text); font-weight: 600; font-size: 0.95rem;">${name}</div>
                             <div style="color: var(--text-light); font-size: 0.8rem;">${item.grade_name || ''} x ${item.quantity}</div>
                         </div>
-                        <div style="color: var(--primary); font-weight: 700;">${formatPriceCheckout(item.grade_price || item.base_price)}</div>
+                        <div style="text-align: right;">
+                            <div style="color: var(--primary); font-weight: 700;">${formatPriceCheckout(item.grade_price || item.base_price)}</div>
+                            ${oldPrice > 0 ? '<div style="color: #999; text-decoration: line-through; font-size: 0.8rem;">' + formatPriceCheckout(item.old_price) + '</div>' : ''}
+                            ${itemDiscountHtml}
+                        </div>
                     </div>
                 `;
             });
@@ -467,7 +478,7 @@
         async function placeOrder() {
             // Check if user is logged in
             try {
-                const authRes = await fetch('/api/auth/status');
+                const authRes = await authFetch('/api/auth/status');
                 const authData = await authRes.json();
                 
                 if (!authData.customer_logged_in) {
@@ -490,7 +501,7 @@
             }
 
             try {
-                const res = await fetch('/api/checkout', {
+                const res = await authFetch('/api/checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

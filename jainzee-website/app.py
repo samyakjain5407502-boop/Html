@@ -7,6 +7,7 @@ from functools import wraps
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+import jwt
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'jainzee.db')
@@ -198,6 +199,27 @@ def login_required(f):
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# ---------------- JWT HELPERS ----------------
+
+def generate_jwt_token(customer_id, customer_name):
+    payload = {
+        'customer_id': customer_id,
+        'customer_name': customer_name,
+        'exp': datetime.utcnow() + timedelta(days=30)
+    }
+    return jwt.encode(payload, app.secret_key, algorithm='HS256')
+
+def get_jwt_customer():
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        token = auth_header[7:]
+        try:
+            payload = jwt.decode(token, app.secret_key, algorithms=['HS256'])
+            return payload['customer_id'], payload['customer_name']
+        except Exception:
+            return None, None
+    return None, None
+
 # ---------------- PUBLIC ROUTES ----------------
 
 @app.route('/')
@@ -206,9 +228,14 @@ def index():
 
 @app.route('/api/auth/status')
 def api_auth_status():
+    admin_logged_in = bool(session.get('admin_logged_in'))
+    customer_logged_in = bool(session.get('customer_id'))
+    if not customer_logged_in:
+        jwt_customer_id, _ = get_jwt_customer()
+        customer_logged_in = bool(jwt_customer_id)
     return jsonify({
-        'admin_logged_in': bool(session.get('admin_logged_in')),
-        'customer_logged_in': bool(session.get('customer_id'))
+        'admin_logged_in': admin_logged_in,
+        'customer_logged_in': customer_logged_in
     })
 
 @app.route('/api/site')
@@ -308,7 +335,8 @@ def api_customer_login():
     session.permanent = True  # Keep logged in for 30 days
     session['customer_id'] = row['id']
     session['customer_name'] = row['name']
-    return jsonify({'id': row['id'], 'name': row['name'], 'message': 'Login successful'})
+    token = generate_jwt_token(row['id'], row['name'])
+    return jsonify({'id': row['id'], 'name': row['name'], 'message': 'Login successful', 'token': token})
 
 # Alias endpoint: POST /api/login (same as customer login, for frontend convenience)
 @app.route('/api/login', methods=['POST'])
@@ -600,10 +628,13 @@ def api_auth_google_callback():
 
 @app.route('/api/customer/me')
 def api_customer_me():
-    if not session.get('customer_id'):
+    customer_id = session.get('customer_id')
+    if not customer_id:
+        customer_id, _ = get_jwt_customer()
+    if not customer_id:
         return jsonify({'logged_in': False})
     conn = get_db()
-    row = conn.execute('SELECT id, name, phone, email, address FROM customers WHERE id=?', (session['customer_id'],)).fetchone()
+    row = conn.execute('SELECT id, name, phone, email, address FROM customers WHERE id=?', (customer_id,)).fetchone()
     conn.close()
     if not row:
         return jsonify({'logged_in': False})
@@ -612,10 +643,13 @@ def api_customer_me():
 @app.route('/api/customer/orders', methods=['GET', 'POST'])
 def api_customer_orders():
     if request.method == 'GET':
-        if not session.get('customer_id'):
+        customer_id = session.get('customer_id')
+        if not customer_id:
+            customer_id, _ = get_jwt_customer()
+        if not customer_id:
             return jsonify({'error': 'Not logged in'}), 401
         conn = get_db()
-        rows = conn.execute('SELECT * FROM orders WHERE customer_id=? ORDER BY id DESC', (session['customer_id'],)).fetchall()
+        rows = conn.execute('SELECT * FROM orders WHERE customer_id=? ORDER BY id DESC', (customer_id,)).fetchall()
         conn.close()
         return jsonify([dict(r) for r in rows])
     else:
@@ -630,6 +664,10 @@ def api_customer_orders():
         phone = data.get('phone', '')
         address = data.get('address', '')
         customer_id = session.get('customer_id')
+        if not customer_id:
+            customer_id, customer_name_jwt = get_jwt_customer()
+            if customer_id and not name:
+                name = customer_name_jwt or name
         conn = get_db()
         cur = conn.execute(
             'INSERT INTO orders (customer_id, customer_name, customer_phone, customer_address, items, total) VALUES (?, ?, ?, ?, ?, ?)',
@@ -643,13 +681,16 @@ def api_customer_orders():
 @app.route('/api/my-orders', methods=['GET'])
 def api_my_orders():
     """Get orders for the currently logged-in customer"""
-    if not session.get('customer_id'):
+    customer_id = session.get('customer_id')
+    if not customer_id:
+        customer_id, _ = get_jwt_customer()
+    if not customer_id:
         return jsonify({'error': 'Not logged in'}), 401
     
     conn = get_db()
     rows = conn.execute(
         'SELECT id, items, total, status, created_at FROM orders WHERE customer_id=? ORDER BY id DESC',
-        (session['customer_id'],)
+        (customer_id,)
     ).fetchall()
     conn.close()
     
@@ -1116,12 +1157,15 @@ def api_order_invoice(order_id):
     import io
     
     # Check if customer is logged in
-    if not session.get('customer_id'):
+    customer_id = session.get('customer_id')
+    if not customer_id:
+        customer_id, _ = get_jwt_customer()
+    if not customer_id:
         return jsonify({'error': 'Not logged in'}), 401
     
     conn = get_db()
     order = conn.execute('SELECT * FROM orders WHERE id=? AND customer_id=?', 
-                        (order_id, session['customer_id'])).fetchone()
+                        (order_id, customer_id)).fetchone()
     
     if not order:
         conn.close()
@@ -1599,7 +1643,11 @@ def api_checkout():
     
     cur = conn.execute(
         'INSERT INTO orders (customer_id, customer_name, customer_phone, customer_address, items, total, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        (session.get('customer_id'), customer_name, customer_phone, customer_address, items_json, '₹' + str(round(final_total, 2)), 'pending_' + payment_method)
+        (
+            session.get('customer_id') or (get_jwt_customer()[0]),
+            customer_name, customer_phone, customer_address,
+            items_json, '₹' + str(round(final_total, 2)), 'pending_' + payment_method
+        )
     )
     conn.commit()
     order_id = cur.lastrowid
@@ -1754,7 +1802,10 @@ def api_product_reviews(product_id):
     
     else:  # POST - submit a review
         # Check if customer is logged in
-        if not session.get('customer_id'):
+        customer_id = session.get('customer_id')
+        if not customer_id:
+            customer_id, _ = get_jwt_customer()
+        if not customer_id:
             return jsonify({'error': 'Please login to submit a review'}), 401
         
         data = request.get_json() or {}
@@ -1768,7 +1819,7 @@ def api_product_reviews(product_id):
         # Get customer details
         customer = conn.execute(
             'SELECT name, phone FROM customers WHERE id=?',
-            (session['customer_id'],)
+            (customer_id,)
         ).fetchone()
         
         if not customer:
@@ -1788,13 +1839,16 @@ def api_product_reviews(product_id):
 @app.route('/api/my-reviews', methods=['GET'])
 def api_my_reviews():
     """Get all reviews by the currently logged-in customer"""
-    if not session.get('customer_id'):
+    customer_id = session.get('customer_id')
+    if not customer_id:
+        customer_id, _ = get_jwt_customer()
+    if not customer_id:
         return jsonify({'error': 'Not logged in'}), 401
     
     conn = get_db()
     reviews = conn.execute(
         'SELECT pr.*, p.name_en as product_name FROM product_reviews pr JOIN products p ON pr.product_id = p.id WHERE pr.customer_phone = (SELECT phone FROM customers WHERE id=?) ORDER BY pr.created_at DESC',
-        (session['customer_id'],)
+        (customer_id,)
     ).fetchall()
     conn.close()
     

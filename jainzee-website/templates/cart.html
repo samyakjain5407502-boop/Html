@@ -149,6 +149,7 @@
                     <div class="summary-row">
                         <span data-i18n="you_save">You Save</span>
                         <span id="cartYouSave" style="color: #721c24;">₹0</span>
+                        <span id="cartYouSavePercent" style="color: #721c24; font-size: 0.9rem;"></span>
                     </div>
 
                     <div class="summary-row" style="border-top: 2px solid rgba(184,134,11,0.3); margin-top: 10px; padding-top: 20px;">
@@ -293,6 +294,7 @@
             let html = '';
             let subtotal = 0;
             let globalDiscountAmount = 0;
+            let totalOldMrp = 0;
 
             cartItems.forEach((item, index) => {
                 const basePrice = parseFloat(String(item.base_price || '0').replace(/[₹,\s]/g, '')) || 0;
@@ -309,9 +311,17 @@
                 
                 subtotal += itemSubtotal;
                 globalDiscountAmount += itemGlobalDiscount;
+                totalOldMrp += itemOldPrice * item.quantity;
 
                 const name = currentLangCart === 'hi' ? (item.name_hi || item.name_en) : item.name_en;
                 const image = item.image ? '<img src="' + item.image + '" alt="' + name + '" style="width:80px;height:80px;object-fit:cover;border-radius:10px;">' : '<div style="width:80px;height:80px;background:var(--card-bg);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:2rem;">📦</div>';
+                
+                // Calculate item-level discount percentage
+                let itemDiscountBadge = '';
+                if (itemOldPrice > 0 && itemPrice > 0 && itemOldPrice > itemPrice) {
+                    const discountPercent = Math.round(((itemOldPrice - itemPrice) / itemOldPrice) * 100);
+                    itemDiscountBadge = '<span style="background: #dc3545; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">-' + discountPercent + '%</span>';
+                }
 
                 html += `
                     <div class="cart-item" style="display: flex; align-items: center; gap: 20px; padding: 25px; background: var(--card-bg); border-radius: var(--radius); margin-bottom: 20px; border: 1px solid rgba(255,215,0,0.15); box-shadow: var(--shadow);">
@@ -319,9 +329,10 @@
                         <div style="flex: 1;">
                             <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.3rem; margin-bottom: 5px;">${name}</h3>
                             <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 10px;">${t('qty')}: ${item.grade_name || item.weight || ''}</p>
-                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
                         <span style="color: var(--primary-dark); font-weight: 700; font-size: 1.2rem;">${formatPriceCart(item.grade_price || item.base_price)}</span>
                         ${itemOldPrice > 0 ? '<span style="color: #999; text-decoration: line-through; font-size: 0.9rem;">' + formatPriceCart(item.old_price) + '</span>' : ''}
+                        ${itemDiscountBadge}
                     </div>
                         </div>
                     <div style="display: flex; align-items: center; gap: 10px;">
@@ -338,9 +349,15 @@
             // Update summary - only apply admin-set global discount
             // Item price is ALREADY the final discounted price
             const total = subtotal - globalDiscountAmount;
+            
+            // Calculate total savings percentage from original MRP
+            const totalSavingsAmount = totalOldMrp - total;
+            const totalSavingsPercent = totalOldMrp > 0 ? Math.round((totalSavingsAmount / totalOldMrp) * 100) : 0;
+            
             document.getElementById('cartSubtotal').textContent = formatPriceCart('₹' + subtotal.toFixed(2));
             document.getElementById('cartDiscount').textContent = '-' + formatPriceCart('₹' + globalDiscountAmount.toFixed(2));
-            document.getElementById('cartYouSave').textContent = formatPriceCart('₹' + globalDiscountAmount.toFixed(2));
+            document.getElementById('cartYouSave').textContent = formatPriceCart('₹' + totalSavingsAmount.toFixed(2));
+            document.getElementById('cartYouSavePercent').textContent = totalSavingsPercent > 0 ? ' (' + totalSavingsPercent + '%)' : '';
             document.getElementById('cartTotal').textContent = formatPriceCart('₹' + total.toFixed(2));
         }
 

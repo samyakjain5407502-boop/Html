@@ -4,6 +4,16 @@ let siteData = {};
 let products = [];
 let currentLang = localStorage.getItem('jainzee_lang') || 'en';
 
+// Authenticated fetch helper - adds Bearer token if available
+async function authFetch(url, options = {}) {
+    const token = localStorage.getItem('jainzee_token');
+    const headers = { ...(options.headers || {}) };
+    if (token) {
+        headers['Authorization'] = 'Bearer ' + token;
+    }
+    return fetch(url, { ...options, headers });
+}
+
 // Translation dictionary for static UI elements
 const translations = {
     en: {
@@ -303,7 +313,7 @@ async function checkAuthStatus() {
         // Handle customer login - show customer name in header
         if (data.customer_logged_in) {
             // Fetch customer details
-            const customerRes = await fetch('/api/customer/me');
+            const customerRes = await authFetch('/api/customer/me');
             const customerData = await customerRes.json();
             if (customerData.logged_in && customerData.customer) {
                 const customerName = customerData.customer.name;
@@ -344,7 +354,7 @@ async function openMyOrdersModal() {
     ordersList.innerHTML = '<p style="text-align: center; padding: 40px; color: var(--text-light);">Loading orders...</p>';
     
     try {
-        const res = await fetch('/api/my-orders');
+        const res = await authFetch('/api/my-orders');
         if (!res.ok) {
             if (res.status === 401) {
                 ordersList.innerHTML = '<p style="text-align: center; padding: 40px; color: var(--text-light);">Please login to view your orders</p>';
@@ -816,7 +826,7 @@ async function submitReview() {
     }
     
     try {
-        const res = await fetch(`/api/products/${currentReviewProductId}/reviews`, {
+        const res = await authFetch(`/api/products/${currentReviewProductId}/reviews`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ rating, review_text: reviewText })
@@ -951,14 +961,21 @@ function renderProducts() {
                 </div>`;
         }
 
-        // Price display with old price + discount
+        // Price display with old price + dynamic discount percentage
         let priceHtml = '<div class="product-price" id="price-' + p.id + '">' + formatPriceDisplay(p.price) + '</div>';
         if (p.old_price && p.price) {
+            const oldPriceVal = parseFloat(String(p.old_price).replace(/[₹,\s]/g, '')) || 0;
+            const priceVal = parseFloat(String(p.price).replace(/[₹,\s]/g, '')) || 0;
+            let discountText = currentLang === 'hi' ? 'छूट' : 'OFF';
+            if (oldPriceVal > priceVal && priceVal > 0) {
+                const discountPercent = Math.round(((oldPriceVal - priceVal) / oldPriceVal) * 100);
+                discountText = discountPercent + '% OFF';
+            }
             priceHtml = `
                 <div class="product-price-row">
                     <div class="product-price" id="price-${p.id}">${formatPriceDisplay(p.price)}</div>
                     <div class="product-old-price">${formatPriceDisplay(p.old_price)}</div>
-                    <span class="discount-badge">${currentLang === 'hi' ? 'छूट' : 'OFF'}</span>
+                    <span class="discount-badge">${discountText}</span>
                 </div>`;
         }
 
