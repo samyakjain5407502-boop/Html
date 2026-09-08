@@ -10,6 +10,11 @@ from flask import Flask, render_template, jsonify, request, redirect, url_for, s
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import jwt
+from dotenv import load_dotenv
+
+# Load environment variables from .env file if present (local development).
+# In production, set real environment variables in the hosting dashboard.
+load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Allow tests / deployments to override the database location via environment.
