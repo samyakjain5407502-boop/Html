@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coupons & Discounts - Jainzee Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="/static/js/csrf.js"></script>
+</head>
+<body>
+    <header class="admin-header">
+        <div class="brand"><i class="fas fa-seedling"></i><span>Jainzee Admin Panel</span></div>
+        <nav class="admin-nav">
+            <a href="{{ url_for('admin_dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="{{ url_for('admin_orders_page') }}"><i class="fas fa-shopping-cart"></i> Orders</a>
+            <a href="{{ url_for('admin_products_page') }}"><i class="fas fa-box-open"></i> Products & Stock</a>
+            <a href="{{ url_for('admin_coupons_page') }}" class="active"><i class="fas fa-tags"></i> Coupons</a>
+            <a href="{{ url_for('admin_settings_page') }}"><i class="fas fa-cog"></i> Settings</a>
+            <a href="/" target="_blank"><i class="fas fa-external-link-alt"></i> View Site</a>
+            <a href="{{ url_for('admin_logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </nav>
+    </header>
+
+    <main class="admin-content">
+        <h1 class="page-title"><i class="fas fa-tags"></i> Coupon Management</h1>
+
+        <div class="admin-card">
+            <div class="admin-card-header"><h2><i class="fas fa-plus-circle"></i> Create Coupon</h2></div>
+            <div style="padding: 30px;" id="couponForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Coupon Code</label>
+                        <input type="text" id="cpCode" placeholder="e.g. SAVE10" style="text-transform: uppercase;">
+                    </div>
+                    <div class="form-group">
+                        <label>Discount Type</label>
+                        <select id="cpType">
+                            <option value="percent">Percentage (%)</option>
+                            <option value="flat">Flat (₹)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Discount Value</label>
+                        <input type="number" id="cpValue" placeholder="e.g. 10 or 100" min="0" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Expiry Date (optional)</label>
+                        <input type="date" id="cpExpiry">
+                    </div>
+                    <div class="form-group">
+                        <label>Minimum Order Amount (₹)</label>
+                        <input type="number" id="cpMin" placeholder="e.g. 500" min="0" step="0.01" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Usage Limit (0 = unlimited)</label>
+                        <input type="number" id="cpLimit" placeholder="e.g. 100" min="0" step="1" value="0">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="saveCoupon()" style="margin-top: 10px;"><i class="fas fa-save"></i> Create Coupon</button>
+            </div>
+        </div>
+
+        <div class="admin-card" style="margin-top: 20px;">
+            <div class="admin-card-header"><h2><i class="fas fa-list"></i> Existing Coupons</h2></div>
+            <table class="admin-table" style="width:100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="text-align:left; border-bottom:2px solid rgba(184,134,11,0.3);">
+                        <th>Code</th><th>Type</th><th>Value</th><th>Min Order</th><th>Expiry</th><th>Usage</th><th>Status</th><th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="couponsTableBody"><tr><td colspan="8" style="padding:30px; text-align:center; color:#8a7362;">Loading...</td></tr></tbody>
+            </table>
+        </div>
+    </main>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        function showToast(msg, type) {
+            const container = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = 'toast toast-' + (type || 'success');
+            t.textContent = msg;
+            container.appendChild(t);
+            setTimeout(() => t.remove(), 3500);
+        }
+async function loadCoupons() {
+            const tbody = document.getElementById('couponsTableBody');
+            try {
+                const res = await fetch('/admin/api/coupons');
+                if (!res.ok) return;
+                const coupons = await res.json();
+                if (!coupons.length) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="padding:30px; text-align:center; color:#8a7362;">No coupons yet. Create one above.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = coupons.map(c => `
+                    <tr style="border-bottom:1px solid rgba(184,134,11,0.15);">
+                        <td><strong>${c.code}</strong></td>
+                        <td>${c.discount_type === 'flat' ? 'Flat (₹)' : 'Percent (%)'}</td>
+                        <td>${c.discount_type === 'flat' ? '₹' : ''}${c.discount_value}</td>
+                        <td>₹${c.min_order_amount}</td>
+                        <td>${c.expiry_date || '—'}</td>
+                        <td>${c.used_count}/${c.usage_limit > 0 ? c.usage_limit : '∞'}</td>
+                        <td><span style="color:${c.is_active ? '#28a745' : '#dc3545'};">${c.is_active ? 'Active' : 'Inactive'}</span></td>
+                        <td>
+                            <button onclick="toggleCoupon(${c.id}, ${c.is_active})" style="background:none;border:none;cursor:pointer;color:#b8860b;" title="Toggle active"><i class="fas fa-power-off"></i></button>
+                            <button onclick="deleteCoupon(${c.id})" style="background:none;border:none;cursor:pointer;color:#dc3545;" title="Delete"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`).join('');
+            } catch(e) {
+                tbody.innerHTML = '<tr><td colspan="8" style="padding:30px; text-align:center; color:#dc3545;">Failed to load coupons.</td></tr>';
+            }
+        }
+
+        async function saveCoupon() {
+            const code = document.getElementById('cpCode').value.trim().toUpperCase();
+            const discount_type = document.getElementById('cpType').value;
+            const discount_value = document.getElementById('cpValue').value.trim();
+            if (!code || !discount_value) { showToast('Code and value are required', 'error'); return; }
+            const payload = {
+                code, discount_type, discount_value,
+                expiry_date: document.getElementById('cpExpiry').value,
+                min_order_amount: document.getElementById('cpMin').value || '0',
+                usage_limit: parseInt(document.getElementById('cpLimit').value || '0') || 0,
+                is_active: 1
+            };
+            try {
+                const res = await fetch('/admin/api/coupons', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!res.ok) { showToast(data.error || 'Failed', 'error'); return; }
+                showToast('Coupon created');
+                document.getElementById('cpCode').value = '';
+                document.getElementById('cpValue').value = '';
+                loadCoupons();
+            } catch(e) { showToast('Failed to create coupon', 'error'); }
+        }
+
+        async function toggleCoupon(id, currentActive) {
+            try {
+                await fetch('/admin/api/coupons/' + id, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_active: currentActive ? 0 : 1 })
+                });
+                loadCoupons();
+            } catch(e) {}
+        }
+
+        async function deleteCoupon(id) {
+            if (!confirm('Delete this coupon?')) return;
+            try {
+                await fetch('/admin/api/coupons/' + id, { method: 'DELETE' });
+                loadCoupons();
+            } catch(e) {}
+        }
+
+        document.addEventListener('DOMContentLoaded', loadCoupons);
+    </script>
+</body>
+</html>

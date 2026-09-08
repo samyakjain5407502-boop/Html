@@ -432,7 +432,10 @@ async function openMyOrdersModal() {
                         <span style="color: var(--text-light); font-size: 0.9rem;">Total Amount</span>
                         <strong style="color: var(--primary-dark); font-size: 1.2rem;">${order.total}</strong>
                     </div>
-                    <button class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 0.85rem;" onclick="downloadInvoice(${order.id})">
+                    <button class="btn btn-outline" style="width: 100%; padding: 10px; font-size: 0.85rem; margin-top: 8px;" onclick="reorderOrder(${order.id})">
+                        <i class="fas fa-rotate-right"></i> ${currentLang === 'hi' ? 'दोबारा ऑर्डर करें' : 'Add Again / Reorder'}
+                    </button>
+                    <button class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 0.85rem; margin-top: 8px;" onclick="downloadInvoice(${order.id})">
                         <i class="fas fa-download"></i> Download Invoice (PDF)
                     </button>
                 </div>
@@ -467,6 +470,33 @@ function getStatusClass(status) {
             return 'status-cancelled';
         default:
             return 'status-pending';
+    }
+}
+
+// ==================== REORDER (ADD AGAIN) ====================
+
+async function reorderOrder(orderId) {
+    try {
+        const res = await fetch('/api/reorder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: orderId })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            showToast(data.error || 'Could not reorder', 'error');
+            return;
+        }
+        let msg = data.message || 'Items added to cart';
+        if (data.skipped && data.skipped.length) {
+            msg += ' (Some items were skipped: ' + data.skipped[0] + ')';
+        }
+        showToast(msg);
+        updateCartCount();
+        closeMyOrdersModal && closeMyOrdersModal();
+    } catch (e) {
+        console.error('Reorder failed:', e);
+        showToast('Could not reorder. Please try again.', 'error');
     }
 }
 
@@ -914,6 +944,95 @@ function formatPriceDisplay(price) {
     return '₹' + num.toLocaleString('en-IN');
 }
 
+// ==================== PRODUCT SEARCH & FILTERS ====================
+
+// Returns the products that match the current search box / price range /
+// in-stock / wishlist filters. With no filters active, returns all products.
+function getFilteredProducts() {
+    const searchEl = document.getElementById('productSearch');
+    const minEl = document.getElementById('filterMinPrice');
+    const maxEl = document.getElementById('filterMaxPrice');
+    const inStockEl = document.getElementById('filterInStock');
+    const wishlistEl = document.getElementById('filterWishlist');
+
+    const query = searchEl ? searchEl.value.trim().toLowerCase() : '';
+    const minPrice = minEl ? parseFloat(minEl.value) : NaN;
+    const maxPrice = maxEl ? parseFloat(maxEl.value) : NaN;
+    const inStockOnly = !!(inStockEl && inStockEl.checked);
+    const wishlistOnly = !!(wishlistEl && wishlistEl.checked);
+
+    if (!query && isNaN(minPrice) && isNaN(maxPrice) && !inStockOnly && !wishlistOnly) {
+        return products;
+    }
+
+    return products.filter(p => {
+        // Search by name (English + Hindi)
+        if (query) {
+            const haystack = ((p.name_en || '') + ' ' + (p.name_hi || '')).toLowerCase();
+            if (!haystack.includes(query)) return false;
+        }
+        // Price range (uses the base selling price)
+        const price = parseFloat(String(p.price || '').replace(/[₹,\s]/g, ''));
+        if (!isNaN(minPrice) && !(price >= minPrice)) return false;
+        if (!isNaN(maxPrice) && !(price <= maxPrice)) return false;
+        // In-stock only
+        if (inStockOnly && (parseInt(p.stock) || 0) <= 0) return false;
+        // Wishlist only
+        if (wishlistOnly && !wishlistProductIds.includes(p.id)) return false;
+        return true;
+    });
+}
+
+function setupProductFilters() {
+    ['productSearch', 'filterMinPrice', 'filterMaxPrice', 'filterInStock', 'filterWishlist'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const evt = (el.type === 'checkbox' || el.tagName === 'SELECT') ? 'change' : 'input';
+        el.addEventListener(evt, renderProducts);
+    });
+}
+
+// ==================== WISHLIST ====================
+
+let wishlistProductIds = [];
+
+async function loadWishlistIds() {
+    try {
+        const res = await fetch('/api/wishlist');
+        if (!res.ok) { wishlistProductIds = []; return; }
+        const data = await res.json();
+        wishlistProductIds = data.product_ids || [];
+        renderProducts();  // refresh hearts
+    } catch (e) { /* not logged in or offline - ignore */ }
+}
+
+async function toggleWishlist(productId, event) {
+    if (event) event.stopPropagation();
+    try {
+        const res = await fetch('/api/wishlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ product_id: productId })
+        });
+        const data = await res.json();
+        if (res.status === 401) {
+            showToast('Please login to use the wishlist', 'error');
+            return;
+        }
+        if (data.in_wishlist !== undefined) {
+            if (data.in_wishlist) {
+                if (!wishlistProductIds.includes(productId)) wishlistProductIds.push(productId);
+            } else {
+                wishlistProductIds = wishlistProductIds.filter(id => id !== productId);
+            }
+            showToast(data.message || 'Wishlist updated');
+            renderProducts();
+        }
+    } catch (e) {
+        console.error('Wishlist toggle failed:', e);
+    }
+}
+
 function renderProducts() {
     const grid = document.getElementById('productsGrid');
     if (!grid) return;
@@ -942,12 +1061,19 @@ function renderProducts() {
     }
 
     // API finished successfully - only now is it valid to show an empty state
+    const visibleProducts = getFilteredProducts();
+
     if (!products.length) {
         grid.innerHTML = '<p class="no-products">' + (currentLang === 'hi' ? 'कोई उत्पाद नहीं मिला' : 'No products found') + '</p>';
         return;
     }
 
-    products.forEach((p, index) => {
+    if (!visibleProducts.length) {
+        grid.innerHTML = '<p class="no-products">' + (currentLang === 'hi' ? 'कोई उत्पाद फ़िल्टर से मेल नहीं खाता' : 'No products match your search or filters') + '</p>';
+        return;
+    }
+
+    visibleProducts.forEach((p, index) => {
         const card = document.createElement('div');
         card.className = 'product-card';
         card.style.animationDelay = (index * 0.1) + 's';
@@ -1012,7 +1138,7 @@ function renderProducts() {
                 <div class="grade-selector">
                     <label>${gradeLabel}</label>
                     <select class="grade-select" onchange="updateGradePrice(this, ${p.id})">
-                        ${grades.map((g, i) => `<option value="${i}" ${i === 0 ? 'selected' : ''}>${g.name} - ${g.price}</option>`).join('')}
+                        ${grades.map((g, i) => `<option value="${i}" ${i === 0 ? 'selected' : ''}>${escapeHtml(g.name)} - ${escapeHtml(String(g.price))}</option>`).join('')}
                     </select>
                 </div>`;
         }
@@ -1059,12 +1185,17 @@ function renderProducts() {
                 <span class="product-badge">${currentLang === 'hi' ? 'प्रीमियम' : 'Premium'}</span>
             </div>
             <div class="product-info">
-                <h3 onclick="openProductModal(${JSON.stringify(p).replace(/"/g, '"')})" style="cursor: pointer;">${name}</h3>
+                <h3 onclick="openProductModal(${JSON.stringify(p).replace(/"/g, '&quot;')})" style="cursor: pointer; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                    <span>${escapeHtml(name)}</span>
+                    <button type="button" class="wishlist-heart" title="Add to Wishlist" style="background: none; border: none; cursor: pointer; font-size: 1.1rem; color: ${wishlistProductIds.includes(p.id) ? '#D4AC0D' : '#bbb'}; padding: 2px;" onclick="toggleWishlist(${p.id}, event)">
+                        <i class="${wishlistProductIds.includes(p.id) ? 'fas' : 'far'} fa-heart"></i>
+                    </button>
+                </h3>
                 ${priceHtml}
-                <div class="product-weight"><i class="fas fa-box"></i> ${p.weight || ''}</div>
+                <div class="product-weight"><i class="fas fa-box"></i> ${escapeHtml(p.weight || '')}</div>
                 ${gradeHtml}
                 ${videoHtml}
-                <p class="product-desc">${desc || ''}</p>
+                <p class="product-desc">${escapeHtml(desc || '')}</p>
                 ${stockHtml}
                 
                 <!-- Compact Rating Box -->
@@ -1301,6 +1432,10 @@ function init() {
 
     // Load saved settings (video, discount, QR) - ensures persistence after refresh
     loadSiteSettings();
+
+    // Product search / filters + wishlist hearts
+    setupProductFilters();
+    loadWishlistIds();
 
     // Load data
     fetchSiteData().then(() => fetchProducts());

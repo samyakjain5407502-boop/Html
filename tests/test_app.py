@@ -234,3 +234,156 @@ def test_public_api_does_not_leak_private_settings(client):
     assert 'password_hash' not in data
     assert 'shop_name_en' in data  # safe shop details still available
 
+
+# ---------------- COUPON & SHIPPING ----------------
+
+def make_coupon(app, code='SAVE10', dtype='percent', value='10', min_amt='0', limit=0, active=1):
+    conn = app.get_db()
+    conn.execute(
+        'INSERT INTO coupons (code, discount_type, discount_value, min_order_amount, usage_limit, is_active) VALUES (?,?,?,?,?,?)',
+        (code, dtype, value, min_amt, limit, active))
+    conn.commit()
+    conn.close()
+
+
+def test_coupon_valid_and_checkout(client):
+    app, c = client
+    register_and_login(c)
+    make_coupon(app, 'SAVE10', 'percent', '10')
+    add_to_cart(c, 1, 1)
+
+    r = c.post('/api/coupon/validate', json={'coupon_code': 'SAVE10'})
+    assert r.status_code == 200
+    assert r.get_json()['valid'] is True
+
+    r = checkout(c, payment='cod')  # without coupon
+    assert r.status_code == 200
+
+    # Now checkout with a coupon and verify usage + discount snapshot
+    add_to_cart(c, 1, 1)
+    r = c.post('/api/checkout', json={
+        'name': 'Test User', 'phone': '9999990001', 'address': '1 Test Road, Indore',
+        'payment_method': 'cod', 'coupon_code': 'SAVE10'})
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data['coupon_discount'] > 0
+
+    conn = app.get_db()
+    used = conn.execute("SELECT used_count FROM coupons WHERE code='SAVE10'").fetchone()['used_count']
+    order = conn.execute("SELECT * FROM orders WHERE id=? ORDER BY id DESC LIMIT 1", (1,)).fetchall()
+    conn.close()
+    assert used >= 1
+    # Shipping setting default is 50
+    assert data['shipping'] >= 0
+
+
+def test_coupon_min_order_and_limit(client):
+    app, c = client
+    register_and_login(c)
+    make_coupon(app, 'MIN100', 'flat', '20', '5000', limit=1)
+    add_to_cart(c, 1, 1)
+    r = c.post('/api/coupon/validate', json={'coupon_code': 'MIN100'})
+    assert r.status_code == 400  # below minimum order
+
+
+def test_invalid_payment_method_rejected(client):
+    app, c = client
+    register_and_login(c)
+    add_to_cart(c, 1, 1)
+    r = c.post('/api/checkout', json={
+        'name': 'Test User', 'phone': '9999990001', 'address': 'A', 'payment_method': 'credit'})
+    assert r.status_code == 400
+
+
+# ---------------- WISHLIST & REORDER ----------------
+
+def test_wishlist_requires_login(client):
+    _, c = client
+    r = c.post('/api/wishlist', json={'product_id': 1})
+    assert r.status_code == 401
+
+
+def test_wishlist_add_toggle_and_list(client):
+    app, c = client
+    register_and_login(c)
+    r = c.post('/api/wishlist', json={'product_id': 1})
+    assert r.status_code == 201
+    r = c.get('/api/wishlist')
+    data = r.get_json()
+    assert 1 in data['product_ids']
+    # toggle off
+    r = c.post('/api/wishlist', json={'product_id': 1})
+    assert r.get_json()['in_wishlist'] is False
+
+
+def test_reorder_adds_to_cart(client):
+    app, c = client
+    register_and_login(c)
+    add_to_cart(c, 1, 2)
+    r = checkout(c)
+    order_id = r.get_json()['order_id']
+    r = c.post('/api/reorder', json={'order_id': order_id})
+    assert r.status_code == 200
+    assert r.get_json()['added'] == 2
+    # Cart now has 2 again
+    assert c.get('/api/cart/count').get_json()['count'] == 2
+
+
+# ---------------- REVIEW RESTRICTIONS ----------------
+
+def test_one_review_per_product_with_edit_delete(client):
+    app, c = client
+    register_and_login(c)
+    r = c.post('/api/products/1/reviews', json={'rating': 5, 'review_text': 'Great!'})
+    assert r.status_code == 201
+    # Second review rejected
+    r = c.post('/api/products/1/reviews', json={'rating': 4, 'review_text': 'Again'})
+    assert r.status_code == 400
+    # Edit own review
+    r = c.put('/api/products/1/reviews', json={'rating': 3, 'review_text': 'Edited'})
+    assert r.status_code == 200
+    # Delete own review
+    r = c.delete('/api/products/1/reviews')
+    assert r.status_code == 200
+    # Can review again after delete
+    r = c.post('/api/products/1/reviews', json={'rating': 5, 'review_text': 'New'})
+    assert r.status_code == 201
+
+
+# ---------------- ADMIN DASHBOARD, HEALTH & ERRORS ----------------
+
+def test_health_endpoint(client):
+    _, c = client
+    r = c.get('/health')
+    assert r.status_code == 200
+    assert r.get_json()['status'] == 'ok'
+
+
+def test_admin_stats_and_coupons_require_login(client):
+    _, c = client
+    assert c.get('/admin/api/stats').status_code == 401
+    assert c.get('/admin/api/coupons').status_code == 401
+
+
+def test_admin_coupon_crud(client):
+    app, c = client
+    admin_login(c)
+    r = c.post('/admin/api/coupons', json={'code': 'WELCOME', 'discount_type': 'percent',
+                                           'discount_value': '15', 'min_order_amount': '0',
+                                           'usage_limit': '50', 'is_active': 1})
+    assert r.status_code == 201
+    cid = r.get_json()['id']
+    r = c.get('/admin/api/coupons')
+    assert any(x['code'] == 'WELCOME' for x in r.get_json())
+    r = c.delete(f'/admin/api/coupons/{cid}')
+    assert r.status_code == 200
+
+
+def test_error_pages(client):
+    _, c = client
+    r = c.get('/this-page-does-not-exist')
+    assert r.status_code == 404
+    assert 'error.html' in r.get_data(as_text=True) or 'home' in r.get_data(as_text=True).lower()
+    r = c.get('/api/nonexistent')
+    assert r.get_json()['error'] == 'Not found'
+

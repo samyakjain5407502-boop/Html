@@ -187,6 +187,25 @@
                             <span id="checkoutDiscount" style="color: #4ade80;">-₹0</span>
                         </div>
 
+                        <!-- Coupon code -->
+                        <div style="padding: 12px 0; border-bottom: 1px solid rgba(255,215,0,0.1);">
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="couponInput" placeholder="Coupon code"
+                                       style="flex: 1; padding: 10px; border: 1px solid rgba(255,215,0,0.3); border-radius: 8px; background: #1e1e1e; color: #fff; text-transform: uppercase; font-size: 0.9rem;">
+                                <button type="button" id="couponApplyBtn" onclick="applyCoupon()"
+                                        style="padding: 10px 16px; background: linear-gradient(135deg, #FFD700 0%, #D4AC0D 100%); color: #121212; font-weight: 700; border: none; border-radius: 8px; cursor: pointer;">
+                                    Apply
+                                </button>
+                            </div>
+                            <div id="couponMsg" style="font-size: 0.8rem; margin-top: 6px; color: #4ade80; display: none;"></div>
+                        </div>
+
+                        <!-- Shipping charge -->
+                        <div class="summary-row" style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,215,0,0.1);">
+                            <span>Shipping Charge</span>
+                            <span id="checkoutShipping">₹0</span>
+                        </div>
+
                         <div class="summary-row" style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,215,0,0.1);">
                             <span data-i18n="you_save">You Save</span>
                             <span id="checkoutYouSave" style="color: #f87171;">₹0</span>
@@ -413,6 +432,9 @@
         }
 
         let globalDiscountPercent = 0;
+        let shippingCharge = 0;
+        let freeShippingMin = 0;
+        let appliedCoupon = null; // {code, discount}
 
         async function loadGlobalDiscount() {
             try {
@@ -420,9 +442,49 @@
                 const data = await res.json();
                 // Use global_discount_percent (fallback to legacy global_discount)
                 globalDiscountPercent = parseFloat(String(data.global_discount_percent || data.global_discount || '0').replace('%', '')) || 0;
+                shippingCharge = parseFloat(String(data.shipping_charge || '0').replace(/[₹,\s]/g, '')) || 0;
+                freeShippingMin = parseFloat(String(data.free_shipping_min || '0').replace(/[₹,\s]/g, '')) || 0;
             } catch(e) {
                 console.error('Failed to load discount:', e);
                 globalDiscountPercent = 0;
+            }
+        }
+
+        async function applyCoupon() {
+            const input = document.getElementById('couponInput');
+            const msg = document.getElementById('couponMsg');
+            const code = (input.value || '').trim().toUpperCase();
+            msg.style.display = 'none';
+            if (!code) {
+                appliedCoupon = null;
+                await renderCheckoutItems();
+                return;
+            }
+            try {
+                const res = await fetch('/api/coupon/validate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ coupon_code: code })
+                });
+                const data = await res.json();
+                if (!data.valid) {
+                    appliedCoupon = null;
+                    msg.style.color = '#f87171';
+                    msg.textContent = data.error || 'Invalid coupon';
+                    msg.style.display = 'block';
+                    await renderCheckoutItems();
+                    return;
+                }
+                appliedCoupon = { code: data.code, discount: data.discount, description: data.description };
+                msg.style.color = '#4ade80';
+                msg.textContent = '✓ ' + data.code + ' applied - ' + data.description;
+                msg.style.display = 'block';
+                await renderCheckoutItems();
+            } catch (e) {
+                appliedCoupon = null;
+                msg.style.color = '#f87171';
+                msg.textContent = 'Could not validate coupon. Please try again.';
+                msg.style.display = 'block';
             }
         }
 
@@ -468,11 +530,15 @@
             itemsEl.innerHTML = html;
 
             // Apply ONLY admin-set global discount (item price is already final)
-            const total = subtotal - globalDiscountAmount;
+            const couponDiscount = appliedCoupon ? Math.min(appliedCoupon.discount, subtotal) : 0;
+            const amountBeforeShipping = subtotal - globalDiscountAmount - couponDiscount;
+            const effectiveShipping = (shippingCharge > 0 && freeShippingMin > 0 && amountBeforeShipping >= freeShippingMin) ? 0 : shippingCharge;
+            const total = amountBeforeShipping + effectiveShipping;
 
             document.getElementById('checkoutSubtotal').textContent = formatPriceCheckout('₹' + subtotal.toFixed(2));
-            document.getElementById('checkoutDiscount').textContent = '-' + formatPriceCheckout('₹' + globalDiscountAmount.toFixed(2));
-            document.getElementById('checkoutYouSave').textContent = formatPriceCheckout('₹' + globalDiscountAmount.toFixed(2));
+            document.getElementById('checkoutDiscount').textContent = '-' + formatPriceCheckout('₹' + (globalDiscountAmount + couponDiscount).toFixed(2));
+            document.getElementById('checkoutYouSave').textContent = formatPriceCheckout('₹' + (globalDiscountAmount + couponDiscount).toFixed(2));
+            document.getElementById('checkoutShipping').textContent = effectiveShipping > 0 ? formatPriceCheckout('₹' + effectiveShipping.toFixed(2)) : 'FREE';
             document.getElementById('checkoutTotal').textContent = formatPriceCart('₹' + total.toFixed(2));
         };
 
@@ -509,7 +575,8 @@
                         name: name,
                         phone: phone,
                         address: address,
-                        payment_method: paymentMethod
+                        payment_method: paymentMethod,
+                        coupon_code: appliedCoupon ? appliedCoupon.code : ''
                     })
                 });
                 const data = await res.json();

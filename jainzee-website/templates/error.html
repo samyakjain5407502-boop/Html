@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Jainzee</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="/static/js/csrf.js"></script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #121212;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            text-align: center;
+        }
+        .error-box { max-width: 480px; padding: 40px; }
+        .error-code {
+            font-size: 6rem;
+            font-weight: 800;
+            color: #FFD700;
+            margin: 0;
+            line-height: 1;
+        }
+        .error-box h1 { font-size: 1.6rem; margin: 16px 0 8px; }
+        .error-box p { color: #b3b3b3; margin-bottom: 28px; }
+        .error-btn {
+            display: inline-block;
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #FFD700 0%, #D4AC0D 100%);
+            color: #121212;
+            font-weight: 700;
+            border-radius: 8px;
+            text-decoration: none;
+        }
+        .divider { width: 80px; height: 3px; background: #D4AC0D; margin: 20px auto; border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <div class="error-box">
+        <p class="error-code">{{ code }}</p>
+        <div class="divider"></div>
+        <h1>{{ title }}</h1>
+        <p>{{ message }}</p>
+        <a href="/" class="error-btn"><i class="fas fa-home"></i> Back to Home</a>
+    </div>
+</body>
+</html>

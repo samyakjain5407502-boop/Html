@@ -522,6 +522,8 @@ async function loadSettings() {
         setVal('sUpiId', data.upi_id || '');
         setVal('sGstin', data.gstin || '');
         setVal('sTaxPercent', data.tax_percent || '');
+        setVal('sShippingCharge', data.shipping_charge || '50');
+        setVal('sFreeShippingMin', data.free_shipping_min || '1000');
         
         // UPI QR Code preview (Base64 permanent storage)
         if (data.upi_qr_data) {
@@ -570,7 +572,9 @@ async function saveSettings() {
         global_discount_percent: document.getElementById('sGlobalDiscount').value.trim(),
         upi_id: document.getElementById('sUpiId').value.trim(),
         gstin: document.getElementById('sGstin') ? document.getElementById('sGstin').value.trim() : '',
-        tax_percent: document.getElementById('sTaxPercent') ? document.getElementById('sTaxPercent').value.trim() : ''
+        tax_percent: document.getElementById('sTaxPercent') ? document.getElementById('sTaxPercent').value.trim() : '',
+        shipping_charge: document.getElementById('sShippingCharge') ? document.getElementById('sShippingCharge').value.trim() : '50',
+        free_shipping_min: document.getElementById('sFreeShippingMin') ? document.getElementById('sFreeShippingMin').value.trim() : '1000'
     };
 
     const formData = new FormData();

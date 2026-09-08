@@ -58,11 +58,15 @@ python app.py
 |---|---|
 | `SECRET_KEY` | Session/JWT signing key. **Required in production** (e.g. `python -c "import secrets; print(secrets.token_hex(32))"`). |
 | `ADMIN_PASSWORD` | Admin panel password. Generated randomly (printed once to console) if not set. |
-| `JAINZEE_DB_PATH` | Optional override of the SQLite database location (used by the test suite). |
+| `DATABASE_URL` | **PostgreSQL connection string** (e.g. `postgresql://user:pass@host:5432/db`). If set, the app uses Postgres. Omit for local SQLite. |
+| `JAINZEE_DB_PATH` | Optional override of the SQLite database location (used by the test suite). Ignored when PostgreSQL is in use. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Optional - enables Google Sign-In for customers. |
 | `PORT` | Optional - server port (default 5000). |
 
-Example (PowerShell): `$env:SECRET_KEY="..."; $env:ADMIN_PASSWORD="..."; python app.py`
+Example (PowerShell):
+```powershell
+$env:SECRET_KEY="..."; $env:ADMIN_PASSWORD="..."; $env:DATABASE_URL="postgresql://..."; python app.py
+```
 
 ## 🧪 Tests
 
@@ -71,6 +75,25 @@ Tests run against a **temporary SQLite database** (never the production DB):
 ```bash
 python -m pytest tests/ -v
 ```
+
+## 💾 Backups
+
+SQLite backup (safe, online, keeps last 30 copies in `backups/`):
+```bash
+python scripts/backup_db.py
+```
+For PostgreSQL, use `pg_dump "$DATABASE_URL" > backups/jainzee_$(date +%F_%H%M%S).sql`.
+
+## ❤️ Customer features
+- Product **search** by name + filters (price range, in-stock, wishlist).
+- **Wishlist** for logged-in customers.
+- **Coupons** (managed in Admin → Coupons) with percentage/flat discount, expiry, min order, usage limits.
+- **Reorder** / "Add Again" in My Orders.
+- **One review per customer per product**, with edit/delete.
+- **Shipping** charges with a free-shipping threshold (Admin → Settings).
+
+## Admin dashboard
+Shows total sales, total/pending/delivered orders, low-stock count, a recent-orders list, and a low-stock warning list.
 
 ## ☁️ Deploy to Render (Free)
 

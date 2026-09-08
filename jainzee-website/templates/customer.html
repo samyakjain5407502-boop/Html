@@ -395,11 +395,31 @@
                         <p style="font-size: 0.8rem; color: #8a7362; margin-top: 10px;">
                             <i class="fas fa-calendar"></i> ${order.created_at}
                         </p>
+                        <button type="button" style="width: 100%; margin-top: 10px; padding: 10px; border: 1px solid #b8860b; background: transparent; color: #b8860b; border-radius: 8px; font-weight: 600; cursor: pointer;" onclick="reorderFromPanel(${order.id})">
+                            <i class="fas fa-rotate-right"></i> Add Again / Reorder
+                        </button>
                     `;
                     grid.appendChild(card);
                 });
             } catch (e) {
                 console.error('Failed to load orders:', e);
+            }
+        }
+
+        async function reorderFromPanel(orderId) {
+            try {
+                const res = await fetch('/api/reorder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order_id: orderId })
+                });
+                const data = await res.json();
+                if (!res.ok) { alert(data.error || 'Could not reorder'); return; }
+                let msg = data.message || 'Items added to cart';
+                if (data.skipped && data.skipped.length) msg += ' (Some items were skipped)';
+                if (confirm(msg + '. Go to cart now?')) window.location.href = '/cart';
+            } catch (e) {
+                console.error('Reorder failed:', e);
             }
         }
 
