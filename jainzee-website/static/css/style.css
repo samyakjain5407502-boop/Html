@@ -1292,6 +1292,52 @@ body {
     color: var(--text-light);
 }
 
+/* ===== PRODUCTS LOADING / ERROR STATES ===== */
+.products-loading {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-light);
+}
+
+.products-loading p {
+    margin-top: 18px;
+    font-size: 1.05rem;
+    letter-spacing: 0.3px;
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto;
+    border: 4px solid rgba(212, 172, 13, 0.25);
+    border-top-color: #D4AC0D;
+    border-radius: 50%;
+    animation: jainzee-spin 0.9s linear infinite;
+}
+
+@keyframes jainzee-spin {
+    to { transform: rotate(360deg); }
+}
+
+.products-error {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-light);
+}
+
+.products-error i {
+    font-size: 2.2rem;
+    color: #D4AC0D;
+    margin-bottom: 14px;
+    display: block;
+}
+
+.products-error p {
+    font-size: 1.05rem;
+}
+
 /* ===== CHECKOUT PAGE ===== */
 .checkout-section {
     padding: 140px 0 80px;

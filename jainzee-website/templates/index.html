@@ -10,7 +10,7 @@
     <meta property="og:description" content="Shop pure & premium dry fruits, nuts, and dry fruit powders from Siyaganj, Indore. Best quality almonds, cashews, pistachios, walnuts and more at the best prices." />
     <meta property="og:image" content="{{ url_for('static', filename='images/og-image.png') }}" />
     <meta property="og:type" content="website" />
-    <title>Jainzee Food Processing Industries</title>
+    <title>Jainzee Food Processing Industries - Dry Fruits</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=5.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Mukta:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -157,7 +157,11 @@
                 <p data-i18n="products_subtitle">Handpicked, hygienically processed & premium quality dry fruits</p>
             </div>
             <div class="products-grid" id="productsGrid">
-                <!-- Products loaded from API -->
+                <!-- Shown instantly on page open, replaced once the products API responds -->
+                <div class="products-loading" id="productsLoading">
+                    <div class="loading-spinner"></div>
+                    <p data-i18n="products_loading">Loading premium products...</p>
+                </div>
             </div>
         </div>
     </section>

@@ -2,6 +2,12 @@
 
 let siteData = {};
 let products = [];
+// Product loading state machine:
+//  - productsLoaded=false  -> still fetching, show a loading spinner
+//  - productsLoaded=true   -> API finished (render list or "No products found")
+//  - productsLoadFailed=true -> API errored, show a retry message
+let productsLoaded = false;
+let productsLoadFailed = false;
 let currentLang = localStorage.getItem('jainzee_lang') || 'en';
 
 // Authenticated fetch helper - adds Bearer token if available
@@ -67,7 +73,8 @@ const translations = {
         'edit_website': 'Edit Website',
         'customer_login': 'Customer Login',
         'share_whatsapp': 'Share',
-        'cart_title': 'Cart'
+        'cart_title': 'Cart',
+        'products_loading': 'Loading premium products...'
     },
     hi: {
         'nav_home': 'होम',
@@ -109,7 +116,8 @@ const translations = {
         'edit_website': 'वेबसाइट एडिट करें',
         'customer_login': 'ग्राहक लॉगिन',
         'share_whatsapp': 'शेयर करें',
-        'cart_title': 'कार्ट'
+        'cart_title': 'कार्ट',
+        'products_loading': 'प्रीमियम उत्पाद लोड हो रहे हैं...'
     }
 };
 
@@ -569,10 +577,17 @@ async function loadSiteSettings() {
 async function fetchProducts() {
     try {
         const res = await fetch('/api/products');
+        if (!res.ok) throw new Error('Products API returned ' + res.status);
         products = await res.json();
+        productsLoadFailed = false;
+        productsLoaded = true;
         renderProducts();
     } catch (e) {
         console.error('Failed to load products:', e);
+        // Only show the error state if the API truly failed
+        productsLoadFailed = true;
+        productsLoaded = true;
+        renderProducts();
     }
 }
 
@@ -586,7 +601,13 @@ function applySiteData() {
     setText('mobileMenuTitle', currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en);
     setText('footerShopName', currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en);
     setText('footerName', currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en);
-    document.title = (currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en) + ' - Dry Fruits';
+    // Only update the page title when a VALID shop name exists.
+    // Never allow "undefined" or empty values to replace the default title.
+    const shopNameForTitle = currentLang === 'hi' ? siteData.shop_name_hi : siteData.shop_name_en;
+    if (shopNameForTitle && typeof shopNameForTitle === 'string' &&
+        shopNameForTitle.trim() !== '' && shopNameForTitle !== 'undefined') {
+        document.title = shopNameForTitle.trim() + ' - Dry Fruits';
+    }
 
     // Tagline
     setText('heroTagline', currentLang === 'hi' ? siteData.tagline_hi : siteData.tagline_en);
@@ -898,6 +919,29 @@ function renderProducts() {
     if (!grid) return;
     grid.innerHTML = '';
 
+    // Still loading - keep the clean loading spinner (never show "No products found" here)
+    if (!productsLoaded) {
+        grid.innerHTML =
+            '<div class="products-loading">' +
+                '<div class="loading-spinner"></div>' +
+                '<p>' + (currentLang === 'hi' ? 'प्रीमियम उत्पाद लोड हो रहे हैं...' : 'Loading premium products...') + '</p>' +
+            '</div>';
+        return;
+    }
+
+    // API request failed - show a clear retry message
+    if (productsLoadFailed) {
+        grid.innerHTML =
+            '<div class="products-error">' +
+                '<i class="fas fa-triangle-exclamation"></i>' +
+                '<p>' + (currentLang === 'hi'
+                    ? 'उत्पाद लोड करने में असमर्थ। कृपया पेज रीफ्रेश करें और दोबारा प्रयास करें।'
+                    : 'Unable to load products. Please refresh and try again.') + '</p>' +
+            '</div>';
+        return;
+    }
+
+    // API finished successfully - only now is it valid to show an empty state
     if (!products.length) {
         grid.innerHTML = '<p class="no-products">' + (currentLang === 'hi' ? 'कोई उत्पाद नहीं मिला' : 'No products found') + '</p>';
         return;
