@@ -14,6 +14,17 @@ async function authFetch(url, options = {}) {
     return fetch(url, { ...options, headers });
 }
 
+// XSS-safety helper: escape user/admin-supplied text before any HTML use.
+function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // Translation dictionary for static UI elements
 const translations = {
     en: {
@@ -512,12 +523,12 @@ async function fetchSiteData() {
 }
 
 // Load saved settings on page init - ensures persistence after refresh
+// Uses the PUBLIC whitelisted settings endpoint (/api/site) - no admin data.
 async function loadSiteSettings() {
     try {
-        const res = await fetch('/admin/api/settings');
-        const result = await res.json();
-        if (!result.success) return;
-        const settings = result.data || {};
+        const res = await fetch('/api/site');
+        if (!res.ok) return;
+        const settings = await res.json();
 
         // Apply homepage video URL
         if (settings.homepage_video_url) {
@@ -687,11 +698,11 @@ async function loadProductReviews(productId) {
             html += `
                 <div class="review-item">
                     <div class="review-header">
-                        <span class="review-author">${review.customer_name}</span>
+                        <span class="review-author">${escapeHtml(review.customer_name)}</span>
                         <span class="review-date">${new Date(review.created_at).toLocaleDateString()}</span>
                     </div>
                     <div class="review-rating">${generateStars(review.rating)}</div>
-                    ${review.review_text ? `<p class="review-text">${review.review_text}</p>` : ''}
+                    ${review.review_text ? `<p class="review-text">${escapeHtml(review.review_text)}</p>` : ''}
                 </div>
             `;
         });
@@ -760,11 +771,11 @@ async function loadReviewsIntoModal(productId) {
             html += `
                 <div class="review-item">
                     <div class="review-header">
-                        <span class="review-author">${review.customer_name}</span>
+                        <span class="review-author">${escapeHtml(review.customer_name)}</span>
                         <span class="review-date">${new Date(review.created_at).toLocaleDateString()}</span>
                     </div>
                     <div class="review-rating">${generateStars(review.rating)}</div>
-                    ${review.review_text ? `<p class="review-text">${review.review_text}</p>` : ''}
+                    ${review.review_text ? `<p class="review-text">${escapeHtml(review.review_text)}</p>` : ''}
                 </div>
             `;
         });
@@ -1276,7 +1287,9 @@ async function loadGeneralMedia() {
         const media = await res.json();
         
         if (!media.length) {
-            mediaContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: var(--text-light); grid-column: 1 / -1;">No media uploaded yet. Check back soon!</p>';
+            // No real media exists - hide the whole factory/company media section
+            const section = document.getElementById('factoryMedia');
+            if (section) section.style.display = 'none';
             return;
         }
         
@@ -1287,12 +1300,12 @@ async function loadGeneralMedia() {
             
             let mediaHtml = '';
             if (m.type === 'video') {
-                mediaHtml = '<video controls preload="metadata" style="width:100%; height:300px; object-fit:cover;"><source src="' + m.url + '" type="video/mp4">Your browser does not support video.</video>';
+                mediaHtml = '<video controls preload="metadata" style="width:100%; height:300px; object-fit:cover;"><source src="' + escapeHtml(m.url) + '" type="video/mp4">Your browser does not support video.</video>';
             } else {
-                mediaHtml = '<img src="' + m.url + '" alt="' + (m.title || 'Company Photo') + '" style="width:100%; height:300px; object-fit:cover;">';
+                mediaHtml = '<img src="' + escapeHtml(m.url) + '" alt="' + escapeHtml(m.title || 'Company Photo') + '" style="width:100%; height:300px; object-fit:cover;">';
             }
             
-            card.innerHTML = mediaHtml + '<div class="media-card-caption"><h4>' + (m.title || 'Untitled') + '</h4><p>' + (m.category === 'factory' ? 'Factory Video' : 'Company Photo') + '</p></div>';
+            card.innerHTML = mediaHtml + '<div class="media-card-caption"><h4>' + escapeHtml(m.title || 'Untitled') + '</h4><p>' + (m.category === 'factory' ? 'Factory Video' : 'Company Photo') + '</p></div>';
             mediaContainer.appendChild(card);
         });
     } catch(e) {

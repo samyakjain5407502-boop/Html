@@ -48,8 +48,29 @@ python app.py
 ## 🔑 Admin Login
 
 - **URL:** `http://localhost:5000/admin`
-- **Default Password:** `jainzee123`
+- **Password:** set the `ADMIN_PASSWORD` environment variable before starting the app.
+- If `ADMIN_PASSWORD` is not set, a strong random password is generated and printed **once** to the server console on first start.
 - ⚠️ **Change the password after first login** (Settings page)
+
+## 🔐 Environment Variables (required before deployment)
+
+| Variable | Purpose |
+|---|---|
+| `SECRET_KEY` | Session/JWT signing key. **Required in production** (e.g. `python -c "import secrets; print(secrets.token_hex(32))"`). |
+| `ADMIN_PASSWORD` | Admin panel password. Generated randomly (printed once to console) if not set. |
+| `JAINZEE_DB_PATH` | Optional override of the SQLite database location (used by the test suite). |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Optional - enables Google Sign-In for customers. |
+| `PORT` | Optional - server port (default 5000). |
+
+Example (PowerShell): `$env:SECRET_KEY="..."; $env:ADMIN_PASSWORD="..."; python app.py`
+
+## 🧪 Tests
+
+Tests run against a **temporary SQLite database** (never the production DB):
+
+```bash
+python -m pytest tests/ -v
+```
 
 ## ☁️ Deploy to Render (Free)
 

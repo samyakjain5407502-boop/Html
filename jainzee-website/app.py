@@ -1,22 +1,31 @@
 import os
 import re
 import json
+import secrets
 import sqlite3
 from datetime import timedelta, datetime
 from functools import wraps
-from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash, send_from_directory
+from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash, send_from_directory, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import jwt
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, 'jainzee.db')
+# Allow tests / deployments to override the database location via environment.
+DB_PATH = os.environ.get('JAINZEE_DB_PATH', os.path.join(BASE_DIR, 'jainzee.db'))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'mp4', 'webm', 'mov', 'avi'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'mov', 'avi'}
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'jainzee_permanent_secret_key_2026')
+# SECURITY: SECRET_KEY must come from the environment. In development (no
+# SECRET_KEY set) a random key is generated for the current process; set
+# SECRET_KEY in production so sessions survive restarts.
+app.secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
+if not os.environ.get('SECRET_KEY'):
+    print('[WARNING] SECRET_KEY environment variable is not set. '
+          'Using a random temporary key - sessions will not survive restarts. '
+          'Set SECRET_KEY before deploying to production.')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 # Keep customer & admin logged in for 30 days (persistent sessions)
@@ -137,6 +146,28 @@ def init_db():
         except sqlite3.OperationalError:
             pass  # Column already exists
 
+    # SECURITY: the admin password is set via the ADMIN_PASSWORD environment
+    # variable. If not configured, a strong random password is generated and
+    # printed ONCE to the server console - no hard-coded default exists.
+    admin_password = os.environ.get('ADMIN_PASSWORD')
+    pw_row = cur.execute("SELECT value FROM settings WHERE key='password_hash'").fetchone()
+    needs_new_hash = False
+    if pw_row is None:
+        needs_new_hash = True
+    elif not admin_password and check_password_hash(pw_row['value'], 'jainzee123'):
+        # Migrate away from the legacy hard-coded default password
+        needs_new_hash = True
+    if needs_new_hash:
+        if not admin_password:
+            admin_password = secrets.token_urlsafe(12)
+            print('=' * 60)
+            print('ADMIN PASSWORD (generated, shown once - change it after login):')
+            print(f'  {admin_password}')
+            print('Set the ADMIN_PASSWORD environment variable to choose your own.')
+            print('=' * 60)
+        cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('password_hash', ?)",
+                    (generate_password_hash(admin_password),))
+
     default_settings = {
         'shop_name_en': 'Jainzee Food Processing Industries',
         'shop_name_hi': 'जैनज़ी फूड प्रोसेसिंग इंडस्ट्रीज़',
@@ -152,7 +183,6 @@ def init_db():
         'about_en': 'Jainzee Food Processing Industries is a trusted name for pure, hygienic and premium quality dry fruits. We source the finest cashews, pistachios, almonds, walnuts and raisins so you can enjoy nature\'s best, every single day.',
         'about_hi': 'जैनज़ी फूड प्रोसेसिंग इंडस्ट्रीज़ शुद्ध, स्वच्छ और प्रीमियम गुणवत्ता वाले ड्राई फ्रूट्स के लिए एक विश्वसनीय नाम है। हम सबसे बेहतरीन काजू, पिस्ता, बादाम, अखरोट और किशमिश लाते हैं ताकि आप हर दिन प्रकृति का सर्वश्रेष्ठ आनंद ले सकें।',
         'logo': '',
-        'password_hash': generate_password_hash('jainzee123'),
         'global_discount': '0',
         'upi_id': '',
         'upi_qr_code': '',
@@ -196,6 +226,61 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
+# ---------------- GLOBAL ADMIN ACCESS GUARD ----------------
+# Every /admin/* route (including all /admin/api/* endpoints) requires an
+# authenticated admin session. API routes get a JSON 401, pages redirect.
+
+PUBLIC_ADMIN_ENDPOINTS = {'admin_login', 'admin_logout', 'static'}
+
+@app.before_request
+def admin_access_guard():
+    if request.path.startswith('/admin'):
+        endpoint = (request.endpoint or '').split('.')[0]
+        if endpoint not in PUBLIC_ADMIN_ENDPOINTS and not session.get('admin_logged_in'):
+            if request.path.startswith('/admin/api'):
+                return jsonify({'error': 'Admin authentication required'}), 401
+            return redirect(url_for('admin_login'))
+    return None
+
+# ---------------- CSRF PROTECTION ----------------
+# Double-submit cookie pattern: a random token is stored in a cookie and must
+# be echoed back (header X-CSRF-TOKEN or form field csrf_token) on every
+# state-changing request (POST / PUT / DELETE). Disabled while TESTING.
+
+@app.before_request
+def csrf_protect():
+    if app.config.get('TESTING'):
+        return None
+    if request.method in ('POST', 'PUT', 'DELETE', 'PATCH'):
+        token = request.headers.get('X-CSRF-TOKEN') or request.form.get('csrf_token') or ''
+        cookie_token = request.cookies.get('csrf_token', '')
+        if not token or not cookie_token or not secrets.compare_digest(token, cookie_token):
+            return jsonify({'error': 'CSRF validation failed. Please refresh the page and try again.'}), 400
+    return None
+
+@app.after_request
+def csrf_set_cookie(response):
+    token = request.cookies.get('csrf_token') or getattr(g, 'csrf_token', None)
+    if token:
+        response.set_cookie('csrf_token', token, samesite='Lax', httponly=False)
+    return response
+
+def _csrf_token():
+    """Return the CSRF token for the current request, creating one (via g)
+    if the browser has not been issued a cookie yet."""
+    token = request.cookies.get('csrf_token') or getattr(g, 'csrf_token', None)
+    if not token:
+        token = secrets.token_hex(32)
+        g.csrf_token = token
+    return token
+
+@app.context_processor
+def inject_csrf_token():
+    # For plain HTML forms (e.g. admin login). JS fetches send the header via
+    # static/js/csrf.js instead.
+    return {'csrf_token': _csrf_token()}
+
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -209,7 +294,7 @@ def _get_jwt_secret():
     encoding artifacts, so PyJWT HMAC signing/verification is stable
     across restarts and environments.
     """
-    raw = os.environ.get('SECRET_KEY') or app.secret_key or 'jainzee_permanent_secret_key_2026'
+    raw = os.environ.get('SECRET_KEY') or app.secret_key
     if isinstance(raw, bytes):
         try:
             raw = raw.decode('utf-8')
@@ -217,7 +302,8 @@ def _get_jwt_secret():
             raw = raw.decode('utf-8', errors='replace')
     secret = str(raw).strip()
     if not secret:
-        secret = 'jainzee_permanent_secret_key_2026'
+        # Last resort: random per-process key (still never a hard-coded value)
+        secret = secrets.token_hex(32)
     return secret
 
 
@@ -281,20 +367,31 @@ def api_auth_status():
         'customer_logged_in': customer_logged_in
     })
 
+# Keys that are safe to expose through PUBLIC APIs (shop details only).
+# Never include password hashes, admin-only configuration, etc.
+PUBLIC_SETTINGS_KEYS = {
+    'shop_name_en', 'shop_name_hi', 'tagline_en', 'tagline_hi',
+    'address_en', 'address_hi', 'phone', 'whatsapp', 'email',
+    'hours_en', 'hours_hi', 'about_en', 'about_hi', 'logo',
+    'upi_id', 'upi_qr_data', 'homepage_video_url',
+}
+
 @app.route('/api/site')
 def api_site():
+    """Public shop-details endpoint - returns only safe, whitelisted keys."""
     conn = get_db()
     rows = conn.execute('SELECT key, value FROM settings').fetchall()
     conn.close()
     data = {}
     for r in rows:
-        data[r['key']] = r['value']
-    data.pop('password_hash', None)
+        if r['key'] in PUBLIC_SETTINGS_KEYS:
+            data[r['key']] = r['value']
     return jsonify(data)
 
 @app.route('/admin/api/settings')
+@login_required
 def admin_api_settings():
-    """Public endpoint to fetch all settings (no login required for frontend)"""
+    """Admin-only settings endpoint (full settings, minus credentials)."""
     try:
         conn = get_db()
         rows = conn.execute('SELECT key, value FROM settings').fetchall()
@@ -908,6 +1005,20 @@ def admin_api_orders():
                 quantity = item.get('quantity', 1)
                 grade_index = item.get('grade_index', 0)
                 
+                # Prefer the order snapshot so history stays correct after
+                # product/price changes; fall back to live data for legacy orders.
+                if item.get('name_en'):
+                    price = float(item.get('unit_price', 0) or 0)
+                    item_total = price * quantity
+                    enriched_items.append({
+                        'name': item.get('name_en'),
+                        'variant': item.get('variant', ''),
+                        'quantity': quantity,
+                        'unit_price': f"₹{price:.2f}",
+                        'total': f"₹{item_total:.2f}"
+                    })
+                    continue
+                
                 # Get product details
                 conn = get_db()
                 product = conn.execute('SELECT name_en, price, weight, grades FROM products WHERE id=?', (product_id,)).fetchone()
@@ -1015,7 +1126,7 @@ def admin_login():
         if row and check_password_hash(row['value'], password):
             session['admin_logged_in'] = True
             return redirect(url_for('admin_dashboard'))
-        flash('Incorrect password! (Default: jainzee123)', 'error')
+        flash('Incorrect password. Please try again.', 'error')
     return render_template('admin/login.html')
 
 @app.route('/admin/logout')
@@ -1145,7 +1256,7 @@ def admin_api_site():
                                  'address_en', 'address_hi', 'phone', 'whatsapp', 'email',
                                  'hours_en', 'hours_hi', 'about_en', 'about_hi', 'logo',
                                  'global_discount', 'global_discount_percent', 'upi_id',
-                                 'homepage_video_url']
+                                 'homepage_video_url', 'gstin', 'tax_percent']
                 for key in editable_keys:
                     if key in data:
                         # Use INSERT OR REPLACE to ensure persistence even for new keys
@@ -1245,6 +1356,16 @@ def api_order_invoice(order_id):
     from reportlab.lib.units import inch
     from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
     import io
+    # Unicode font so the Rupee symbol renders correctly on all devices
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    font_dir = os.path.join(BASE_DIR, 'static', 'fonts')
+    try:
+        pdfmetrics.registerFont(TTFont('JainzeeSans', os.path.join(font_dir, 'DejaVuSans.ttf')))
+        pdfmetrics.registerFont(TTFont('JainzeeSans-Bold', os.path.join(font_dir, 'DejaVuSans-Bold.ttf')))
+        BASE_FONT, BASE_FONT_BOLD = 'JainzeeSans', 'JainzeeSans-Bold'
+    except Exception:
+        BASE_FONT, BASE_FONT_BOLD = 'Helvetica', 'Helvetica-Bold'
     
     # Check if customer is logged in
     customer_id = session.get('customer_id')
@@ -1292,7 +1413,7 @@ def api_order_invoice(order_id):
         textColor=colors.HexColor('#b8860b'),
         alignment=TA_CENTER,
         spaceAfter=30,
-        fontName='Helvetica-Bold'
+        fontName=BASE_FONT_BOLD
     )
     
     # Header style
@@ -1303,7 +1424,7 @@ def api_order_invoice(order_id):
         textColor=colors.HexColor('#2c1810'),
         alignment=TA_LEFT,
         spaceAfter=6,
-        fontName='Helvetica-Bold'
+        fontName=BASE_FONT_BOLD
     )
     
     # Normal style
@@ -1326,7 +1447,7 @@ def api_order_invoice(order_id):
         textColor=colors.black,
         alignment=TA_CENTER,
         spaceAfter=6,
-        fontName='Helvetica-Bold'
+        fontName=BASE_FONT_BOLD
     )
     
     shop_name = settings.get('shop_name_en', 'JAINZEE FOOD PROCESSING INDUSTRIES').upper()
@@ -1341,7 +1462,7 @@ def api_order_invoice(order_id):
         textColor=colors.black,
         alignment=TA_CENTER,
         spaceAfter=8,
-        fontName='Helvetica'
+        fontName=BASE_FONT
     )
     tagline = settings.get('tagline_en', 'Pure & Premium Dry Fruits')
     elements.append(Paragraph(f"Tax Invoice / Cash Memo", tagline_style))
@@ -1355,7 +1476,7 @@ def api_order_invoice(order_id):
         textColor=colors.black,
         alignment=TA_CENTER,
         spaceAfter=3,
-        fontName='Helvetica'
+        fontName=BASE_FONT
     )
     
     address = settings.get('address_en', 'Siyaganj, Indore, Madhya Pradesh 452001')
@@ -1364,6 +1485,10 @@ def api_order_invoice(order_id):
     
     elements.append(Paragraph(f"Address: {address}", contact_style))
     elements.append(Paragraph(f"Phone: {phone} | Email: {email}", contact_style))
+    # Show GSTIN only if configured in admin settings
+    gstin = (settings.get('gstin') or '').strip()
+    if gstin:
+        elements.append(Paragraph(f"GSTIN: {gstin}", contact_style))
     elements.append(Spacer(1, 10))
     
     # Dashed horizontal line
@@ -1385,7 +1510,7 @@ def api_order_invoice(order_id):
         textColor=colors.black,
         alignment=TA_LEFT,
         spaceAfter=4,
-        fontName='Helvetica'
+        fontName=BASE_FONT
     )
     
     invoice_info_bold_style = ParagraphStyle(
@@ -1395,7 +1520,7 @@ def api_order_invoice(order_id):
         textColor=colors.black,
         alignment=TA_LEFT,
         spaceAfter=4,
-        fontName='Helvetica-Bold'
+        fontName=BASE_FONT_BOLD
     )
     
     # Format date
@@ -1453,18 +1578,28 @@ def api_order_invoice(order_id):
         product_id = item.get('product_id')
         qty = item.get('quantity', 1)
         
-        # Get product details
-        conn = get_db()
-        product = conn.execute('SELECT name_en, price FROM products WHERE id=?', (product_id,)).fetchone()
-        conn.close()
-        
-        if product:
-            name = product['name_en']
-            price_str = product['price'] or '₹0'
-            price = float(re.sub(r'[₹,\s]', '', price_str) or 0)
+        # Prefer the order SNAPSHOT (name/variant/price frozen at purchase time)
+        # so old invoices remain correct even if the product changes later.
+        # Fall back to the live product record only for legacy orders.
+        if item.get('name_en'):
+            name = item.get('name_en')
+            variant = item.get('variant', '')
+            if variant:
+                name = f"{name} ({variant})"
+            price = float(item.get('unit_price', 0) or 0)
         else:
-            name = f"Product #{product_id}"
-            price = 0
+            # Legacy order: fall back to live product data
+            conn = get_db()
+            product = conn.execute('SELECT name_en, price FROM products WHERE id=?', (product_id,)).fetchone()
+            conn.close()
+            
+            if product:
+                name = product['name_en']
+                price_str = product['price'] or '₹0'
+                price = float(re.sub(r'[₹,\s]', '', price_str) or 0)
+            else:
+                name = f"Product #{product_id}"
+                price = 0
         
         item_total = price * qty
         subtotal += item_total
@@ -1487,6 +1622,20 @@ def api_order_invoice(order_id):
     discount_amount = (subtotal * discount_percent) / 100
     final_total = subtotal - discount_amount
     
+    # Tax breakup: shown ONLY when GSTIN and tax_percent are configured in
+    # admin settings (inclusive pricing - tax is a component of the total).
+    tax_percent = 0
+    try:
+        tax_percent = float(str(settings.get('tax_percent', '') or '').strip()) or 0
+    except (ValueError, TypeError):
+        tax_percent = 0
+    show_tax = bool(gstin) and tax_percent > 0
+    taxable_value = 0
+    tax_amount = 0
+    if show_tax:
+        taxable_value = final_total / (1 + tax_percent / 100)
+        tax_amount = final_total - taxable_value
+    
     # Items table with black borders
     items_table = Table(items_data, colWidths=[3*inch, 1*inch, 1.5*inch, 1.5*inch])
     items_table.setStyle(TableStyle([
@@ -1494,7 +1643,7 @@ def api_order_invoice(order_id):
         ('BACKGROUND', (0, 0), (-1, 0), colors.white),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, 0), BASE_FONT_BOLD),
         ('FONTSIZE', (0, 0), (-1, 0), 11),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
         ('TOPPADDING', (0, 0), (-1, 0), 10),
@@ -1502,7 +1651,7 @@ def api_order_invoice(order_id):
         ('LINEBELOW', (0, 0), (-1, 0), 1, colors.black),
         
         # Data rows
-        ('FONTNAME', (0, 1), (-1, -4), 'Helvetica'),
+        ('FONTNAME', (0, 1), (-1, -4), BASE_FONT),
         ('FONTSIZE', (0, 1), (-1, -4), 10),
         ('ALIGN', (2, 1), (-1, -1), 'RIGHT'),
         ('ALIGN', (1, 1), (1, -1), 'CENTER'),
@@ -1522,12 +1671,18 @@ def api_order_invoice(order_id):
     if discount_percent > 0:
         totals_data.append(['', '', f'Discount ({discount_percent}%):', f"-₹{discount_amount:.2f}"])
     
+    if show_tax:
+        half_tax = tax_amount / 2
+        totals_data.append(['', '', f'Taxable Value:', f"₹{taxable_value:.2f}"])
+        totals_data.append(['', '', f'CGST ({tax_percent/2:.2f}%):', f"₹{half_tax:.2f}"])
+        totals_data.append(['', '', f'SGST ({tax_percent/2:.2f}%):', f"₹{half_tax:.2f}"])
+    
     totals_data.append(['', '', 'Grand Total:', f"₹{final_total:.2f}"])
     
     totals_table = Table(totals_data, colWidths=[3*inch, 1*inch, 1.5*inch, 1.5*inch])
     totals_table.setStyle(TableStyle([
-        ('FONTNAME', (2, 0), (2, -2), 'Helvetica-Bold'),
-        ('FONTNAME', (3, 0), (3, -2), 'Helvetica-Bold'),
+        ('FONTNAME', (2, 0), (2, -2), BASE_FONT_BOLD),
+        ('FONTNAME', (3, 0), (3, -2), BASE_FONT_BOLD),
         ('FONTSIZE', (2, 0), (3, -2), 11),
         ('TEXTCOLOR', (2, 0), (3, -2), colors.black),
         ('ALIGN', (2, 0), (3, -1), 'RIGHT'),
@@ -1535,7 +1690,7 @@ def api_order_invoice(order_id):
         ('TOPPADDING', (0, 0), (-1, -2), 6),
         ('LINEABOVE', (2, 0), (3, 0), 1, colors.black),
         ('LINEBELOW', (2, -1), (3, -1), 2, colors.black),
-        ('FONTNAME', (2, -1), (3, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (2, -1), (3, -1), BASE_FONT_BOLD),
         ('FONTSIZE', (2, -1), (3, -1), 13),
         ('TEXTCOLOR', (2, -1), (3, -1), colors.black),
         ('BOTTOMPADDING', (2, -1), (3, -1), 10),
@@ -1562,7 +1717,7 @@ def api_order_invoice(order_id):
         textColor=colors.black,
         alignment=TA_CENTER,
         spaceAfter=4,
-        fontName='Helvetica'
+        fontName=BASE_FONT
     )
     elements.append(Paragraph("Thank you for shopping with Jainzee Food Processing Industries!", footer_style))
     elements.append(Paragraph("For any queries, contact us at " + phone + " | " + email, footer_style))
@@ -1626,6 +1781,17 @@ def api_cart():
             
             if not product_id or product_id <= 0:
                 return jsonify({'error': 'Valid Product ID required'}), 400
+            # Validate quantity: must be a positive integer
+            if quantity <= 0:
+                return jsonify({'error': 'Quantity must be at least 1'}), 400
+            
+            # Validate against available stock
+            conn = get_db()
+            row = conn.execute('SELECT stock FROM products WHERE id=?', (product_id,)).fetchone()
+            conn.close()
+            if not row:
+                return jsonify({'error': 'Product not found'}), 404
+            available_stock = row['stock'] or 0
             
             cart = session.get('cart', [])
             
@@ -1635,6 +1801,10 @@ def api_cart():
                 if item['product_id'] == product_id and item.get('grade_index', 0) == grade_index:
                     existing = i
                     break
+            
+            new_quantity = quantity + (cart[existing]['quantity'] if existing is not None else 0)
+            if new_quantity > available_stock:
+                return jsonify({'error': f'Only {available_stock} unit(s) available in stock'}), 400
             
             if existing is not None:
                 cart[existing]['quantity'] += quantity
@@ -1667,10 +1837,22 @@ def api_cart_item(item_index):
         return jsonify({'message': 'Item removed', 'cart_count': sum(i['quantity'] for i in cart)})
     else:
         data = request.get_json() or {}
-        quantity = int(data.get('quantity', cart[item_index]['quantity']))
-        if quantity <= 0:
+        try:
+            quantity = int(data.get('quantity', cart[item_index]['quantity']))
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Quantity must be a whole number'}), 400
+        if quantity < 0:
+            return jsonify({'error': 'Quantity cannot be negative'}), 400
+        if quantity == 0:
             cart.pop(item_index)
         else:
+            # Validate against available stock
+            conn = get_db()
+            row = conn.execute('SELECT stock FROM products WHERE id=?', (cart[item_index]['product_id'],)).fetchone()
+            conn.close()
+            available_stock = row['stock'] if row else 0
+            if quantity > (available_stock or 0):
+                return jsonify({'error': f'Only {available_stock} unit(s) available in stock'}), 400
             cart[item_index]['quantity'] = quantity
         session['cart'] = cart
         session.modified = True
@@ -1684,7 +1866,10 @@ def api_cart_count():
 @app.route('/api/checkout', methods=['POST'])
 def api_checkout():
     data = request.get_json() or {}
-    payment_method = data.get('payment_method', 'cod')
+    payment_method = str(data.get('payment_method', 'cod')).lower().strip()
+    # SECURITY/BUSINESS RULE: only COD and UPI payments are accepted
+    if payment_method not in ('cod', 'upi'):
+        return jsonify({'error': 'Invalid payment method. Only COD and UPI are accepted.'}), 400
     customer_name = data.get('name', '')
     customer_phone = data.get('phone', '')
     customer_address = data.get('address', '')
@@ -1696,7 +1881,6 @@ def api_checkout():
     
     conn = get_db()
     import json as json_mod
-    items_json = json_mod.dumps(cart)
     
     # Fetch global discount from settings (use global_discount_percent, fallback to global_discount for legacy)
     global_discount_percent = 0
@@ -1709,23 +1893,58 @@ def api_checkout():
     except (ValueError, TypeError):
         global_discount_percent = 0
     
+    # Validate every cart item: quantity must be a positive integer within
+    # available stock. Checkout is blocked if stock is insufficient.
+    for item in cart:
+        try:
+            qty = int(item.get('quantity', 0))
+        except (ValueError, TypeError):
+            conn.close()
+            return jsonify({'error': 'Invalid quantity in cart'}), 400
+        if qty <= 0:
+            conn.close()
+            return jsonify({'error': 'Invalid quantity in cart'}), 400
+        row = conn.execute('SELECT stock FROM products WHERE id=?', (item['product_id'],)).fetchone()
+        if not row:
+            conn.close()
+            return jsonify({'error': 'A product in your cart is no longer available'}), 400
+        if qty > (row['stock'] or 0):
+            conn.close()
+            return jsonify({'error': f'Insufficient stock for an item in your cart. Only {row["stock"]} unit(s) available.'}), 400
+    
     # Calculate total with only admin-set global discount
     # NOTE: item prices in cart are ALREADY the final discounted prices - do NOT double-deduct MRP savings
     subtotal = 0
+    order_items_snapshot = []
     for item in cart:
         row = conn.execute('SELECT * FROM products WHERE id=?', (item['product_id'],)).fetchone()
         if row:
             grades = []
             try: grades = json_mod.loads(row['grades'] or '[]')
             except: pass
-            grade_price_str = grades[item.get('grade_index', 0)]['price'] if grades and item.get('grade_index', 0) < len(grades) else row['price']
+            grade_idx = item.get('grade_index', 0)
+            grade_price_str = grades[grade_idx]['price'] if grades and grade_idx < len(grades) else row['price']
+            grade_name = grades[grade_idx].get('name', '') if grades and grade_idx < len(grades) else ''
             base_price_str = row['price']
             
             grade_price = float(re.sub(r'[₹,\s]', '', str(grade_price_str)) or 0)
             base_price = float(re.sub(r'[₹,\s]', '', str(base_price_str)) or 0)
             
             item_price = grade_price if grade_price > 0 else base_price
-            subtotal += item_price * item['quantity']
+            qty = int(item.get('quantity', 1))
+            subtotal += item_price * qty
+            
+            # SNAPSHOT: freeze name, weight/grade, price and quantity at order
+            # time so old invoices stay correct even if the product changes later.
+            order_items_snapshot.append({
+                'product_id': item['product_id'],
+                'grade_index': grade_idx,
+                'quantity': qty,
+                'name_en': row['name_en'],
+                'name_hi': row['name_hi'],
+                'variant': grade_name or row['weight'] or '',
+                'unit_price': item_price,
+            })
     
     # Apply ONLY global admin discount
     global_discount_amount = (subtotal * global_discount_percent) / 100
@@ -1736,9 +1955,15 @@ def api_checkout():
         (
             session.get('customer_id') or (get_jwt_customer()[0]),
             customer_name, customer_phone, customer_address,
-            items_json, '₹' + str(round(final_total, 2)), 'pending_' + payment_method
+            json_mod.dumps(order_items_snapshot), '₹' + str(round(final_total, 2)), 'pending_' + payment_method
         )
     )
+    
+    # Reduce stock after successful order placement
+    for item in order_items_snapshot:
+        conn.execute('UPDATE products SET stock = MAX(stock - ?, 0) WHERE id=?',
+                     (item['quantity'], item['product_id']))
+    
     conn.commit()
     order_id = cur.lastrowid
     conn.close()
@@ -1951,4 +2176,5 @@ init_db()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    # SECURITY: never run with debug enabled in production
+    app.run(host='0.0.0.0', port=port, debug=False)

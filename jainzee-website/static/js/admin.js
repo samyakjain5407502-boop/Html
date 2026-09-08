@@ -520,6 +520,8 @@ async function loadSettings() {
         // Use global_discount_percent (canonical) with fallback to legacy global_discount
         setVal('sGlobalDiscount', data.global_discount_percent || data.global_discount || '0');
         setVal('sUpiId', data.upi_id || '');
+        setVal('sGstin', data.gstin || '');
+        setVal('sTaxPercent', data.tax_percent || '');
         
         // UPI QR Code preview (Base64 permanent storage)
         if (data.upi_qr_data) {
@@ -566,7 +568,9 @@ async function saveSettings() {
         logo: document.getElementById('sLogoUrl').value.trim(),
         global_discount: document.getElementById('sGlobalDiscount').value.trim(),
         global_discount_percent: document.getElementById('sGlobalDiscount').value.trim(),
-        upi_id: document.getElementById('sUpiId').value.trim()
+        upi_id: document.getElementById('sUpiId').value.trim(),
+        gstin: document.getElementById('sGstin') ? document.getElementById('sGstin').value.trim() : '',
+        tax_percent: document.getElementById('sTaxPercent') ? document.getElementById('sTaxPercent').value.trim() : ''
     };
 
     const formData = new FormData();
