@@ -91,6 +91,25 @@ def test_admin_login_page_has_no_password_hint(client):
     assert 'jainzee123' not in body
 
 
+def test_admin_login_env_fallback_resyncs_stale_hash(client):
+    app, c = client
+    # Simulate a stored hash that drifted from ADMIN_PASSWORD (e.g. the
+    # password was rotated in .env but the DB still holds the old hash)
+    conn = app.get_db()
+    conn.execute("UPDATE settings SET value=? WHERE key='password_hash'",
+                 (app.generate_password_hash('old-drifted-password'),))
+    conn.commit()
+    conn.close()
+    # Login with the .env/env password must still succeed (302 to dashboard)
+    r = c.post('/admin/login', data={'password': 'test-admin-pass-123'})
+    assert r.status_code == 302
+    # ...and the drifted hash must have been re-synced
+    conn = app.get_db()
+    stored = conn.execute("SELECT value FROM settings WHERE key='password_hash'").fetchone()['value']
+    conn.close()
+    assert app.check_password_hash(stored, 'test-admin-pass-123')
+
+
 def test_csrf_blocks_post_without_token(client):
     app, c = client
     app.app.config['TESTING'] = False  # enable CSRF for this test

@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 
 # Load environment variables from .env file if present (local development).
 # In production, set real environment variables in the hosting dashboard.
-load_dotenv()
+load_dotenv()  # Loads jainzee-website/.env for local dev (real env vars still win)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Allow tests / deployments to override the database location via environment.
@@ -281,10 +281,14 @@ def init_db():
     # SECURITY: the admin password is set via the ADMIN_PASSWORD environment
     # variable. If not configured, a strong random password is generated and
     # printed ONCE to the server console - no hard-coded default exists.
-    admin_password = os.environ.get('ADMIN_PASSWORD')
+    admin_password = (os.environ.get('ADMIN_PASSWORD') or '').strip()
     pw_row = cur.execute("SELECT value FROM settings WHERE key='password_hash'").fetchone()
     needs_new_hash = False
     if pw_row is None:
+        needs_new_hash = True
+    elif admin_password and not check_password_hash(pw_row['value'], admin_password):
+        # Re-sync: the stored hash no longer matches ADMIN_PASSWORD from the
+        # environment (e.g. the password was rotated in .env after first run).
         needs_new_hash = True
     elif not admin_password and check_password_hash(pw_row['value'], 'jainzee123'):
         # Migrate away from the legacy hard-coded default password
@@ -1297,7 +1301,18 @@ def admin_login():
         conn = get_db()
         row = conn.execute("SELECT value FROM settings WHERE key='password_hash'").fetchone()
         conn.close()
-        if row and check_password_hash(row['value'], password):
+        password_ok = bool(row) and check_password_hash(row['value'], password)
+        # Fallback: the ADMIN_PASSWORD environment/.env variable is always
+        # accepted, and the stored hash is re-synced if it had drifted.
+        env_password = (os.environ.get('ADMIN_PASSWORD') or '').strip()
+        if not password_ok and env_password and password == env_password:
+            password_ok = True
+            conn = get_db()
+            conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('password_hash', ?)",
+                         (generate_password_hash(env_password),))
+            conn.commit()
+            conn.close()
+        if password_ok:
             rate_limit_clear('admin')
             session['admin_logged_in'] = True
             return redirect(url_for('admin_dashboard'))
