@@ -9,6 +9,7 @@ import os
 import sys
 import json
 import tempfile
+from datetime import date, timedelta
 
 import pytest
 
@@ -205,10 +206,67 @@ def test_order_history_and_invoice(client):
     orders = r.get_json()
     assert any(o['id'] == order_id for o in orders)
 
+    # Invoice is DELIVERY-GATED: not delivered yet -> 403 clean error page
+    r = c.get(f'/api/orders/{order_id}/invoice')
+    assert r.status_code == 403
+    assert 'available after delivery' in r.get_data(as_text=True)
+
+    # Mark delivered -> invoice becomes downloadable
+    conn = app.get_db()
+    conn.execute("UPDATE orders SET status='delivered' WHERE id=?", (order_id,))
+    conn.commit()
+    conn.close()
+
     r = c.get(f'/api/orders/{order_id}/invoice')
     assert r.status_code == 200
     assert r.headers['Content-Type'] == 'application/pdf'
     assert r.data.startswith(b'%PDF')
+
+
+def test_invoice_blocked_until_delivered(client):
+    app, c = client
+    register_and_login(c)
+    add_to_cart(c, 1, 1)
+    order_id = checkout(c).get_json()['order_id']
+    # Status is pending_cod -> must be blocked
+    r = c.get(f'/api/orders/{order_id}/invoice')
+    assert r.status_code == 403
+    body = r.get_data(as_text=True)
+    assert 'Invoice will be available after delivery' in body
+
+
+def test_invoice_blocked_for_pending_and_shipped(client):
+    app, c = client
+    register_and_login(c)
+    add_to_cart(c, 1, 1)
+    order_id = checkout(c).get_json()['order_id']
+    # Explicitly non-delivered statuses must also be blocked
+    for status in ('Pending', 'Shipped'):
+        conn = app.get_db()
+        conn.execute('UPDATE orders SET status=? WHERE id=?', (status, order_id))
+        conn.commit()
+        conn.close()
+        r = c.get(f'/api/orders/{order_id}/invoice')
+        assert r.status_code == 403, f'status={status} must not allow invoice download'
+        assert 'Invoice will be available after delivery' in r.get_data(as_text=True)
+
+
+def test_my_orders_redirects_unauthenticated(client):
+    _, c = client
+    # API gate: unauthenticated customers get 401 from the orders API
+    r = c.get('/api/my-orders')
+    assert r.status_code == 401
+    assert r.get_json()['error'] == 'Not logged in'
+    # Auth status flag the My Orders navigation relies on
+    r = c.get('/api/auth/status')
+    assert r.status_code == 200
+    assert r.get_json()['customer_logged_in'] is False
+    # Shipped JS redirects unauthenticated My Orders clicks to the customer login page
+    r = c.get('/static/js/main.js')
+    assert r.status_code == 200
+    assert '/customer?msg=' in r.get_data(as_text=True)
+    # Redirect target (customer login/orders page) loads
+    assert c.get('/customer').status_code == 200
 
 
 def test_invoice_uses_snapshot_after_price_change(client):
@@ -217,9 +275,11 @@ def test_invoice_uses_snapshot_after_price_change(client):
     add_to_cart(c, 1, 1)
     r = checkout(c)
     order_id = r.get_json()['order_id']
-    # Change the live product name/price - invoice must still be generated
+    # Change the live product name/price - invoice must still use the snapshot
     conn = app.get_db()
     conn.execute("UPDATE products SET name_en='CHANGED', price='₹99' WHERE id=1")
+    # Invoice is delivery-gated: mark the order delivered first
+    conn.execute("UPDATE orders SET status='Delivered' WHERE id=?", (order_id,))
     conn.commit()
     conn.close()
     r = c.get(f'/api/orders/{order_id}/invoice')
@@ -237,11 +297,11 @@ def test_public_api_does_not_leak_private_settings(client):
 
 # ---------------- COUPON & SHIPPING ----------------
 
-def make_coupon(app, code='SAVE10', dtype='percent', value='10', min_amt='0', limit=0, active=1):
+def make_coupon(app, code='SAVE10', dtype='percent', value='10', min_amt='0', limit=0, active=1, expiry=''):
     conn = app.get_db()
     conn.execute(
-        'INSERT INTO coupons (code, discount_type, discount_value, min_order_amount, usage_limit, is_active) VALUES (?,?,?,?,?,?)',
-        (code, dtype, value, min_amt, limit, active))
+        'INSERT INTO coupons (code, discount_type, discount_value, expiry_date, min_order_amount, usage_limit, is_active) VALUES (?,?,?,?,?,?,?)',
+        (code, dtype, value, expiry, min_amt, limit, active))
     conn.commit()
     conn.close()
 
@@ -270,7 +330,6 @@ def test_coupon_valid_and_checkout(client):
 
     conn = app.get_db()
     used = conn.execute("SELECT used_count FROM coupons WHERE code='SAVE10'").fetchone()['used_count']
-    order = conn.execute("SELECT * FROM orders WHERE id=? ORDER BY id DESC LIMIT 1", (1,)).fetchall()
     conn.close()
     assert used >= 1
     # Shipping setting default is 50
@@ -284,6 +343,68 @@ def test_coupon_min_order_and_limit(client):
     add_to_cart(c, 1, 1)
     r = c.post('/api/coupon/validate', json={'coupon_code': 'MIN100'})
     assert r.status_code == 400  # below minimum order
+
+
+def test_api_coupons_lists_only_active_unexpired(client):
+    app, c = client
+    today = date.today()
+    make_coupon(app, 'LIVE10', 'percent', '10', expiry='')                    # active, no expiry
+    make_coupon(app, 'FUTURE15', 'percent', '15',
+                expiry=(today + timedelta(days=30)).isoformat())              # active, future expiry
+    make_coupon(app, 'OLD20', 'percent', '20',
+                expiry=(today - timedelta(days=1)).isoformat())               # expired
+    make_coupon(app, 'HIDDEN25', 'percent', '25', active=0)                   # inactive
+
+    # Public endpoint - no login required
+    r = c.get('/api/coupons')
+    assert r.status_code == 200
+    coupons = r.get_json()
+    codes = {x['code'] for x in coupons}
+    assert 'LIVE10' in codes
+    assert 'FUTURE15' in codes
+    assert 'OLD20' not in codes      # expired coupons are filtered out
+    assert 'HIDDEN25' not in codes   # inactive coupons are filtered out
+    live = next(x for x in coupons if x['code'] == 'LIVE10')
+    assert live['discount_type'] == 'percent'
+    assert float(live['discount_value']) == 10
+
+
+def test_shipping_threshold_dynamic(client):
+    app, c = client
+    register_and_login(c)
+
+    def set_setting(key, value):
+        conn = app.get_db()
+        conn.execute('UPDATE settings SET value=? WHERE key=?', (value, key))
+        conn.commit()
+        conn.close()
+
+    set_setting('shipping_charge', '50')
+
+    # Subtotal ₹1,200 >= ₹1,000 threshold -> FREE delivery
+    set_setting('free_shipping_min', '1000')
+    add_to_cart(c, 1, 1)
+    r = checkout(c)
+    assert r.status_code == 200
+    data = r.get_json()
+    assert float(data['subtotal']) == 1200
+    assert data['shipping'] == 0
+
+    # Threshold above subtotal -> shipping charge applies
+    set_setting('free_shipping_min', '5000')
+    add_to_cart(c, 1, 1)
+    r = checkout(c)
+    assert r.status_code == 200
+    data = r.get_json()
+    assert float(data['subtotal']) == 1200
+    assert data['shipping'] == 50
+
+    # Boundary: exactly at the threshold is still free
+    set_setting('free_shipping_min', '1200')
+    add_to_cart(c, 1, 1)
+    r = checkout(c)
+    assert r.status_code == 200
+    assert r.get_json()['shipping'] == 0
 
 
 def test_invalid_payment_method_rejected(client):

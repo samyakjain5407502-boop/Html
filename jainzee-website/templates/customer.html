@@ -378,6 +378,14 @@
                     try { items = JSON.parse(order.items); } catch(e) {}
                     const statusClass = 'status-' + (order.status || 'pending');
                     const statusText = (order.status || 'pending').toUpperCase();
+                    const isDelivered = String(order.status || '').toLowerCase().indexOf('deliver') >= 0;
+                    const invoiceBtn = isDelivered
+                        ? `<button type="button" style="width: 100%; margin-top: 10px; padding: 10px; background: linear-gradient(135deg,#FFD700 0%,#D4AC0D 100%); color: #121212; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;" onclick="window.open('/api/orders/${order.id}/invoice','_blank')">
+                                <i class="fas fa-download"></i> Download Invoice (PDF)
+                           </button>`
+                        : `<p style="width: 100%; margin-top: 10px; padding: 10px; font-size: 0.8rem; color: #8a7362; text-align: center;">
+                                <i class="fas fa-hourglass-half"></i> Invoice will be available after delivery.
+                           </p>`;
                     const card = document.createElement('div');
                     card.className = 'order-card';
                     card.innerHTML = `
@@ -398,6 +406,7 @@
                         <button type="button" style="width: 100%; margin-top: 10px; padding: 10px; border: 1px solid #b8860b; background: transparent; color: #b8860b; border-radius: 8px; font-weight: 600; cursor: pointer;" onclick="reorderFromPanel(${order.id})">
                             <i class="fas fa-rotate-right"></i> Add Again / Reorder
                         </button>
+                        ${invoiceBtn}
                     `;
                     grid.appendChild(card);
                 });
@@ -425,6 +434,19 @@
 
         // ==================== INIT ====================
         document.addEventListener('DOMContentLoaded', () => {
+            // Show a flash/toast passed from pages that redirected here
+            // (e.g. "Please login to view your orders.") and highlight login tab.
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('auth') === '1') {
+                document.querySelectorAll('.auth-tab')[0].classList.add('active');
+                document.getElementById('loginForm').classList.add('active');
+                document.querySelectorAll('.auth-tab')[1].classList.remove('active');
+                document.getElementById('registerForm').classList.remove('active');
+            }
+            const flashMsg = urlParams.get('msg');
+            if (flashMsg) {
+                if (typeof showToast === 'function') showToast(flashMsg, 'error');
+            }
             loadCustomerDashboard();
         });
     </script>

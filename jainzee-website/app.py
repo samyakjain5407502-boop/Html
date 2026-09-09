@@ -1562,7 +1562,18 @@ def api_order_invoice(order_id):
     if not order:
         conn.close()
         return jsonify({'error': 'Order not found'}), 404
-    
+
+    # DELIVERY-GATED INVOICE: invoices are only available once the order has
+    # been delivered. Prevent premature downloads with a clean error page.
+    raw_status = str(order['status'] or '').strip().lower()
+    if not raw_status.startswith('deliver'):
+        conn.close()
+        return render_template(
+            'error.html', code=403,
+            title='Invoice Not Available',
+            message='Invoice will be available after delivery.'
+        ), 403
+
     # Get shop settings
     settings = {}
     for row in conn.execute('SELECT key, value FROM settings'):
@@ -2501,7 +2512,45 @@ def api_my_reviews():
     
     return jsonify([dict(r) for r in reviews])
 
-# ---------------- PUBLIC COUPON VALIDATION ----------------
+# ---------------- PUBLIC COUPON LISTING & VALIDATION ----------------
+
+@app.route('/api/coupons', methods=['GET'])
+def api_coupons_list():
+    """Public listing of all ACTIVE, UNEXPIRED coupons.
+
+    Used by the cart/checkout 'View & Apply Coupon' modal so customers can
+    browse available offers without knowing the code in advance.
+    """
+    conn = get_db()
+    rows = conn.execute('SELECT id, code, discount_type, discount_value, '
+                        'expiry_date, min_order_amount, is_active, '
+                        'usage_limit, used_count FROM coupons '
+                        'ORDER BY id DESC').fetchall()
+    conn.close()
+    today = date.today().isoformat()
+    coupons = []
+    for r in rows:
+        if not r['is_active']:
+            continue  # skip inactive coupons
+        expiry = (r['expiry_date'] or '').strip()
+        if expiry:
+            try:
+                if today > expiry:
+                    continue  # skip expired coupons
+            except (ValueError, TypeError):
+                pass
+        coupons.append({
+            'id': r['id'],
+            'code': r['code'],
+            'discount_type': r['discount_type'],
+            'discount_value': r['discount_value'],
+            'min_order_amount': r['min_order_amount'],
+            'expiry_date': expiry,
+            'used_count': int(r['used_count'] or 0),
+            'usage_limit': int(r['usage_limit'] or 0),
+        })
+    return jsonify(coupons)
+
 
 @app.route('/api/coupon/validate', methods=['POST'])
 def api_coupon_validate():

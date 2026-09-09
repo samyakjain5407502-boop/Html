@@ -187,17 +187,25 @@
                             <span id="checkoutDiscount" style="color: #4ade80;">-₹0</span>
                         </div>
 
-                        <!-- Coupon code -->
-                        <div style="padding: 12px 0; border-bottom: 1px solid rgba(255,215,0,0.1);">
-                            <div style="display: flex; gap: 8px;">
-                                <input type="text" id="couponInput" placeholder="Coupon code"
-                                       style="flex: 1; padding: 10px; border: 1px solid rgba(255,215,0,0.3); border-radius: 8px; background: #1e1e1e; color: #fff; text-transform: uppercase; font-size: 0.9rem;">
-                                <button type="button" id="couponApplyBtn" onclick="applyCoupon()"
-                                        style="padding: 10px 16px; background: linear-gradient(135deg, #FFD700 0%, #D4AC0D 100%); color: #121212; font-weight: 700; border: none; border-radius: 8px; cursor: pointer;">
-                                    Apply
-                                </button>
+                        <!-- Task 2: Dynamic free-delivery banner (threshold from shop settings) -->
+                        <div class="free-delivery-banner" id="checkoutFreeDeliveryBanner" style="display: none;"></div>
+
+                        <!-- Task 1: "View & Apply Coupon" replaces the inline coupon input -->
+                        <button type="button" class="coupon-trigger-btn" onclick="openCouponModal()" style="margin-top: 4px;">
+                            <i class="fas fa-ticket-alt"></i> View &amp; Apply Coupon
+                        </button>
+                        <div id="couponMsg" style="font-size: 0.8rem; margin-top: 4px; color: #b3261e; display: none;"></div>
+
+                        <!-- Task 1: Applied coupon summary row (hidden until used) -->
+                        <div class="coupon-summary-row" id="checkoutCouponRow" style="display: none;">
+                            <div class="coupon-applied-info">
+                                <span class="coupon-code-chip" id="checkoutCouponCode"></span>
+                                <div style="display: flex; flex-direction: column; gap: 2px;">
+                                    <strong id="checkoutCouponDesc" style="color: #1a1a1a; font-size: 0.85rem;"></strong>
+                                    <small id="checkoutCouponDiscount" style="color: #1c5230; font-weight: 700;"></small>
+                                </div>
                             </div>
-                            <div id="couponMsg" style="font-size: 0.8rem; margin-top: 6px; color: #4ade80; display: none;"></div>
+                            <button type="button" class="remove-coupon-btn" onclick="removeCoupon()">Remove</button>
                         </div>
 
                         <!-- Shipping charge -->
@@ -240,6 +248,23 @@
             </div>
         </div>
     </section>
+
+    <!-- ===== COUPON MODAL (shared with cart) ===== -->
+    <div id="couponModal" role="dialog" aria-modal="true" aria-label="Apply coupon">
+        <div class="coupon-modal-box">
+            <div class="coupon-modal-header">
+                <h3>View &amp; Apply Coupon</h3>
+                <button type="button" class="coupon-modal-close" onclick="closeCouponModal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="coupon-manual-wrap">
+                <input type="text" class="coupon-manual-input" id="couponManualInput" placeholder="Enter coupon code" autocomplete="off" aria-label="Coupon code" onkeydown="if(event.key==='Enter'){event.preventDefault();applyManualCoupon();}">
+                <button type="button" class="coupon-manual-apply" onclick="applyManualCoupon()">Apply</button>
+            </div>
+            <div class="coupon-manual-msg" id="couponManualMsg"></div>
+            <div class="coupon-modal-divider">— or choose from available coupons —</div>
+            <div class="coupon-modal-list" id="couponList"></div>
+        </div>
+    </div>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script>
@@ -450,16 +475,86 @@
             }
         }
 
-        async function applyCoupon() {
-            const input = document.getElementById('couponInput');
-            const msg = document.getElementById('couponMsg');
-            const code = (input.value || '').trim().toUpperCase();
-            msg.style.display = 'none';
-            if (!code) {
-                appliedCoupon = null;
-                await renderCheckoutItems();
-                return;
+        // ==================== COUPON MODAL (Task 1) ====================
+        function openCouponModal() {
+            const modal = document.getElementById('couponModal');
+            if (!modal) return;
+            modal.classList.add('active');
+            document.getElementById('couponManualMsg').style.display = 'none';
+            const input = document.getElementById('couponManualInput');
+            if (input) input.value = '';
+            loadCoupons();
+        }
+
+        function closeCouponModal() {
+            const modal = document.getElementById('couponModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        function formatCouponOffer(c) {
+            const val = String(c.discount_value || '0').replace(/[₹,\s]/g, '');
+            if (String(c.discount_type || '').toLowerCase() === 'flat') {
+                return '₹' + (parseFloat(val) || 0).toLocaleString('en-IN') + ' off';
             }
+            return (parseFloat(val) || 0) + '% off';
+        }
+
+        function currentCheckoutSubtotal() {
+            return checkoutItems.reduce((acc, item) => {
+                const price = parseFloat(String(item.grade_price || item.base_price || '0').replace(/[₹,\s]/g, '')) || 0;
+                return acc + price * (item.quantity || 1);
+            }, 0);
+        }
+
+        async function loadCoupons() {
+            const listEl = document.getElementById('couponList');
+            listEl.innerHTML = '<p style="text-align:center;color:#6b4f00;padding:20px;">Loading available coupons...</p>';
+            try {
+                const res = await fetch('/api/coupons');
+                const coupons = await res.json();
+                const subtotal = currentCheckoutSubtotal();
+                if (!coupons || !coupons.length) {
+                    listEl.innerHTML = '<p class="coupon-modal-empty">No active coupons available right now.</p>';
+                    return;
+                }
+                let html = '';
+                coupons.forEach(c => {
+                    const minAmt = parseFloat(String(c.min_order_amount || '0').replace(/[₹,\s]/g, '') || 0);
+                    const eligible = (minAmt <= 0 || subtotal >= minAmt) &&
+                        !(c.usage_limit > 0 && c.used_count >= c.usage_limit);
+                    const minText = 'Minimum order: ₹' + minAmt.toLocaleString('en-IN');
+                    const expiryText = c.expiry_date ? ('Expires: ' + c.expiry_date) : 'No expiry';
+                    const statusHtml = eligible
+                        ? '<span class="coupon-eligible">Applicable</span>'
+                        : '<span class="coupon-needed">Add ₹' + (minAmt - subtotal > 0 ? (minAmt - subtotal) : 0).toLocaleString('en-IN') + ' more to use this coupon</span>';
+                    html += `
+                        <div class="coupon-card">
+                            <div class="coupon-card-top">
+                                <span class="coupon-card-code">${escapeHtml(c.code)}</span>
+                                <span class="coupon-card-offer">${escapeHtml(formatCouponOffer(c))}</span>
+                            </div>
+                            <div class="coupon-card-meta">
+                                <span>${escapeHtml(minText)}</span>
+                                <span>${escapeHtml(expiryText)}</span>
+                            </div>
+                            <div class="coupon-card-footer">
+                                ${statusHtml}
+                                <button type="button" class="coupon-apply-btn"
+                                    ${eligible ? `onclick=\"applyCouponFromModal('${escapeHtml(c.code)}')\"` : 'disabled'}>
+                                    Apply
+                                </button>
+                            </div>
+                        </div>`;
+                });
+                listEl.innerHTML = html;
+            } catch (e) {
+                console.error('Failed to load coupons:', e);
+                listEl.innerHTML = '<p class="coupon-modal-empty">Could not load coupons. Please try again.</p>';
+            }
+        }
+
+        async function applyCouponFromModal(code) {
+            const msg = document.getElementById('couponManualMsg');
             try {
                 const res = await fetch('/api/coupon/validate', {
                     method: 'POST',
@@ -468,25 +563,37 @@
                 });
                 const data = await res.json();
                 if (!data.valid) {
-                    appliedCoupon = null;
-                    msg.style.color = '#f87171';
-                    msg.textContent = data.error || 'Invalid coupon';
+                    msg.textContent = data.error || 'Coupon not applicable.';
                     msg.style.display = 'block';
-                    await renderCheckoutItems();
                     return;
                 }
                 appliedCoupon = { code: data.code, discount: data.discount, description: data.description };
-                msg.style.color = '#4ade80';
-                msg.textContent = '✓ ' + data.code + ' applied - ' + data.description;
-                msg.style.display = 'block';
+                document.getElementById('couponMsg').style.display = 'none';
                 await renderCheckoutItems();
+                closeCouponModal();
             } catch (e) {
-                appliedCoupon = null;
-                msg.style.color = '#f87171';
-                msg.textContent = 'Could not validate coupon. Please try again.';
+                console.error('Coupon apply failed:', e);
+                msg.textContent = 'Could not apply the coupon. Please try again.';
                 msg.style.display = 'block';
             }
         }
+
+        function applyManualCoupon() {
+            const input = document.getElementById('couponManualInput');
+            const code = (input.value || '').trim().toUpperCase();
+            if (!code) return;
+            applyCouponFromModal(code);
+        }
+
+        function removeCoupon() {
+            appliedCoupon = null;
+            renderCheckoutItems();
+        }
+
+        // Close coupon modal on backdrop click
+        document.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'couponModal') closeCouponModal();
+        });
 
         // Override renderCheckoutItems to apply ONLY admin-set global discount
         const originalRenderCheckoutItems = renderCheckoutItems;
@@ -534,6 +641,34 @@
             const amountBeforeShipping = subtotal - globalDiscountAmount - couponDiscount;
             const effectiveShipping = (shippingCharge > 0 && freeShippingMin > 0 && amountBeforeShipping >= freeShippingMin) ? 0 : shippingCharge;
             const total = amountBeforeShipping + effectiveShipping;
+
+            // Task 1: applied coupon row
+            const couponRow = document.getElementById('checkoutCouponRow');
+            if (appliedCoupon && couponDiscount > 0) {
+                couponRow.style.display = '';
+                document.getElementById('checkoutCouponCode').textContent = appliedCoupon.code;
+                document.getElementById('checkoutCouponDesc').textContent = appliedCoupon.description || 'Coupon applied';
+                document.getElementById('checkoutCouponDiscount').textContent = '-' + formatPriceCheckout('₹' + couponDiscount.toFixed(2));
+            } else {
+                couponRow.style.display = 'none';
+            }
+
+            // Task 2: free-delivery banner
+            const banner = document.getElementById('checkoutFreeDeliveryBanner');
+            if (freeShippingMin > 0) {
+                if (amountBeforeShipping >= freeShippingMin) {
+                    banner.className = 'free-delivery-banner';
+                    banner.innerHTML = 'You qualify for FREE delivery! 🎉';
+                } else {
+                    const diff = freeShippingMin - amountBeforeShipping;
+                    banner.className = 'free-delivery-banner progress';
+                    banner.innerHTML = 'Add ₹' + diff.toLocaleString('en-IN') + ' more for FREE delivery' +
+                        '<small>Free delivery on orders above ₹' + freeShippingMin.toLocaleString('en-IN') + '</small>';
+                }
+                banner.style.display = '';
+            } else {
+                banner.style.display = 'none';
+            }
 
             document.getElementById('checkoutSubtotal').textContent = formatPriceCheckout('₹' + subtotal.toFixed(2));
             document.getElementById('checkoutDiscount').textContent = '-' + formatPriceCheckout('₹' + (globalDiscountAmount + couponDiscount).toFixed(2));

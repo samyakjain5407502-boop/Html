@@ -137,14 +137,40 @@
                         <i class="fas fa-receipt"></i> <span data-i18n="order_summary">Order Summary</span>
                     </h3>
 
+                    <!-- Task 2: Dynamic free-delivery banner (threshold from shop settings) -->
+                    <div class="free-delivery-banner" id="cartFreeDeliveryBanner" style="display: none;"></div>
+
                     <div class="summary-row">
                         <span data-i18n="subtotal">Subtotal</span>
                         <span id="cartSubtotal">₹0</span>
                     </div>
 
+                    <!-- Task 1: "View & Apply Coupon" replaces any inline coupon input -->
+                    <button type="button" class="coupon-trigger-btn" onclick="openCouponModal()">
+                        <i class="fas fa-ticket-alt"></i> View &amp; Apply Coupon
+                    </button>
+
+                    <!-- Task 1: Applied coupon summary row (hidden until used) -->
+                    <div class="coupon-summary-row" id="cartCouponRow" style="display: none;">
+                        <div class="coupon-applied-info">
+                            <span class="coupon-code-chip" id="cartCouponCode"></span>
+                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                                <strong id="cartCouponDesc" style="color: #1a1a1a; font-size: 0.85rem;"></strong>
+                                <small id="cartCouponDiscount" style="color: #1c5230; font-weight: 700;"></small>
+                            </div>
+                        </div>
+                        <button type="button" class="remove-coupon-btn" onclick="removeCoupon()">Remove</button>
+                    </div>
+
                     <div class="summary-row" id="cartDiscountRow" style="display: none; background: #f0fdf4; border-radius: 8px; padding: 10px 14px; margin: 4px 0;">
-                        <span id="cartDiscountLabel" style="color: #059669; font-weight: 600;">Discount</span>
-                        <span id="cartDiscount" style="color: #059669; font-weight: 600;">-₹0</span>
+                        <span id="cartDiscountLabel" style="color: #1c7a3b; font-weight: 600;">Discount</span>
+                        <span id="cartDiscount" style="color: #1c7a3b; font-weight: 600;">-₹0</span>
+                    </div>
+
+                    <!-- Task 2: Shipping charge (₹0 when free-delivery threshold reached) -->
+                    <div class="summary-row" id="cartShippingRow">
+                        <span>Shipping Charge</span>
+                        <span id="cartShipping">₹0</span>
                     </div>
 
                     <div class="summary-row" style="border-top: 2px solid rgba(184,134,11,0.3); margin-top: 10px; padding-top: 20px;">
@@ -159,6 +185,23 @@
             </div>
         </div>
     </section>
+
+    <!-- ===== COUPON MODAL (shared with checkout) ===== -->
+    <div id="couponModal" role="dialog" aria-modal="true" aria-label="Apply coupon">
+        <div class="coupon-modal-box">
+            <div class="coupon-modal-header">
+                <h3>View &amp; Apply Coupon</h3>
+                <button type="button" class="coupon-modal-close" onclick="closeCouponModal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="coupon-manual-wrap">
+                <input type="text" class="coupon-manual-input" id="couponManualInput" placeholder="Enter coupon code" autocomplete="off" aria-label="Coupon code" onkeydown="if(event.key==='Enter'){event.preventDefault();applyManualCoupon();}">
+                <button type="button" class="coupon-manual-apply" onclick="applyManualCoupon()">Apply</button>
+            </div>
+            <div class="coupon-manual-msg" id="couponManualMsg"></div>
+            <div class="coupon-modal-divider">— or choose from available coupons —</div>
+            <div class="coupon-modal-list" id="couponList"></div>
+        </div>
+    </div>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script>
@@ -263,6 +306,10 @@
         }
 
         let globalDiscountPercent = 0;
+        let shippingCharge = 0;
+        let freeShippingMin = 0;
+        let appliedCoupon = null;   // { code, discount, description } applied in cart
+        let currentSubtotal = 0;
 
         async function loadGlobalDiscount() {
             try {
@@ -270,6 +317,9 @@
                 const data = await res.json();
                 // Use global_discount_percent (fallback to legacy global_discount)
                 globalDiscountPercent = parseFloat(String(data.global_discount_percent || data.global_discount || '0').replace('%', '')) || 0;
+                // Task 2: free-shipping threshold + shipping charge fetched dynamically (no hard-coding)
+                shippingCharge = parseFloat(String(data.shipping_charge || '0').replace(/[₹,\s]/g, '')) || 0;
+                freeShippingMin = parseFloat(String(data.free_shipping_min || '0').replace(/[₹,\s]/g, '')) || 0;
             } catch(e) {
                 console.error('Failed to load discount:', e);
                 globalDiscountPercent = 0;
@@ -343,13 +393,13 @@
 
             // Update summary - only apply admin-set global discount
             // Item price is ALREADY the final discounted price
-            const total = subtotal - globalDiscountAmount;
-            
+            currentSubtotal = subtotal;
+
             // Discount percentage must be computed strictly from the discount
             // amount shown in this row, against the subtotal — never against MRP.
             const discountAmount = globalDiscountAmount;
             const cartDiscountPercent = subtotal > 0 ? Math.round((discountAmount / subtotal) * 100) : 0;
-            
+
             document.getElementById('cartSubtotal').textContent = formatPriceCart('₹' + subtotal.toFixed(2));
             // Single-row discount: show only if there is an actual discount
             const discountLabelEl = document.getElementById('cartDiscountLabel');
@@ -361,8 +411,175 @@
                 discountLabelEl.textContent = discountWord + ' (' + cartDiscountPercent + '%)';
                 document.getElementById('cartDiscount').textContent = '-' + formatPriceCart('₹' + discountAmount.toFixed(2));
             }
+
+            // ---- Task 1: applied coupon row + discount ----
+            const couponDiscount = appliedCoupon ? Math.min(appliedCoupon.discount, subtotal) : 0;
+            const couponRow = document.getElementById('cartCouponRow');
+            if (appliedCoupon && couponDiscount > 0) {
+                couponRow.style.display = '';
+                document.getElementById('cartCouponCode').textContent = appliedCoupon.code;
+                document.getElementById('cartCouponDesc').textContent = appliedCoupon.description || 'Coupon applied';
+                document.getElementById('cartCouponDiscount').textContent = '-' + formatPriceCart('₹' + couponDiscount.toFixed(2));
+            } else {
+                couponRow.style.display = 'none';
+            }
+
+            // ---- Task 2: free-delivery banner + shipping charge ----
+            const amountAfterDiscounts = subtotal - globalDiscountAmount - couponDiscount;
+            const banner = document.getElementById('cartFreeDeliveryBanner');
+            if (freeShippingMin > 0) {
+                if (amountAfterDiscounts >= freeShippingMin) {
+                    banner.className = 'free-delivery-banner';
+                    banner.innerHTML = 'You qualify for FREE delivery! 🎉';
+                } else {
+                    const diff = freeShippingMin - amountAfterDiscounts;
+                    banner.className = 'free-delivery-banner progress';
+                    banner.innerHTML = 'Add ₹' + diff.toLocaleString('en-IN') + ' more for FREE delivery' +
+                        '<small>Free delivery on orders above ₹' + freeShippingMin.toLocaleString('en-IN') + '</small>';
+                }
+                banner.style.display = '';
+            } else {
+                banner.style.display = 'none';
+            }
+            const effectiveShipping = (shippingCharge > 0 && freeShippingMin > 0 && amountAfterDiscounts >= freeShippingMin) ? 0 : shippingCharge;
+            document.getElementById('cartShipping').textContent = effectiveShipping > 0 ? formatPriceCart('₹' + effectiveShipping.toFixed(2)) : 'FREE';
+
+            // ---- Grand total ----
+            const total = amountAfterDiscounts + effectiveShipping;
             document.getElementById('cartTotal').textContent = formatPriceCart('₹' + total.toFixed(2));
         }
+
+        // ==================== COUPON MODAL (Task 1) ====================
+        function getCouponSubtotal() {
+            return currentSubtotal;
+        }
+
+        function formatCouponOffer(c) {
+            const val = String(c.discount_value || '0').replace(/[₹,\s]/g, '');
+            if (String(c.discount_type || '').toLowerCase() === 'flat') {
+                return '₹' + (parseFloat(val) || 0).toLocaleString('en-IN') + ' off';
+            }
+            return (parseFloat(val) || 0) + '% off';
+        }
+
+        function openCouponModal() {
+            const modal = document.getElementById('couponModal');
+            if (!modal) return;
+            modal.classList.add('active');
+            document.getElementById('couponManualMsg').style.display = 'none';
+            const input = document.getElementById('couponManualInput');
+            if (input) input.value = '';
+            loadCoupons();
+        }
+
+        function closeCouponModal() {
+            const modal = document.getElementById('couponModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        function couponSubtotalNow() {
+            // Cart subtotal from the last render (item prices already final).
+            return getCouponSubtotal();
+        }
+
+        async function loadCoupons() {
+            const listEl = document.getElementById('couponList');
+            listEl.innerHTML = '<p style="text-align:center;color:#6b4f00;padding:20px;">Loading available coupons...</p>';
+            try {
+                const res = await fetch('/api/coupons');
+                const coupons = await res.json();
+                renderCouponList(coupons);
+            } catch (e) {
+                console.error('Failed to load coupons:', e);
+                listEl.innerHTML = '<p class="coupon-modal-empty">Could not load coupons. Please try again.</p>';
+            }
+        }
+
+        function renderCouponList(coupons) {
+            const listEl = document.getElementById('couponList');
+            if (!coupons || !coupons.length) {
+                listEl.innerHTML = '<p class="coupon-modal-empty">No active coupons available right now.</p>';
+                return;
+            }
+            const subtotal = couponSubtotalNow();
+            let html = '';
+            coupons.forEach(c => {
+                const minAmt = parseFloat(String(c.min_order_amount || '0').replace(/[₹,\s]/g, '') || 0);
+                const usable = minAmt <= 0 || subtotal >= minAmt;
+                const exhausted = c.usage_limit > 0 && c.used_count >= c.usage_limit;
+                const eligible = usable && !exhausted;
+                const minText = 'Minimum order: ₹' + minAmt.toLocaleString('en-IN');
+                const expiryText = c.expiry_date ? ('Expires: ' + c.expiry_date) : 'No expiry';
+                let statusHtml;
+                if (!eligible) {
+                    const need = minAmt - subtotal;
+                    statusHtml = '<span class="coupon-needed">Add ₹' + (need > 0 ? need : 0).toLocaleString('en-IN') + ' more to use this coupon</span>';
+                } else {
+                    statusHtml = '<span class="coupon-eligible">Applicable</span>';
+                }
+                html += `
+                    <div class="coupon-card">
+                        <div class="coupon-card-top">
+                            <span class="coupon-card-code">${escapeHtml(c.code)}</span>
+                            <span class="coupon-card-offer">${escapeHtml(formatCouponOffer(c))}</span>
+                        </div>
+                        <div class="coupon-card-meta">
+                            <span>${escapeHtml(minText)}</span>
+                            <span>${escapeHtml(expiryText)}</span>
+                        </div>
+                        <div class="coupon-card-footer">
+                            ${statusHtml}
+                            <button type="button" class="coupon-apply-btn"
+                                ${eligible ? `onclick="applyCouponFromModal('${escapeHtml(c.code)}', true)"` : 'disabled'}>
+                                Apply
+                            </button>
+                        </div>
+                    </div>`;
+            });
+            listEl.innerHTML = html;
+        }
+
+        async function applyCouponFromModal(code, closeAfterApply) {
+            const msg = document.getElementById('couponManualMsg');
+            try {
+                const res = await fetch('/api/coupon/validate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ coupon_code: code })
+                });
+                const data = await res.json();
+                if (!data.valid) {
+                    msg.textContent = data.error || 'Coupon not applicable.';
+                    msg.style.display = 'block';
+                    return;
+                }
+                appliedCoupon = { code: data.code, discount: data.discount, description: data.description };
+                msg.style.display = 'none';
+                renderCart();
+                closeCouponModal();
+            } catch (e) {
+                console.error('Coupon apply failed:', e);
+                msg.textContent = 'Could not apply the coupon. Please try again.';
+                msg.style.display = 'block';
+            }
+        }
+
+        function applyManualCoupon() {
+            const input = document.getElementById('couponManualInput');
+            const code = (input.value || '').trim().toUpperCase();
+            if (!code) return;
+            applyCouponFromModal(code, true);
+        }
+
+        function removeCoupon() {
+            appliedCoupon = null;
+            renderCart();
+        }
+
+        // Close coupon modal on backdrop click / Escape
+        document.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'couponModal') closeCouponModal();
+        });
 
         async function updateCartQty(index, qty) {
             const quantity = parseInt(qty) || 1;

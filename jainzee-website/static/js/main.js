@@ -31,6 +31,30 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+// Self-contained toast notification (main.js is not loaded together with
+// admin.js/customer.html, so define it here to avoid a missing-function error).
+function showToast(message, type = 'success') {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        container.style.cssText =
+            'position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;' +
+            'flex-direction:column;gap:10px;';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    toast.style.cssText =
+        'padding:14px 22px;border-radius:10px;font-weight:600;color:#fff;' +
+        'box-shadow:0 10px 30px rgba(0,0,0,0.25);animation:toastIn .3s ease;' +
+        'background:' + (type === 'error' ? '#d33' : '#1c7a3b') + ';';
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3200);
+}
+
 // Translation dictionary for static UI elements
 const translations = {
     en: {
@@ -365,9 +389,30 @@ async function checkAuthStatus() {
 async function openMyOrdersModal() {
     const modal = document.getElementById('myOrdersModal');
     const ordersList = document.getElementById('myOrdersList');
-    
-    if (!modal) return;
-    
+
+    // TASK 4: Auth-gated My Orders. Unauthenticated users are redirected to the
+    // login view with a toast. Authenticated users get the modal (on index) or
+    // are navigated to the My Orders view (on sub-pages without the modal).
+    let loggedIn = false;
+    try {
+        const authRes = await authFetch('/api/auth/status');
+        const authData = await authRes.json();
+        loggedIn = !!authData.customer_logged_in;
+    } catch (e) {
+        console.error('Auth check failed:', e);
+    }
+    if (!loggedIn) {
+        showToast('Please login to view your orders.', 'error');
+        const msg = encodeURIComponent('Please login to view your orders.');
+        window.location.href = '/customer?msg=' + msg;
+        return;
+    }
+    if (!modal) {
+        // No modal on this page (e.g. cart/checkout) - go to the My Orders view.
+        window.location.href = '/customer';
+        return;
+    }
+
     // Show modal with loading state
     modal.classList.add('active');
     ordersList.innerHTML = '<p style="text-align: center; padding: 40px; color: var(--text-light);">Loading orders...</p>';
@@ -435,9 +480,13 @@ async function openMyOrdersModal() {
                     <button class="btn btn-outline" style="width: 100%; padding: 10px; font-size: 0.85rem; margin-top: 8px;" onclick="reorderOrder(${order.id})">
                         <i class="fas fa-rotate-right"></i> ${currentLang === 'hi' ? 'दोबारा ऑर्डर करें' : 'Add Again / Reorder'}
                     </button>
-                    <button class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 0.85rem; margin-top: 8px;" onclick="downloadInvoice(${order.id})">
-                        <i class="fas fa-download"></i> Download Invoice (PDF)
-                    </button>
+                    ${String(order.status_display || order.status || '').toLowerCase().indexOf('deliver') >= 0
+                        ? `<button class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 0.85rem; margin-top: 8px;" onclick="downloadInvoice(${order.id})">
+                                <i class="fas fa-download"></i> Download Invoice (PDF)
+                           </button>`
+                        : `<p style="width: 100%; padding: 10px; font-size: 0.8rem; margin-top: 8px; color: #8a7362; text-align: center;">
+                                <i class="fas fa-hourglass-half"></i> Invoice will be available after delivery.
+                           </p>`}
                 </div>
             `;
         });
@@ -1444,6 +1493,15 @@ function init() {
     const myOrdersBtn = document.getElementById('myOrdersBtn');
     if (myOrdersBtn) {
         myOrdersBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openMyOrdersModal();
+        });
+    }
+
+    // Mobile-menu "My Orders" link - prevents dead href="#" and routes to auth.
+    const mobileMyOrdersLink = document.getElementById('mobileMyOrdersLink');
+    if (mobileMyOrdersLink) {
+        mobileMyOrdersLink.addEventListener('click', (e) => {
             e.preventDefault();
             openMyOrdersModal();
         });
