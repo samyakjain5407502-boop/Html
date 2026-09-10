@@ -63,15 +63,42 @@ class PostgresConnection:
             return ('__COLUMNS__', table)
         s = s.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
         s = s.replace('MAX(stock - ?, 0)', 'GREATEST(stock - ?, 0)')
-        s = s.replace(
-            'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
-            'INSERT INTO settings (key, value) VALUES (?, ?) '
-            'ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value')
+        s = PostgresConnection._translate_insert_or_replace(s)
         if s.upper().startswith('INSERT OR IGNORE'):
             s = s.replace('INSERT OR IGNORE', 'INSERT', 1) + ' ON CONFLICT DO NOTHING'
         elif s.upper().startswith('INSERT') and 'RETURNING' not in s.upper():
             s += ' RETURNING id'
         return (s.replace('?', '%s'), None)
+
+    @staticmethod
+    def _translate_insert_or_replace(sql):
+        """Rewrite SQLite 'INSERT OR REPLACE INTO ...' as a Postgres upsert.
+
+        Postgres has no INSERT OR REPLACE, so convert:
+            INSERT OR REPLACE INTO <table> (<cols>) VALUES (...)
+        into:
+            INSERT INTO <table> (<cols>) VALUES (...)
+            ON CONFLICT (<pk>) DO UPDATE SET <col> = EXCLUDED.<col>, ...
+        The first listed column is assumed to be the primary key / conflict
+        target (true for the 'settings' table used across this app).
+        """
+        m = re.match(
+            r'\s*INSERT\s+OR\s+REPLACE\s+INTO\s+'
+            r'([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*([^)]*?)\s*\)\s+VALUES\s*\((.*)\)\s*;?\s*$',
+            sql, re.IGNORECASE | re.DOTALL)
+        if not m:
+            return sql
+        table = m.group(1)
+        cols = [c.strip() for c in m.group(2).split(',')]
+        if not cols:
+            return sql
+        conflict = cols[0]
+        updates = ', '.join('%s = EXCLUDED.%s' % (c, c) for c in cols[1:])
+        if not updates:
+            # Single-column table: keep it valid by re-assigning the conflict column.
+            updates = '%s = EXCLUDED.%s' % (conflict, conflict)
+        return (f'INSERT INTO {table} ({", ".join(cols)}) VALUES ({m.group(3)}) '
+                f'ON CONFLICT ({conflict}) DO UPDATE SET {updates}')
 
     def _columns(self, table):
         cur = self._conn.cursor()
