@@ -60,6 +60,7 @@ class PostgresConnection:
 
     def __init__(self, conn):
         self._conn = conn
+        self.lastrowid = None
 
     @staticmethod
     def _insert_target_table(sql):
@@ -137,10 +138,11 @@ class PostgresConnection:
         # without RETURNING (e.g. settings inserts, which have no 'id' column)
         # produce no result set, and calling fetchone() on them raises
         # ProgrammingError: no results to fetch.
+        self.lastrowid = None
         if translated.upper().startswith('INSERT') and 'RETURNING' in translated.upper():
             row = cur.fetchone()
             if row:
-                cur.lastrowid = list(row.values())[0]
+                self.lastrowid = list(row.values())[0]
         return cur
 
     def executescript(self, script):
@@ -218,6 +220,11 @@ class _PostgresCursor:
 
     @property
     def lastrowid(self):
+        # The id is stored on the PostgresConnection wrapper (psycopg2's raw
+        # cursor.lastrowid is read-only, so execute() cannot write it there)..
+        value = getattr(self._conn, 'lastrowid', None)
+        if value is not None:
+            return value
         return getattr(self._result, 'lastrowid', None)
 
     @property
