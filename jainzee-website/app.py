@@ -2608,14 +2608,16 @@ def api_coupon_validate():
     else:
         discount = subtotal * (float(str(coupon['discount_value']).replace('%', '').strip() or 0) / 100)
         discount = min(discount, subtotal)
+    flat_value = float(re.sub(r'[₹,\s]', '', str(coupon['discount_value'])) or 0)
+    pct_value = float(str(coupon['discount_value']).replace('%', '').strip() or 0)
     return jsonify({
         'valid': True,
         'code': coupon['code'],
         'discount': round(discount, 2),
         'discount_type': coupon['discount_type'],
-        'description': (f"₹{float(re.sub(r'[₹,\\s]', '', str(coupon['discount_value'])) or 0):g} off"
+        'description': (f"₹{flat_value:g} off"
                         if coupon['discount_type'] == 'flat'
-                        else f"{float(str(coupon['discount_value']).replace('%', '').strip() or 0):g}% off")
+                        else f"{pct_value:g}% off")
     })
 
 # ---------------- ADMIN COUPON MANAGEMENT ----------------
