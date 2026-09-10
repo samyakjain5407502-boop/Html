@@ -102,6 +102,11 @@ class PostgresConnection:
         for params in seq:
             self.execute(sql, params)
 
+    def cursor(self, *args, **kwargs):
+        # sqlite3-compatible cursor() -> returns a cursor that reuses this
+        # wrapper's SQL translation so the same code runs on Postgres.
+        return _PostgresCursor(self)
+
     def commit(self): self._conn.commit()
     def rollback(self): self._conn.rollback()
     def close(self): self._conn.close()
@@ -117,6 +122,58 @@ class _CursorStub:
     def fetchone(self): return self._rows[0] if self._rows else None
     def fetchall(self): return self._rows
     def __iter__(self): return iter(self._rows)
+
+
+class _PostgresCursor:
+    """Cursor-like wrapper returned by PostgresConnection.cursor().
+
+    Mimics the sqlite3 cursor API (execute/executescript/executemany plus
+    fetchone/fetchall/__iter__/lastrowid/rowcount) by delegating DML back to
+    PostgresConnection so its SQL translation is applied. This lets init_db()
+    and the rest of the app run unchanged against PostgreSQL.
+    """
+    def __init__(self, conn):
+        self._conn = conn          # PostgresConnection instance
+        self._result = None        # raw psycopg2 cursor or _CursorStub
+
+    def _clear(self):
+        self._result = None
+        return self
+
+    def execute(self, sql, params=()):
+        self._result = self._conn.execute(sql, params)
+        return self
+
+    def executescript(self, script):
+        for statement in script.split(';'):
+            if statement.strip():
+                self.execute(statement)
+        return self
+
+    def executemany(self, sql, seq):
+        for params in seq:
+            self.execute(sql, params)
+        return self
+
+    def fetchone(self):
+        return self._result.fetchone() if self._result is not None else None
+
+    def fetchall(self):
+        return self._result.fetchall() if self._result is not None else []
+
+    def __iter__(self):
+        if self._result is None:
+            return iter([])
+        return iter(self._result)
+
+    @property
+    def lastrowid(self):
+        return getattr(self._result, 'lastrowid', None)
+
+    @property
+    def rowcount(self):
+        rc = getattr(self._result, 'rowcount', -1)
+        return rc if rc is not None else -1
 
 
 def get_db():
