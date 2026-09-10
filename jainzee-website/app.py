@@ -52,8 +52,21 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 class PostgresConnection:
     """Thin compatibility wrapper over psycopg2 mimicking the sqlite3 API."""
 
+    # Tables created in init_db() WITHOUT an 'id' column. Their primary key is
+    # named differently (e.g. settings uses `key TEXT PRIMARY KEY`). The adapter
+    # must NOT append 'RETURNING id' to INSERTs targeting these tables, otherwise
+    # Postgres raises UndefinedColumn: column "id" does not exist.
+    NO_ID_TABLES = frozenset({'settings'})
+
     def __init__(self, conn):
         self._conn = conn
+
+    @staticmethod
+    def _insert_target_table(sql):
+        """Return the lowercased table name of an INSERT statement, or None."""
+        m = re.match(
+            r'\s*INSERT\s+INTO\s+([A-Za-z_][A-Za-z0-9_]*)', sql, re.IGNORECASE)
+        return m.group(1).lower() if m else None
 
     @staticmethod
     def _translate(sql):
@@ -66,8 +79,14 @@ class PostgresConnection:
         s = PostgresConnection._translate_insert_or_replace(s)
         if s.upper().startswith('INSERT OR IGNORE'):
             s = s.replace('INSERT OR IGNORE', 'INSERT', 1) + ' ON CONFLICT DO NOTHING'
-        elif s.upper().startswith('INSERT') and 'RETURNING' not in s.upper():
-            s += ' RETURNING id'
+        # Append RETURNING id ONLY when the target table has an 'id' column.
+        # Settings has (key TEXT PRIMARY KEY, value TEXT) - no id - so it must
+        # not get RETURNING. This lets execute() populate cursor.lastrowid for
+        # tables that need it without breaking id-less tables.
+        if s.upper().startswith('INSERT') and 'RETURNING' not in s.upper():
+            table = PostgresConnection._insert_target_table(s)
+            if table and table not in PostgresConnection.NO_ID_TABLES:
+                s += ' RETURNING id'
         return (s.replace('?', '%s'), None)
 
     @staticmethod
@@ -114,7 +133,11 @@ class PostgresConnection:
             self._last_columns = self._columns(special) if special else []
             return _CursorStub(self._last_columns)
         cur.execute(translated, params)
-        if translated.upper().startswith('INSERT'):
+        # Only read back a row when RETURNING was actually appended. Queries
+        # without RETURNING (e.g. settings inserts, which have no 'id' column)
+        # produce no result set, and calling fetchone() on them raises
+        # ProgrammingError: no results to fetch.
+        if translated.upper().startswith('INSERT') and 'RETURNING' in translated.upper():
             row = cur.fetchone()
             if row:
                 cur.lastrowid = list(row.values())[0]
