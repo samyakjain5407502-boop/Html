@@ -273,8 +273,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS customers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            phone TEXT NOT NULL UNIQUE,
-            email TEXT DEFAULT '',
+            phone TEXT UNIQUE,
+            email TEXT,
             address TEXT DEFAULT '',
             password_hash TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -464,7 +464,37 @@ def init_db():
              'Golden and black raisins, naturally sun-dried. Sweet, juicy and full of natural energy.',
              'गोल्डन और ब्लैक किशमिश, प्राकृतिक रूप से धूप में सुखाई गई। मीठी, रसीली और प्राकृतिक ऊर्जा से भरपूर।', '', 200, '₹400', 'RAI-001'),
         ]
-    )
+)
+    # Customer OTP login table
+    cur.execute('''CREATE TABLE IF NOT EXISTS customer_otps (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        phone VARCHAR(20) NOT NULL,
+        otp VARCHAR(6) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL
+    )''')
+
+    # Migration: clean up customers.phone/email empty strings -> NULL. This lets
+    # PostgreSQL store NULL instead of '', avoiding the UNIQUE-collision 'duplicate
+    # phone' error when multiple customers register without a phone/email.
+    try:
+        cur.execute("UPDATE customers SET phone = NULL WHERE phone = ''")
+    except Exception:
+        pass
+    try:
+        cur.execute("UPDATE customers SET email = NULL WHERE email = ''")
+    except Exception:
+        pass
+
+    # Migration: relax customers.phone NOT NULL (PostgreSQL) so NULL can be stored.
+    # UNIQUE permits multiple NULLs, which is what we want for customers who only
+    # provide an email. (Ignored on SQLite, where ALTER COLUMN DROP NOT NULL is
+    # unsupported - there we rely on the fresh nullable schema.)
+    try:
+        cur.execute('ALTER TABLE customers ALTER COLUMN phone DROP NOT NULL')
+    except Exception:
+        pass
+
     conn.commit()
     conn.close()
 
@@ -719,8 +749,10 @@ def api_customer_register():
         return jsonify({'error': 'Too many attempts. Please wait 5 minutes and try again.'}), 429
     data = request.get_json() or {}
     name = data.get('name', '').strip()
-    phone = data.get('phone', '').strip()
-    email = data.get('email', '').strip()
+    phone_raw = data.get('phone', '')
+    email_raw = data.get('email', '')
+    phone = phone_raw.strip() if phone_raw and phone_raw.strip() else None
+    email = email_raw.strip().lower() if email_raw and email_raw.strip() else None
     password = data.get('password', '')
     # Accept either phone OR email as the login identifier (simplified 3-field form)
     if not name or (not phone and not email) or not password:
@@ -778,6 +810,68 @@ def api_customer_logout():
     session.pop('customer_id', None)
     session.pop('customer_name', None)
     return jsonify({'message': 'Logged out'})
+
+
+@app.route('/api/customer/send-otp', methods=['POST'])
+def api_customer_send_otp():
+    if not rate_limit_ok('send_otp'):
+        return jsonify({'error': 'Too many attempts. Please wait 5 minutes and try again.'}), 429
+    data = request.get_json() or {}
+    phone = data.get('phone', '').strip()
+    if not phone:
+        return jsonify({'error': 'Phone number is required'}), 400
+    import random
+    if os.environ.get('OTP_DEBUG', '').strip().lower() in ('1', 'true', 'yes'):
+        otp = '123456'
+    else:
+        otp = f"{random.randint(0, 999999):06d}"
+    print(f"[OTP] Login OTP for {phone}: {otp} (valid to 10 minutes)")
+    expires_at = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+    conn = get_db()
+    conn.execute(
+        'INSERT INTO customer_otps (phone, otp, expires_at) VALUES (?, ?, ?)',
+        (phone, otp, expires_at)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'OTP sent.Please check the server logs.', 'otp_for_debug': otp})
+
+
+@app.route('/api/customer/verify-otp', methods=['POST'])
+def api_customer_verify_otp():
+    if not rate_limit_ok('verify_otp'):
+        return jsonify({'error': 'Too many attempts.Please wait 5 minutes and try again.'}), 429
+    data = request.get_json() or {}
+    phone = data.get('phone', '').strip()
+    otp_value = data.get('otp', '').strip()
+    if not phone or not otp_value:
+        return jsonify({'error': 'Phone and OTP are required'}), 400
+    conn = get_db()
+    row = conn.execute(
+        'SELECT * FROM customer_otps WHERE phone=? AND otp=? AND expires_at > ? '
+        'ORDER BY id DESC LIMIT 1',
+        (phone, otp_value, datetime.utcnow().isoformat())
+    ).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'error': 'Invalid or expired OTP'}), 400
+    conn.execute('DELETE FROM customer_otps WHERE id=?', (row['id'],))
+    conn.commit()
+    customer = conn.execute('SELECT * FROM customers WHERE phone=?', (phone,)).fetchone()
+    if not customer:
+        cur = conn.execute(
+            'INSERT INTO customers (name, phone, password_hash) VALUES (?, ?, ?)',
+            (f'Customer {phone}', phone, generate_password_hash(secrets.token_urlsafe(12)))
+        )
+        conn.commit()
+        customer = {'id': cur.lastrowid, 'name': f'Customer {phone}', 'phone': phone}
+    session.permanent = True
+    session['customer_id'] = customer['id']
+    session['customer_name'] = customer['name']
+    conn.close()
+    token = generate_jwt_token(customer['id'], customer['name'])
+    return jsonify({'success': True, 'customer': {'id': customer['id'], 'name': customer['name'], 'phone': phone}, 'token': token})
+
 
 # ---------------- GOOGLE OAUTH =================
 
@@ -886,8 +980,8 @@ def api_auth_google_token():
     try:
         # If an authorization code was provided, exchange it for an access token
         if code and not access_token:
-            client_id = os.environ.get('GOOGLE_CLIENT_ID', '').strip()
-            client_secret = os.environ.get('GOOGLE_CLIENT_SECRET', '').strip()
+            client_id = os.environ.get('GOOGLE_CLIENT_ID', '').strip().strip('"').strip("'")
+            client_secret = os.environ.get('GOOGLE_CLIENT_SECRET', '').strip().strip('"').strip("'")
             redirect_uri = url_for('api_auth_google_callback', _external=True, _scheme='https')
             # Fallback if behind a proxy that injects http
             if redirect_uri.startswith('http://'):
@@ -898,8 +992,8 @@ def api_auth_google_token():
             
             token_req = urllib.parse.urlencode({
                 'code': code,
-                'client_id': os.environ.get('GOOGLE_CLIENT_ID', '').strip(),
-                'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET', '').strip(),
+                'client_id': client_id,
+                'client_secret': client_secret,
                 'redirect_uri': redirect_uri,
                 'grant_type': 'authorization_code'
             }).encode('utf-8')
