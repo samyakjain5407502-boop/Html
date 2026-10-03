@@ -671,25 +671,25 @@ def save_uploaded_file(file, folder='uploads', multipart=False, filename=None):
         local_name = _unique_upload_filename(file.filename)
 
     if not USE_BLOB_STORAGE:
+        # Vercel's filesystem is read-only, so never even *attempt* a local write
+        # there. Fail up front with an actionable message instead of letting a
+        # bare FileNotFoundError surface as Flask's HTML "Internal Server Error".
+        if os.environ.get('VERCEL') == '1':
+            raise BlobStorageError(
+                'Uploads cannot be stored locally: this deployment runs on Vercel, '
+                'whose filesystem is read-only, and BLOB_READ_WRITE_TOKEN is not '
+                'set so Vercel Blob is unavailable. Add the token under Project '
+                'Settings > Environment Variables (or run "vercel env add '
+                'BLOB_READ_WRITE_TOKEN production") and redeploy.'
+            )
         target = os.path.join(app.config['UPLOAD_FOLDER'], local_name)
         try:
             file.save(target)
         except OSError as exc:
-            # Vercel's filesystem is read-only, so this is only reachable in
-            # development OR in production when BLOB_READ_WRITE_TOKEN is missing.
-            # Raise a descriptive error instead of letting a bare FileNotFoundError
-            # surface as Flask's HTML "Internal Server Error".
-            if os.environ.get('VERCEL') == '1':
-                hint = (' This deployment is running on Vercel without '
-                        'BLOB_READ_WRITE_TOKEN, so uploads have nowhere to go. '
-                        'Run "vercel env add BLOB_READ_WRITE_TOKEN production" '
-                        '(or set it in the Vercel dashboard) and redeploy; uploads '
-                        'will then be stored in Vercel Blob.')
-            else:
-                hint = (f' Check that the upload folder "{app.config["UPLOAD_FOLDER"]}" '
-                        'exists and is writable.')
             raise BlobStorageError(
-                f'Could not write the uploaded file to disk: {exc}.{hint}'
+                f'Could not write the uploaded file to disk: {exc}. Check that the '
+                f'upload folder "{app.config["UPLOAD_FOLDER"]}" exists and is '
+                'writable.'
             ) from exc
         return f'/static/uploads/{local_name}'
 
@@ -705,11 +705,17 @@ def save_uploaded_file(file, folder='uploads', multipart=False, filename=None):
     data = file.read()
     pathname = f'{folder}/{local_name}'.lstrip('/')
     try:
+        # ACCESS IS PUBLIC - required, and enforced by the SDK itself: Vercel Blob
+        # has no private buckets, and vercel_blob/blob_store.py hardcodes the
+        # "access: public" header on every put() (private is not yet supported).
+        # That header is exactly what makes the URL below directly servable to the
+        # browser, so no extra option is passed here.
+        #
+        # addRandomSuffix avoids overwriting/colliding with an existing blob; the
+        # canonical URL is whatever the API returns.
         blob = vercel_blob.put(
             pathname,
             data,
-            # addRandomSuffix avoids overwriting/colliding with existing blobs;
-            # the canonical URL is whatever the API returns.
             {'addRandomSuffix': 'true'},
             multipart=multipart,
         )
