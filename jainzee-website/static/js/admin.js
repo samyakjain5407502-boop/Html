@@ -40,14 +40,118 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// ==================== UPLOAD HELPERS ====================
+// Vercel Functions reject any request body above ~4.5 MB, so large photos are
+// resized/compressed in the browser *before* upload. This lets an admin upload a
+// photo of practically any size (a 15 MB phone photo becomes ~400 KB) and keeps
+// the website fast. The server still enforces its own limits as a backstop.
+
+let uploadConfig = {
+    maxUploadBytes: 100 * 1024 * 1024,
+    maxImageDimension: 2000,
+    blobEnabled: false
+};
+
+async function loadUploadConfig() {
+    try {
+        const res = await fetch('/admin/api/upload-config');
+        if (res.ok) uploadConfig = await res.json();
+    } catch (e) {
+        // Keep permissive defaults - the server enforces the real limits.
+    }
+}
+
+function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function decodableImageType(type) {
+    return /^image\/(jpe?g|png|webp|bmp|avif)$/i.test(type || '');
+}
+
+// Shrink a raster image in the browser. Returns a File, or the original file if
+// it is already small / the browser cannot decode it (e.g. HEIC in Chrome).
+async function resizeImageFile(file) {
+    const maxDim = uploadConfig.maxImageDimension || 2000;
+    let bitmap;
+    try {
+        try {
+            // Honour EXIF rotation where the browser supports it
+            bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+        } catch (e) {
+            bitmap = await createImageBitmap(file);
+        }
+    } catch (e) {
+        return file;
+    }
+
+    try {
+        const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+        const width = Math.max(1, Math.round(bitmap.width * scale));
+        const height = Math.max(1, Math.round(bitmap.height * scale));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+        if (bitmap.close) bitmap.close();
+
+        // WebP keeps transparency and compresses well; JPEG is the fallback.
+        let out = await new Promise(r => canvas.toBlob(r, 'image/webp', 0.85));
+        let ext = 'webp';
+        if (!out) {
+            out = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.85));
+            ext = 'jpg';
+        }
+        if (!out || out.size >= file.size) return file; // no benefit - keep original
+
+        const base = (file.name || 'image').replace(/\.[^.]+$/, '') || 'image';
+        return new File([out], base + '.' + ext, { type: out.type });
+    } catch (e) {
+        return file;
+    }
+}
+
+// Prepare a picked file for upload: shrink images, then check the size limit.
+// Throws an Error with a readable message when the file cannot be sent.
+async function prepareUploadFile(file) {
+    const name = (file.name || '').toLowerCase();
+    const type = (file.type || '').toLowerCase();
+    let out = file;
+
+    // SVG is vector and GIF may be animated - never rasterise those.
+    if (decodableImageType(type) && !/\.(svg|gif)$/.test(name) && file.size > 300 * 1024) {
+        out = await resizeImageFile(file);
+    }
+
+    if (out.size > uploadConfig.maxUploadBytes) {
+        throw new Error(
+            'File is ' + formatBytes(out.size) + ' but this server allows up to ' +
+            formatBytes(uploadConfig.maxUploadBytes) + ' per upload. Please use a smaller file.'
+        );
+    }
+    return out;
+}
+
 // ==================== IMAGE UPLOAD ====================
 
 async function handleVideoUpload(input, urlFieldId) {
     const file = input.files[0];
     if (!file) return;
 
+    let uploadFile;
+    try {
+        uploadFile = await prepareUploadFile(file);
+    } catch (e) {
+        showToast(e.message, 'error');
+        input.value = '';
+        return;
+    }
+
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', uploadFile, uploadFile.name);
 
     try {
         const res = await fetch('/admin/api/upload', {
@@ -102,8 +206,17 @@ async function handleImageUpload(input, urlFieldId, previewId) {
     const file = input.files[0];
     if (!file) return;
 
+    let uploadFile;
+    try {
+        uploadFile = await prepareUploadFile(file);
+    } catch (e) {
+        showToast(e.message, 'error');
+        input.value = '';
+        return;
+    }
+
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', uploadFile, uploadFile.name);
 
     try {
         const res = await fetch('/admin/api/upload', {
@@ -660,8 +773,19 @@ async function uploadMainVideo(file) {
     if (btn) btn.disabled = true;
     if (msg) msg.textContent = 'Uploading video... This may take a few seconds for large files.';
 
+    try {
+        file = await prepareUploadFile(file);
+    } catch (e) {
+        if (msg) {
+            msg.innerHTML = '<span style="color: #dc3545;"><i class="fas fa-times-circle"></i> ' + e.message + '</span>';
+        }
+        showToast(e.message, 'error');
+        if (btn) btn.disabled = false;
+        return;
+    }
+
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', file, file.name);
 
     try {
         const res = await fetch('/admin/api/upload-main-video', {
@@ -688,6 +812,9 @@ async function uploadMainVideo(file) {
 // ==================== INIT ====================
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Fetch upload limits (Vercel body limit, allowed types, ...)
+    loadUploadConfig();
+
     // Detect current page
     const hasProductsTable = document.getElementById('productsTableBody');
     const hasSettingsForm = document.getElementById('sShopNameEn');
@@ -752,8 +879,16 @@ async function uploadGeneralMedia() {
         return;
     }
 
+    let uploadFile;
+    try {
+        uploadFile = await prepareUploadFile(fileInput.files[0]);
+    } catch (e) {
+        msgDiv.innerHTML = '<span style="color: #dc3545;">❌ ' + e.message + '</span>';
+        return;
+    }
+
     const formData = new FormData();
-    formData.append('file', fileInput.files[0]);
+    formData.append('file', uploadFile, uploadFile.name);
     formData.append('title', title);
     formData.append('category', category);
 

@@ -140,8 +140,22 @@ git push -u origin main
 > development) uploads still go to `static/uploads`.
 >
 > **Note:** a local SQLite database is not persisted between deployments - use an external
-> database via `DATABASE_URL`. Vercel Functions also cap the request body at ~4.5 MB, so
-> very large videos may need client-side (browser) uploads instead.
+> database via `DATABASE_URL`.
+
+> **Upload size limits:** Vercel Functions cap the request body at ~4.5 MB, and that limit is
+> enforced *before* the app runs, so anything larger returns `413 FUNCTION_PAYLOAD_TOO_LARGE`.
+> To make large photos work anyway, the admin panel (`static/js/admin.js`) resizes/compresses
+> images **in the browser** before sending them (longest side capped at 2000 px, re-encoded as
+> WebP with a JPEG fallback, skipped when the result would not be smaller). SVGs and GIFs are
+> never rasterised. Videos are never re-encoded, so on Vercel they must stay under ~4.5 MB -
+> for larger videos paste a hosted URL instead. Anything over the limit now fails with a readable
+> JSON error instead of a bare 413 page. The effective limits are exposed to the admin UI via
+> `GET /admin/api/upload-config`.
+>
+> **Accepted image types:** `png`, `jpg`, `jpeg`, `gif`, `webp`, `svg`, `avif`, `bmp`, `tiff`,
+> `tif`, `heic`, `heif`. Video types: `mp4`, `webm`, `mov`, `avi`.
+> (Note: browsers cannot display `heic`/`heif` on most platforms - those are accepted for
+> upload, but exporting to WebP/JPEG is preferable for anything shown on the site.)
 
 ## ☁️ Deploy to other hosts (Railway / Heroku-style)
 

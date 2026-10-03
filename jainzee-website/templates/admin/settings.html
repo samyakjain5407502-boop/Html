@@ -305,8 +305,16 @@
     document.getElementById('logoInput').addEventListener('change', async function(e) {
         const file = e.target.files[0];
         if (!file) return;
+        let uploadFile;
+        try {
+            uploadFile = await prepareUploadFile(file);
+        } catch (err) {
+            showToast(err.message, 'error');
+            e.target.value = '';
+            return;
+        }
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', uploadFile, uploadFile.name);
         const res = await fetch('/admin/api/upload', { method: 'POST', body: formData });
         const data = await res.json();
         if (res.ok) {
@@ -314,6 +322,8 @@
             const preview = document.getElementById('logoPreview');
             preview.querySelector('img').src = data.url;
             preview.style.display = 'block';
+        } else {
+            showToast(data.error || 'Upload failed', 'error');
         }
     });
 
@@ -350,8 +360,16 @@
             return;
         }
 
+        let uploadFile;
+        try {
+            uploadFile = await prepareUploadFile(fileInput.files[0]);
+        } catch (err) {
+            msgDiv.innerHTML = '<span style="color: #dc3545;">❌ ' + err.message + '</span>';
+            return;
+        }
+
         const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
+        formData.append('file', uploadFile, uploadFile.name);
 
         msgDiv.innerHTML = '<span style="color: #007bff;"><i class="fas fa-spinner fa-spin"></i> Uploading...</span>';
 
@@ -424,12 +442,22 @@
 
         if (!fileInput.files[0]) return;
 
-        const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
-
         msgDiv.style.color = "#007bff";
         msgDiv.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Uploading video... Please wait.";
         btn.disabled = true;
+
+        let uploadFile;
+        try {
+            uploadFile = await prepareUploadFile(fileInput.files[0]);
+        } catch (err) {
+            msgDiv.style.color = "#dc3545";
+            msgDiv.innerHTML = "❌ " + err.message;
+            btn.disabled = false;
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', uploadFile, uploadFile.name);
 
         try {
             const res = await fetch('/admin/api/upload-main-video', {

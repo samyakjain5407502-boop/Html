@@ -7,6 +7,7 @@ import sqlite3
 from datetime import timedelta, datetime, date
 from functools import wraps
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash, send_from_directory, g
+from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import jwt
@@ -24,8 +25,18 @@ DB_PATH = os.environ.get('JAINZEE_DB_PATH', os.path.join(BASE_DIR, 'jainzee.db')
 DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
 USE_POSTGRES = DATABASE_URL.startswith(('postgres://', 'postgresql://'))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'mp4', 'webm', 'mov', 'avi'}
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg',
+                            'avif', 'bmp', 'tiff', 'tif', 'heic', 'heif'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'mov', 'avi'}
+ALLOWED_EXTENSIONS = ALLOWED_IMAGE_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS
+# Vercel Functions reject any request body above ~4.5 MB *before* our code runs,
+# so that is the real per-upload ceiling on Vercel. Elsewhere MAX_CONTENT_LENGTH
+# applies. The admin UI reads this via /admin/api/upload-config.
+VERCEL_REQUEST_LIMIT = 4.5 * 1024 * 1024
+EFFECTIVE_MAX_UPLOAD_BYTES = (int(VERCEL_REQUEST_LIMIT)
+                             if os.environ.get('VERCEL') == '1'
+                             else 100 * 1024 * 1024)
+MAX_IMAGE_DIMENSION = 2000
 # Vercel Blob storage (production). When BLOB_READ_WRITE_TOKEN is present the
 # app stores uploaded media in Vercel Blob; otherwise it falls back to the
 # local static/uploads folder so development keeps working without credentials.
@@ -708,6 +719,16 @@ def delete_uploaded_file(url):
 def handle_blob_storage_error(error):
     """Return a clean JSON error instead of a bare 500 when storage fails."""
     return jsonify({'error': str(error)}), 502
+
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_request_too_large(error):
+    """Give the admin UI a readable message instead of a bare 413 page."""
+    limit_mb = EFFECTIVE_MAX_UPLOAD_BYTES / (1024 * 1024)
+    return jsonify({
+        'error': f'File is too large. This server accepts uploads up to '
+                 f'{limit_mb:.1f} MB. Please use a smaller/compressed file.'
+    }), 413
 
 # ---------------- JWT HELPERS ----------------
 
@@ -1800,6 +1821,19 @@ def admin_api_site():
                 return jsonify({'success': False, 'error': str(e)}), 500
     except Exception as e:
         return jsonify({'success': False, 'error': 'Server error: ' + str(e)}), 500
+
+@app.route('/admin/api/upload-config')
+@login_required
+def admin_api_upload_config():
+    """Upload limits the admin UI should enforce before sending a file."""
+    return jsonify({
+        'maxUploadBytes': EFFECTIVE_MAX_UPLOAD_BYTES,
+        'maxImageDimension': MAX_IMAGE_DIMENSION,
+        'blobEnabled': USE_BLOB_STORAGE,
+        'imageExtensions': sorted(ALLOWED_IMAGE_EXTENSIONS),
+        'videoExtensions': sorted(ALLOWED_VIDEO_EXTENSIONS),
+    })
+
 
 @app.route('/admin/api/upload', methods=['POST'])
 @login_required
