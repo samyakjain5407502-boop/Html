@@ -141,6 +141,12 @@ git push -u origin main
 >
 > **Note:** a local SQLite database is not persisted between deployments - use an external
 > database via `DATABASE_URL`.
+> **If an upload fails:** the app prints a warning at boot when it detects it is running on
+> Vercel without `BLOB_READ_WRITE_TOKEN`, and the upload then returns a readable `502` JSON
+> error that names the variable - never a bare `500 Internal Server Error`. Fix it with
+> `vercel env add BLOB_READ_WRITE_TOKEN production` (or Project Settings > Environment
+> Variables in the Vercel dashboard) and redeploy.
+
 
 > **Upload size limits:** Vercel Functions cap the request body at ~4.5 MB, and that limit is
 > enforced *before* the app runs, so anything larger returns `413 FUNCTION_PAYLOAD_TOO_LARGE`.

@@ -61,6 +61,30 @@ async function loadUploadConfig() {
     }
 }
 
+// Parse an upload response defensively. Server/proxy errors often come back as
+// HTML (Flask's "Internal Server Error" page, a CDN error page, ...), and a bare
+// `res.json()` would throw "Unexpected token '<'" and hide the real message.
+// Returns { ...payload } on success, or at least { error: '...' } on failure.
+async function readJsonResponse(res) {
+    const text = await res.text();
+    try {
+        const parsed = JSON.parse(text);
+        return (parsed && typeof parsed === 'object') ? parsed : {};
+    } catch (e) {
+        const snippet = (text || '')
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 160);
+        const status = `HTTP ${res.status}${res.statusText ? ' ' + res.statusText : ''}`;
+        return {
+            error: snippet
+                ? `${status} - ${snippet}`
+                : `${status} - the server returned a non-JSON response.`
+        };
+    }
+}
+
 function formatBytes(bytes) {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
@@ -158,7 +182,7 @@ async function handleVideoUpload(input, urlFieldId) {
             method: 'POST',
             body: formData
         });
-        const data = await res.json();
+        const data = await readJsonResponse(res);
         if (!res.ok) {
             throw new Error(data.error || 'Upload failed');
         }
@@ -223,7 +247,7 @@ async function handleImageUpload(input, urlFieldId, previewId) {
             method: 'POST',
             body: formData
         });
-        const data = await res.json();
+        const data = await readJsonResponse(res);
         if (!res.ok) {
             throw new Error(data.error || 'Upload failed');
         }
@@ -792,7 +816,7 @@ async function uploadMainVideo(file) {
             method: 'POST',
             body: formData
         });
-        const data = await res.json();
+        const data = await readJsonResponse(res);
         if (!res.ok) throw new Error(data.error || 'Upload failed');
 
         if (msg) {
@@ -900,7 +924,7 @@ async function uploadGeneralMedia() {
             body: formData,
             credentials: 'same-origin'
         });
-        const data = await res.json();
+        const data = await readJsonResponse(res);
         if (res.ok) {
             msgDiv.innerHTML = '<span style="color: #28a745;">✓ Media uploaded successfully!</span>';
             fileInput.value = '';

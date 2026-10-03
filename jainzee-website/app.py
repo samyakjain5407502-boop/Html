@@ -65,6 +65,14 @@ try:
 except OSError:
     print('[WARNING] Could not create local uploads folder (read-only filesystem?). '
           'Uploads will use Vercel Blob when BLOB_READ_WRITE_TOKEN is set.')
+# Fail loudly at boot rather than on the first upload: without the token every
+# upload on Vercel would otherwise die trying to write to the read-only disk.
+if os.environ.get('VERCEL') == '1' and not USE_BLOB_STORAGE:
+    print('[WARNING] Running on Vercel but BLOB_READ_WRITE_TOKEN is NOT set. '
+          'All image/video uploads will fail. Add it in Project Settings > '
+          'Environment Variables (or "vercel env add BLOB_READ_WRITE_TOKEN '
+          'production") and redeploy.')
+
 
 # ---------------- DATABASE HELPERS ----------------
 # Supports SQLite locally (default) and PostgreSQL via DATABASE_URL.
@@ -663,7 +671,26 @@ def save_uploaded_file(file, folder='uploads', multipart=False, filename=None):
         local_name = _unique_upload_filename(file.filename)
 
     if not USE_BLOB_STORAGE:
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], local_name))
+        target = os.path.join(app.config['UPLOAD_FOLDER'], local_name)
+        try:
+            file.save(target)
+        except OSError as exc:
+            # Vercel's filesystem is read-only, so this is only reachable in
+            # development OR in production when BLOB_READ_WRITE_TOKEN is missing.
+            # Raise a descriptive error instead of letting a bare FileNotFoundError
+            # surface as Flask's HTML "Internal Server Error".
+            if os.environ.get('VERCEL') == '1':
+                hint = (' This deployment is running on Vercel without '
+                        'BLOB_READ_WRITE_TOKEN, so uploads have nowhere to go. '
+                        'Run "vercel env add BLOB_READ_WRITE_TOKEN production" '
+                        '(or set it in the Vercel dashboard) and redeploy; uploads '
+                        'will then be stored in Vercel Blob.')
+            else:
+                hint = (f' Check that the upload folder "{app.config["UPLOAD_FOLDER"]}" '
+                        'exists and is writable.')
+            raise BlobStorageError(
+                f'Could not write the uploaded file to disk: {exc}.{hint}'
+            ) from exc
         return f'/static/uploads/{local_name}'
 
     try:
@@ -718,6 +745,7 @@ def delete_uploaded_file(url):
 @app.errorhandler(BlobStorageError)
 def handle_blob_storage_error(error):
     """Return a clean JSON error instead of a bare 500 when storage fails."""
+    app.logger.error('Media storage failure: %s', error)
     return jsonify({'error': str(error)}), 502
 
 
