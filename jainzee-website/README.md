@@ -95,7 +95,9 @@ For PostgreSQL, use `pg_dump "$DATABASE_URL" > backups/jainzee_$(date +%F_%H%M%S
 ## Admin dashboard
 Shows total sales, total/pending/delivered orders, low-stock count, a recent-orders list, and a low-stock warning list.
 
-## ☁️ Deploy to Render (Free)
+## ☁️ Deploy to Vercel (Production)
+
+**Live site:** https://html-jainzee.vercel.app
 
 1. Push this folder to a GitHub repository:
 ```bash
@@ -107,32 +109,41 @@ git remote add origin https://github.com/YOUR_USERNAME/jainzee-website.git
 git push -u origin main
 ```
 
-2. Go to [render.com](https://render.com) and sign up
+2. Go to [vercel.com](https://vercel.com) and sign up / log in with GitHub.
 
-3. Click **"New +"** → **"Web Service"**
+3. Click **"Add New..."** → **"Project"**, then import your GitHub repository.
 
-4. Connect your GitHub repository
+4. Configure the project (Python / Flask):
+   - **Framework Preset:** Other
+   - **Install Command:** `pip install -r requirements.txt`
+   - **Build Command:** leave empty
+   - **Output Directory:** leave empty
 
-5. Settings:
-   - **Name:** `jainzee-website`
-   - **Environment:** Python
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `gunicorn app:app`
+5. Add environment variables (Project → **Settings** → **Environment Variables**):
+   - `SECRET_KEY` – long random string, e.g. `python -c "import secrets; print(secrets.token_hex(32))"`
+   - `ADMIN_PASSWORD` – your admin panel password
+   - `DATABASE_URL` – PostgreSQL connection string (**recommended**; Vercel's filesystem is ephemeral, so a local SQLite file is not persisted)
+   - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` – only if Google Sign-In is enabled
 
-6. Add environment variable:
-   - `SECRET_KEY` = any random string (e.g. `jainzee-super-secret-key`)
+6. Click **"Deploy"**. The first build takes roughly 1–3 minutes.
 
-7. Click **"Create Web Service"**
+7. Your website is LIVE at **https://html-jainzee.vercel.app** 🎉
 
-8. Wait 2-3 minutes, then your website is LIVE! 🎉
+> **Google Sign-In:** add `https://html-jainzee.vercel.app/api/auth/google/callback`
+> to the **Authorized redirect URIs** in the Google Cloud Console.
 
-## ☁️ Deploy to Railway (Alternative)
+> **Note:** Vercel's filesystem is read-only/ephemeral, so uploaded product images and a
+> local SQLite database are not persisted between deployments. Use an external database
+> (`DATABASE_URL`) and/or object storage for production media.
+
+## ☁️ Deploy to other hosts (Railway / Heroku-style)
+
+The app also runs on any Gunicorn-compatible host (the included `Procfile` starts `gunicorn app:app`):
 
 1. Push to GitHub (same as above)
 2. Go to [railway.app](https://railway.app)
 3. Click **"New Project"** → **"Deploy from GitHub repo"**
-4. Select your repository
-5. Railway auto-detects the Python app
+4. Select your repository — Railway auto-detects the Python app
 
 ## 📁 Project Structure
 
@@ -192,7 +203,7 @@ jainzee-website/
 - **Backend:** Flask (Python)
 - **Database:** SQLite (no setup needed)
 - **Frontend:** HTML, CSS, JavaScript
-- **Deployment:** Gunicorn + Render/Railway
+- **Deployment:** Vercel (Python/Flask) · Gunicorn-compatible (Procfile)
 
 ---
 
