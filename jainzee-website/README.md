@@ -123,6 +123,7 @@ git push -u origin main
    - `SECRET_KEY` – long random string, e.g. `python -c "import secrets; print(secrets.token_hex(32))"`
    - `ADMIN_PASSWORD` – your admin panel password
    - `DATABASE_URL` – PostgreSQL connection string (**recommended**; Vercel's filesystem is ephemeral, so a local SQLite file is not persisted)
+   - `BLOB_READ_WRITE_TOKEN` – added automatically when you link a **Vercel Blob** store to the project. Required for media uploads (logo, product images/videos) in production.
    - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` – only if Google Sign-In is enabled
 
 6. Click **"Deploy"**. The first build takes roughly 1–3 minutes.
@@ -132,9 +133,15 @@ git push -u origin main
 > **Google Sign-In:** add `https://html-jainzee.vercel.app/api/auth/google/callback`
 > to the **Authorized redirect URIs** in the Google Cloud Console.
 
-> **Note:** Vercel's filesystem is read-only/ephemeral, so uploaded product images and a
-> local SQLite database are not persisted between deployments. Use an external database
-> (`DATABASE_URL`) and/or object storage for production media.
+> **Media uploads:** Vercel's filesystem is read-only/ephemeral, so files cannot be saved
+> to `static/uploads` there. When `BLOB_READ_WRITE_TOKEN` is set the app uploads logos,
+> product images/videos and other media to **Vercel Blob** (via the `vercel_blob` Python
+> SDK) and stores the returned CDN URL in the database. Without the token (local
+> development) uploads still go to `static/uploads`.
+>
+> **Note:** a local SQLite database is not persisted between deployments - use an external
+> database via `DATABASE_URL`. Vercel Functions also cap the request body at ~4.5 MB, so
+> very large videos may need client-side (browser) uploads instead.
 
 ## ☁️ Deploy to other hosts (Railway / Heroku-style)
 

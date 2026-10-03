@@ -26,6 +26,12 @@ USE_POSTGRES = DATABASE_URL.startswith(('postgres://', 'postgresql://'))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'mp4', 'webm', 'mov', 'avi'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'mov', 'avi'}
+# Vercel Blob storage (production). When BLOB_READ_WRITE_TOKEN is present the
+# app stores uploaded media in Vercel Blob; otherwise it falls back to the
+# local static/uploads folder so development keeps working without credentials.
+BLOB_READ_WRITE_TOKEN = os.environ.get('BLOB_READ_WRITE_TOKEN', '').strip()
+USE_BLOB_STORAGE = bool(BLOB_READ_WRITE_TOKEN)
+BLOB_URL_MARKER = '.blob.vercel-storage.com'
 
 app = Flask(__name__)
 # SECURITY: SECRET_KEY must come from the environment. In development (no
@@ -41,7 +47,13 @@ app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 # Keep customer & admin logged in for 30 days (persistent sessions)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# The local uploads folder is only used as a development fallback. On Vercel the
+# filesystem is read-only, so never let this crash the app at import time.
+try:
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+except OSError:
+    print('[WARNING] Could not create local uploads folder (read-only filesystem?). '
+          'Uploads will use Vercel Blob when BLOB_READ_WRITE_TOKEN is set.')
 
 # ---------------- DATABASE HELPERS ----------------
 # Supports SQLite locally (default) and PostgreSQL via DATABASE_URL.
@@ -596,6 +608,106 @@ def rate_limit_clear(scope):
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+# ---------------- MEDIA STORAGE (VERCEL BLOB) ----------------
+# All uploads (logos, product images/videos, general media) go through the
+# helpers below. In production BLOB_READ_WRITE_TOKEN is set, so files are
+# uploaded to Vercel Blob with the `vercel_blob` SDK - the Python wrapper
+# around the same REST API that the @vercel/blob Node SDK uses. This removes
+# the 500 errors caused by writing to Vercel's read-only filesystem.
+
+class BlobStorageError(Exception):
+    """Raised when an uploaded file cannot be persisted to media storage."""
+
+
+def _unique_upload_filename(filename):
+    """Return a collision-free filename (keeping the extension) for the local
+    fallback folder. Vercel Blob uses its own random suffix instead."""
+    safe = secure_filename(filename) or 'upload'
+    name, ext = os.path.splitext(safe)
+    candidate = safe
+    counter = 1
+    while os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], candidate)):
+        candidate = f'{name}_{counter}{ext}'
+        counter += 1
+    return candidate
+
+
+def save_uploaded_file(file, folder='uploads', multipart=False, filename=None):
+    """Persist an uploaded file and return a publicly reachable URL.
+
+    Production (BLOB_READ_WRITE_TOKEN set): uploads to Vercel Blob and returns
+    the CDN URL the API returns.
+
+    Development (no token): saves to static/uploads and returns a relative
+    /static/uploads/... URL, so local workflows are unchanged.
+
+    `filename` forces a specific name (e.g. the main banner video); otherwise a
+    collision-free name is derived from the upload.
+    """
+    if filename:
+        local_name = os.path.basename(filename)
+    else:
+        local_name = _unique_upload_filename(file.filename)
+
+    if not USE_BLOB_STORAGE:
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], local_name))
+        return f'/static/uploads/{local_name}'
+
+    try:
+        import vercel_blob
+    except ImportError as exc:  # pragma: no cover - misconfigured deployment
+        raise BlobStorageError(
+            'vercel_blob is not installed. Add "vercel_blob" to requirements.txt.'
+        ) from exc
+
+    # Read the upload into memory and hand the bytes to the Blob SDK.
+    file.stream.seek(0)
+    data = file.read()
+    pathname = f'{folder}/{local_name}'.lstrip('/')
+    try:
+        blob = vercel_blob.put(
+            pathname,
+            data,
+            # addRandomSuffix avoids overwriting/colliding with existing blobs;
+            # the canonical URL is whatever the API returns.
+            {'addRandomSuffix': 'true'},
+            multipart=multipart,
+        )
+    except Exception as exc:
+        raise BlobStorageError(f'Vercel Blob upload failed: {exc}') from exc
+
+    url = (blob or {}).get('url')
+    if not url:
+        raise BlobStorageError('Vercel Blob upload failed: no URL returned')
+    return url
+
+
+def delete_uploaded_file(url):
+    """Best-effort delete of a previously uploaded file (Vercel Blob or local)."""
+    if not url:
+        return
+    if url.startswith('http') and BLOB_URL_MARKER in url and USE_BLOB_STORAGE:
+        try:
+            import vercel_blob
+            vercel_blob.delete([url])
+        except Exception as exc:
+            print(f'[WARNING] Could not delete Vercel Blob {url}: {exc}')
+        return
+    if url.startswith('/static/uploads/'):
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(url))
+        if os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except OSError as exc:
+                print(f'[WARNING] Could not delete local upload {filepath}: {exc}')
+
+
+@app.errorhandler(BlobStorageError)
+def handle_blob_storage_error(error):
+    """Return a clean JSON error instead of a bare 500 when storage fails."""
+    return jsonify({'error': str(error)}), 502
 
 # ---------------- JWT HELPERS ----------------
 
@@ -1698,15 +1810,9 @@ def admin_api_upload():
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
     if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        # avoid name collisions
-        name, ext = os.path.splitext(filename)
-        counter = 1
-        while os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], filename)):
-            filename = f"{name}_{counter}{ext}"
-            counter += 1
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        return jsonify({'url': f'/static/uploads/{filename}', 'message': 'Image uploaded successfully'})
+        # Logo / product image (and product video) upload.
+        url = save_uploaded_file(file, folder='uploads')
+        return jsonify({'url': url, 'message': 'Image uploaded successfully'})
     return jsonify({'error': 'File type not allowed. Use PNG, JPG, JPEG, GIF, WEBP or SVG.'}), 400
 
 @app.route('/admin/api/change-password', methods=['POST'])
@@ -1742,11 +1848,22 @@ def admin_api_upload_main_video():
     if ext not in ALLOWED_VIDEO_EXTENSIONS:
         return jsonify({'error': 'Only video files are allowed (MP4, WEBM, MOV, AVI)'}), 400
     
-    # Save always as main_banner_video.mp4 (browser compatible)
-    filename = 'main_banner_video.mp4'
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    file.save(filepath)
-    return jsonify({'message': 'Main video updated successfully', 'url': '/static/uploads/main_banner_video.mp4'})
+    # Store the video under a browser-compatible .mp4 name and remember its URL
+    # so the homepage can pick up the latest upload (works with Blob or local).
+    url = save_uploaded_file(file, folder='videos', multipart=True,
+                             filename='main_banner_video.mp4')
+    conn = get_db()
+    previous = conn.execute(
+        "SELECT value FROM settings WHERE key='homepage_video_url'"
+    ).fetchone()
+    conn.execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+                 ('homepage_video_url', url))
+    conn.commit()
+    conn.close()
+    # Remove the video this upload replaced (no-op locally, cleans up Blob).
+    if previous and previous['value'] and previous['value'] != url:
+        delete_uploaded_file(previous['value'])
+    return jsonify({'message': 'Main video updated successfully', 'url': url})
 
 # ---------------- PDF INVOICE GENERATION ----------------
 
@@ -2501,18 +2618,13 @@ def admin_api_product_media(pid):
         return jsonify({'error': 'No file selected'}), 400
     if not allowed_file(file.filename):
         return jsonify({'error': 'File type not allowed'}), 400
-    filename = secure_filename(file.filename)
-    name, ext = os.path.splitext(filename)
-    counter = 1
-    while os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], filename)):
-        filename = f"{name}_{counter}{ext}"
-        counter += 1
-    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-    url = f'/static/uploads/{filename}'
+    ext = os.path.splitext(file.filename)[1].lower().lstrip('.')
+    is_video = ext in ALLOWED_VIDEO_EXTENSIONS
+    url = save_uploaded_file(file, folder='product-media', multipart=is_video)
     # Store in product_media table
     conn = get_db()
     conn.execute('INSERT INTO product_media (product_id, url, type) VALUES (?, ?, ?)',
-                 (pid, url, 'video' if ext.lower() in ALLOWED_VIDEO_EXTENSIONS else 'image'))
+                 (pid, url, 'video' if is_video else 'image'))
     conn.commit()
     conn.close()
     return jsonify({'url': url, 'message': 'Media uploaded successfully'})
@@ -2531,9 +2643,7 @@ def admin_api_product_media_delete(mid):
     conn = get_db()
     row = conn.execute('SELECT url FROM product_media WHERE id=?', (mid,)).fetchone()
     if row:
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(row['url']))
-        if os.path.exists(filepath):
-            os.remove(filepath)
+        delete_uploaded_file(row['url'])
         conn.execute('DELETE FROM product_media WHERE id=?', (mid,))
         conn.commit()
     conn.close()
@@ -2561,17 +2671,12 @@ def admin_api_general_media():
         title = request.form.get('title', '')
         category = request.form.get('category', 'factory')
         
-        filename = secure_filename(file.filename)
-        name, ext = os.path.splitext(filename)
-        counter = 1
-        while os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], filename)):
-            filename = f"{name}_{counter}{ext}"
-            counter += 1
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        url = f'/static/uploads/{filename}'
+        ext = os.path.splitext(file.filename)[1].lower().lstrip('.')
+        is_video = ext in ALLOWED_VIDEO_EXTENSIONS
+        url = save_uploaded_file(file, folder='general-media', multipart=is_video)
         
         conn.execute('INSERT INTO general_media (title, category, type, url) VALUES (?, ?, ?, ?)',
-                     (title, category, 'video' if ext.lower() in ALLOWED_VIDEO_EXTENSIONS else 'image', url))
+                     (title, category, 'video' if is_video else 'image', url))
         conn.commit()
         conn.close()
         return jsonify({'message': 'Media uploaded successfully', 'url': url}), 201
@@ -2582,9 +2687,7 @@ def admin_api_general_media_delete(mid):
     conn = get_db()
     row = conn.execute('SELECT url FROM general_media WHERE id=?', (mid,)).fetchone()
     if row:
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(row['url']))
-        if os.path.exists(filepath):
-            os.remove(filepath)
+        delete_uploaded_file(row['url'])
         conn.execute('DELETE FROM general_media WHERE id=?', (mid,))
         conn.commit()
     conn.close()

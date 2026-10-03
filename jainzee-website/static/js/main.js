@@ -573,23 +573,46 @@ document.addEventListener('keydown', (e) => {
 
 // ==================== MAIN BANNER VIDEO ====================
 
+// Point the hero background (and, if present, the video banner card) at the
+// given URL. Add a cache-busting param so a freshly uploaded video shows at once.
+function applyHomepageVideo(url) {
+    if (!url) return;
+    const bustedUrl = url + (url.indexOf('?') === -1 ? '?t=' : '&t=') + Date.now();
+
+    const heroVideoContainer = document.getElementById('heroVideoContainer');
+    const heroVideo = document.getElementById('heroVideo');
+    const heroVideoSource = document.getElementById('heroVideoSource');
+    if (heroVideoContainer && heroVideo && heroVideoSource) {
+        heroVideoSource.src = bustedUrl;
+        heroVideo.load();
+        heroVideo.play().catch(e => console.log('Video autoplay prevented:', e));
+        heroVideoContainer.style.display = '';
+    }
+
+    // Video banner card (older template variant)
+    const videoSource = document.getElementById('mainBannerVideoSource');
+    const videoEl = document.getElementById('mainBannerVideo');
+    const videoCard = document.getElementById('videoBannerCard');
+    if (videoSource) {
+        videoSource.src = url;
+        if (videoEl) videoEl.load();
+        if (videoCard) videoCard.style.display = '';
+    }
+}
+
 async function loadMainBannerVideo() {
+    // Prefer the URL saved by the admin. This works for Vercel Blob URLs
+    // (production) as well as local /static/uploads/... paths (development).
+    if (siteData && siteData.homepage_video_url) {
+        applyHomepageVideo(siteData.homepage_video_url);
+        return;
+    }
+
     try {
-        // Check if main_banner_video.mp4 exists by making a HEAD-like request
+        // Fallback: legacy local upload at static/uploads/main_banner_video.mp4
         const res = await fetch('/static/uploads/main_banner_video.mp4', { method: 'HEAD' });
         if (res.ok) {
-            const heroVideoContainer = document.getElementById('heroVideoContainer');
-            const heroVideo = document.getElementById('heroVideo');
-            const heroVideoSource = document.getElementById('heroVideoSource');
-            
-            if (heroVideoContainer && heroVideo && heroVideoSource) {
-                // Add cache-busting timestamp so new uploads show immediately
-                const url = '/static/uploads/main_banner_video.mp4?t=' + Date.now();
-                heroVideoSource.src = url;
-                heroVideo.load();
-                heroVideo.play().catch(e => console.log('Video autoplay prevented:', e));
-                heroVideoContainer.style.display = '';
-            }
+            applyHomepageVideo('/static/uploads/main_banner_video.mp4');
         }
     } catch (e) {
         // Video doesn't exist yet - keep hero video hidden
@@ -617,16 +640,9 @@ async function loadSiteSettings() {
         if (!res.ok) return;
         const settings = await res.json();
 
-        // Apply homepage video URL
+        // Apply homepage video URL (hero background + banner card)
         if (settings.homepage_video_url) {
-            const videoSource = document.getElementById('mainBannerVideoSource');
-            const videoEl = document.getElementById('mainBannerVideo');
-            const videoCard = document.getElementById('videoBannerCard');
-            if (videoSource) {
-                videoSource.src = settings.homepage_video_url;
-                if (videoEl) videoEl.load();
-                if (videoCard) videoCard.style.display = '';
-            }
+            applyHomepageVideo(settings.homepage_video_url);
         }
 
         // Apply global discount percent (used by cart/checkout calculations)
