@@ -33,13 +33,6 @@ def client(monkeypatch, tmp_path):
     # Neither backend may be pre-enabled by whatever ran before.
     monkeypatch.delenv('BLOB_READ_WRITE_TOKEN', raising=False)
     monkeypatch.delenv('VERCEL', raising=False)
-    import importlib
-    import app as app_module
-    app_module = importlib.reload(app_module)
-    app_module.app.config['TESTING'] = True  # disables CSRF for API tests
-    app_module.app.config['UPLOAD_FOLDER'] = upload_dir
-    with app_module.app.test_client() as c:
-        yield app_module, c, upload_dir
 
 
 def admin_login(c):
@@ -64,7 +57,6 @@ def upload_image(c, name='probe.png'):
 
 def test_blob_put_sends_public_access_and_returns_blob_url(client, monkeypatch):
     """The core contract: PUT to Blob with access=public, blob.url to the client."""
-    app_module, c, upload_dir = client
     admin_login(c)
 
     import vercel_blob.blob_store as bs
@@ -158,14 +150,3 @@ def test_vercel_without_token_is_not_a_bare_500(client, monkeypatch):
     assert r.content_type.startswith('application/json')
 
 
-def test_local_upload_still_works_without_blob(client):
-    """Development keeps working when no token is configured."""
-    app_module, c, upload_dir = client
-    admin_login(c)
-
-    before = set(os.listdir(upload_dir))
-    r = upload_image(c)
-
-    assert r.status_code == 200, r.get_data(as_text=True)
-    assert r.get_json()['url'].startswith('/static/uploads/')
-    assert len(set(os.listdir(upload_dir)) - before) == 1

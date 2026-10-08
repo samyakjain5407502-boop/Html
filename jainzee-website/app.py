@@ -38,8 +38,12 @@ EFFECTIVE_MAX_UPLOAD_BYTES = (int(VERCEL_REQUEST_LIMIT)
                              else 100 * 1024 * 1024)
 MAX_IMAGE_DIMENSION = 2000
 # Vercel Blob storage (production). When BLOB_READ_WRITE_TOKEN is present the
-# app stores uploaded media in Vercel Blob; otherwise it falls back to the
-# local static/uploads folder so development keeps working without credentials.
+# app uploads every image/video (logo, product images/videos, general media)
+# to Vercel Blob via the `vercel_blob` SDK and stores the returned CDN URL in
+# the database. There is NO local-disk fallback: Vercel's filesystem is
+# read-only, and every other deployment's disk is temporary. Missing or
+# invalid credentials fail the upload loudly with a machine-readable JSON
+# error instead of a bare 500 - never a local file write.
 BLOB_READ_WRITE_TOKEN = os.environ.get('BLOB_READ_WRITE_TOKEN', '').strip()
 USE_BLOB_STORAGE = bool(BLOB_READ_WRITE_TOKEN)
 BLOB_URL_MARKER = '.blob.vercel-storage.com'
@@ -640,58 +644,28 @@ class BlobStorageError(Exception):
     """Raised when an uploaded file cannot be persisted to media storage."""
 
 
-def _unique_upload_filename(filename):
-    """Return a collision-free filename (keeping the extension) for the local
-    fallback folder. Vercel Blob uses its own random suffix instead."""
-    safe = secure_filename(filename) or 'upload'
-    name, ext = os.path.splitext(safe)
-    candidate = safe
-    counter = 1
-    while os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], candidate)):
-        candidate = f'{name}_{counter}{ext}'
-        counter += 1
-    return candidate
-
-
 def save_uploaded_file(file, folder='uploads', multipart=False, filename=None):
-    """Persist an uploaded file and return a publicly reachable URL.
+    """Upload to @vercel/blob with put() and return the public CDN URL.
 
-    Production (BLOB_READ_WRITE_TOKEN set): uploads to Vercel Blob and returns
-    the CDN URL the API returns.
+    STRICT BLOB-BY-DEFAULT - no local-disk fallback. Vercel's filesystem is
+    read-only and every other deployment's disk is temporary, so every upload
+    (logo, product images/videos, general media, homepage video) MUST be
+    persisted to Vercel Blob. If BLOB_READ_WRITE_TOKEN is missing or the
+    upload fails, this raises a BlobStorageError; the
+    @app.errorhandler(BlobStorageError) handler turns it into a readable JSON
+    502 error the admin UI can show - never a bare 500 and never a local file
+    write.
 
-    Development (no token): saves to static/uploads and returns a relative
-    /static/uploads/... URL, so local workflows are unchanged.
-
-    `filename` forces a specific name (e.g. the main banner video); otherwise a
-    collision-free name is derived from the upload.
+    `filename` forces a stored name (e.g. main_banner_video.mp4); otherwise
+    the SDK appends a random suffix so files never collide.
     """
-    if filename:
-        local_name = os.path.basename(filename)
-    else:
-        local_name = _unique_upload_filename(file.filename)
-
     if not USE_BLOB_STORAGE:
-        # Vercel's filesystem is read-only, so never even *attempt* a local write
-        # there. Fail up front with an actionable message instead of letting a
-        # bare FileNotFoundError surface as Flask's HTML "Internal Server Error".
-        if os.environ.get('VERCEL') == '1':
-            raise BlobStorageError(
-                'Uploads cannot be stored locally: this deployment runs on Vercel, '
-                'whose filesystem is read-only, and BLOB_READ_WRITE_TOKEN is not '
-                'set so Vercel Blob is unavailable. Add the token under Project '
-                'Settings > Environment Variables (or run "vercel env add '
-                'BLOB_READ_WRITE_TOKEN production") and redeploy.'
-            )
-        target = os.path.join(app.config['UPLOAD_FOLDER'], local_name)
-        try:
-            file.save(target)
-        except OSError as exc:
-            raise BlobStorageError(
-                f'Could not write the uploaded file to disk: {exc}. Check that the '
-                f'upload folder "{app.config["UPLOAD_FOLDER"]}" exists and is '
-                'writable.'
-            ) from exc
-        return f'/static/uploads/{local_name}'
+        raise BlobStorageError(
+            'Image upload failed: BLOB_READ_WRITE_TOKEN is not set, so '
+            'Vercel Blob is unavailable. Add the token under Project Settings '
+            '> Environment Variables and redeploy. Local disk storage is not '
+            'permitted on this deployment.'
+        )
 
     try:
         import vercel_blob
@@ -729,23 +703,18 @@ def save_uploaded_file(file, folder='uploads', multipart=False, filename=None):
 
 
 def delete_uploaded_file(url):
-    """Best-effort delete of a previously uploaded file (Vercel Blob or local)."""
-    if not url:
+    """Best-effort delete of a previously uploaded file from Vercel Blob.
+
+    Local disk storage was removed - every upload URL is a Vercel Blob URL
+    (http + .blob.vercel-storage.com), so this only ever touches the Blob CDN.
+    """
+    if not url or not url.startswith('http') or BLOB_URL_MARKER not in url:
         return
-    if url.startswith('http') and BLOB_URL_MARKER in url and USE_BLOB_STORAGE:
-        try:
-            import vercel_blob
-            vercel_blob.delete([url])
-        except Exception as exc:
-            print(f'[WARNING] Could not delete Vercel Blob {url}: {exc}')
-        return
-    if url.startswith('/static/uploads/'):
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(url))
-        if os.path.exists(filepath):
-            try:
-                os.remove(filepath)
-            except OSError as exc:
-                print(f'[WARNING] Could not delete local upload {filepath}: {exc}')
+    try:
+        import vercel_blob
+        vercel_blob.delete([url])
+    except Exception as exc:
+        print(f'[WARNING] Could not delete Vercel Blob {url}: {exc}')
 
 
 @app.errorhandler(BlobStorageError)
@@ -891,10 +860,6 @@ def api_products():
     rows = conn.execute('SELECT * FROM products ORDER BY id').fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
-
-@app.route('/static/uploads/<path:filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 # ---------------- CUSTOMER ROUTES ----------------
 
