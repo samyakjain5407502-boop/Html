@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Jainzee</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/premium.css') }}?v=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="/static/js/csrf.js"></script>
+<script src="/static/js/premium.js?v=1.0"></script>
 </head>
 <body>
     <header class="admin-header">
@@ -34,49 +36,49 @@
                 <div class="stat-icon"><i class="fas fa-rupee-sign"></i></div>
                 <div class="stat-info">
                     <h3>Total Sales</h3>
-                    <div class="number" id="statTotalSales">-</div>
+                    <div class="number sk-num" id="statTotalSales"></div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon blue"><i class="fas fa-receipt"></i></div>
                 <div class="stat-info">
                     <h3>Total Orders</h3>
-                    <div class="number" id="statTotalOrders">-</div>
+                    <div class="number sk-num" id="statTotalOrders"></div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon red"><i class="fas fa-hourglass-half"></i></div>
                 <div class="stat-info">
                     <h3>Pending Orders</h3>
-                    <div class="number" id="statPendingOrders">-</div>
+                    <div class="number sk-num" id="statPendingOrders"></div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon green"><i class="fas fa-truck"></i></div>
                 <div class="stat-info">
                     <h3>Delivered Orders</h3>
-                    <div class="number" id="statDeliveredOrders">-</div>
+                    <div class="number sk-num" id="statDeliveredOrders"></div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon"><i class="fas fa-box-open"></i></div>
                 <div class="stat-info">
                     <h3>Total Products</h3>
-                    <div class="number" id="statProducts">{{ product_count }}</div>
+                    <div class="number sk-num" id="statProducts">{{ product_count }}</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon blue"><i class="fas fa-exclamation-triangle"></i></div>
                 <div class="stat-info">
                     <h3>Low Stock Items</h3>
-                    <div class="number" id="statLowStock">-</div>
+                    <div class="number sk-num" id="statLowStock"></div>
                 </div>
             </div>
             <div class="stat-card" id="newOrdersCard" style="cursor: pointer; position: relative;" onclick="window.location.href='/admin/orders'">
                 <div class="stat-icon red"><i class="fas fa-bell"></i></div>
                 <div class="stat-info">
                     <h3>New / Pending Orders</h3>
-                    <div class="number" id="newOrdersCount">-</div>
+                    <div class="number sk-num" id="newOrdersCount"></div>
                 </div>
                 <span class="new-orders-badge pulse" id="newOrdersBadge" style="display:none; position: absolute; top: 12px; right: 12px; background: #dc3545; color: white; border-radius: 50px; padding: 2px 10px; font-size: 0.75rem; font-weight: 700;">0</span>
             </div>
@@ -89,13 +91,13 @@
                     <h2><i class="fas fa-clock"></i> Recent Orders</h2>
                     <a href="/admin/orders" style="color: #b8860b; font-size: 0.85rem;">View all →</a>
                 </div>
-                <div style="padding: 16px;" id="recentOrdersList">Loading...</div>
+                <div style="padding: 16px;" id="recentOrdersList"><div class="sk-list" aria-hidden="true"><div class="sk-block sk-line w90"></div><div class="sk-block sk-line w70"></div><div class="sk-block sk-line w80"></div><div class="sk-block sk-line w50"></div></div></div>
             </div>
             <div class="admin-card">
                 <div class="admin-card-header">
                     <h2><i class="fas fa-exclamation-triangle"></i> Low Stock Warning (≤ 10)</h2>
                 </div>
-                <div style="padding: 16px;" id="lowStockList">Loading...</div>
+                <div style="padding: 16px;" id="lowStockList"><div class="sk-list" aria-hidden="true"><div class="sk-block sk-line w80"></div><div class="sk-block sk-line w60"></div><div class="sk-block sk-line w70"></div></div></div>
             </div>
         </div>
 
@@ -136,68 +138,82 @@
 
     <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
     <script>
-        // Load dashboard stats, recent orders and low-stock warnings
+        // Load dashboard stats, recent orders and low-stock warnings.
+        // A cached copy paints instantly on revisit; the network refresh keeps
+        // everything current (SWR-style stale-while-revalidate).
         document.addEventListener('DOMContentLoaded', () => {
+            const applyStats = (data) => {
+                const money = (v) => '₹' + Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+                const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+                set('statTotalSales', money(data.total_sales));
+                set('statTotalOrders', data.total_orders);
+                set('statPendingOrders', data.pending_orders);
+                set('statDeliveredOrders', data.delivered_orders);
+                set('statLowStock', data.low_stock_count);
+
+                const countEl = document.getElementById('newOrdersCount');
+                const badge = document.getElementById('newOrdersBadge');
+                if (countEl) countEl.textContent = data.pending_orders;
+                if (badge) {
+                    badge.textContent = data.pending_orders;
+                    badge.style.display = data.pending_orders > 0 ? 'inline-block' : 'none';
+                }
+
+                // Recent orders
+                const recentEl = document.getElementById('recentOrdersList');
+                if (recentEl) {
+                    if (!data.recent_orders.length) {
+                        recentEl.innerHTML = '<p style="color: #8a7362;">No orders yet.</p>';
+                    } else {
+                        recentEl.innerHTML = data.recent_orders.map(o => `
+                            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(184,134,11,0.15);">
+                                <div>
+                                    <strong>#${o.id}</strong> ${o.customer_name || ''}
+                                    <div style="font-size:0.8rem; color:#8a7362;">${o.created_at || ''}</div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <div style="font-weight:700; color:#b8860b;">${o.total || '₹0'}</div>
+                                    <div style="font-size:0.75rem; color:#8a7362;">${o.status || ''}</div>
+                                </div>
+                            </div>`).join('');
+                    }
+                }
+
+                // Low stock list
+                const lowEl = document.getElementById('lowStockList');
+                if (lowEl) {
+                    if (!data.low_stock.length) {
+                        lowEl.innerHTML = '<p style="color:#28a745;"><i class="fas fa-check-circle"></i> All products are well stocked.</p>';
+                    } else {
+                        lowEl.innerHTML = data.low_stock.map(p => `
+                            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(220,53,69,0.2);">
+                                <span><i class="fas fa-box-open"></i> ${p.name_en || 'Product'} <span style="color:#8a7362;">(stock: ${p.stock})</span></span>
+                                <a href="/admin/products" style="color:#dc3545; font-size:0.8rem; font-weight:600;">Restock →</a>
+                            </div>`).join('');
+                    }
+                }
+            };
+
             const refreshStats = async () => {
                 try {
                     const res = await fetch('/admin/api/stats');
                     if (!res.ok) return;
                     const data = await res.json();
-
-                    const money = (v) => '₹' + Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
-                    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-
-                    set('statTotalSales', money(data.total_sales));
-                    set('statTotalOrders', data.total_orders);
-                    set('statPendingOrders', data.pending_orders);
-                    set('statDeliveredOrders', data.delivered_orders);
-                    set('statLowStock', data.low_stock_count);
-
-                    const countEl = document.getElementById('newOrdersCount');
-                    const badge = document.getElementById('newOrdersBadge');
-                    if (countEl) countEl.textContent = data.pending_orders;
-                    if (badge) {
-                        badge.textContent = data.pending_orders;
-                        badge.style.display = data.pending_orders > 0 ? 'inline-block' : 'none';
-                    }
-
-                    // Recent orders
-                    const recentEl = document.getElementById('recentOrdersList');
-                    if (recentEl) {
-                        if (!data.recent_orders.length) {
-                            recentEl.innerHTML = '<p style="color: #8a7362;">No orders yet.</p>';
-                        } else {
-                            recentEl.innerHTML = data.recent_orders.map(o => `
-                                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(184,134,11,0.15);">
-                                    <div>
-                                        <strong>#${o.id}</strong> ${o.customer_name || ''}
-                                        <div style="font-size:0.8rem; color:#8a7362;">${o.created_at || ''}</div>
-                                    </div>
-                                    <div style="text-align:right;">
-                                        <div style="font-weight:700; color:#b8860b;">${o.total || '₹0'}</div>
-                                        <div style="font-size:0.75rem; color:#8a7362;">${o.status || ''}</div>
-                                    </div>
-                                </div>`).join('');
-                        }
-                    }
-
-                    // Low stock list
-                    const lowEl = document.getElementById('lowStockList');
-                    if (lowEl) {
-                        if (!data.low_stock.length) {
-                            lowEl.innerHTML = '<p style="color:#28a745;"><i class="fas fa-check-circle"></i> All products are well stocked.</p>';
-                        } else {
-                            lowEl.innerHTML = data.low_stock.map(p => `
-                                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(220,53,69,0.2);">
-                                    <span><i class="fas fa-box-open"></i> ${p.name_en || 'Product'} <span style="color:#8a7362;">(stock: ${p.stock})</span></span>
-                                    <a href="/admin/products" style="color:#dc3545; font-size:0.8rem; font-weight:600;">Restock →</a>
-                                </div>`).join('');
-                        }
-                    }
+                    // Cache it so the next dashboard visit paints instantly
+                    if (window.JZ && JZ.set) JZ.set('/admin/api/stats', data);
+                    applyStats(data);
                 } catch (e) {}
             };
+
+            // Instant paint from the previous visit's cache (if any)...
+            if (window.JZ && JZ.peek) {
+                const cached = JZ.peek('/admin/api/stats', { allowStale: true });
+                if (cached) applyStats(cached);
+            }
+            // ...then refresh from the network (and every 15 seconds after).
             refreshStats();
-            setInterval(refreshStats, 15000); // Refresh every 15 seconds
+            setInterval(refreshStats, 15000);
         });
     </script>
 </body>

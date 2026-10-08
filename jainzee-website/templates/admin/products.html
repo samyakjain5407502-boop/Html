@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Products & Stock - Jainzee Admin</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/premium.css') }}?v=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="/static/js/csrf.js"></script>
+<script src="/static/js/premium.js?v=1.0"></script>
 </head>
 <body>
     <header class="admin-header">
@@ -50,7 +52,13 @@
                         </tr>
                     </thead>
                     <tbody id="productsTableBody">
-                        <!-- Products loaded via JS -->
+                        <!-- Skeleton rows shown until products arrive; replaced via JS -->
+                        <tr class="skeleton-row" aria-hidden="true"><td><div class="sk-block sk-thumb"></div></td><td><div class="sk-block sk-line w80"></div></td><td><div class="sk-block sk-line w80"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w50"></div></td><td><div class="sk-block sk-line w50"></div></td><td><div class="sk-block sk-line w40"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w80"></div></td></tr>
+                        <tr class="skeleton-row" aria-hidden="true"><td><div class="sk-block sk-thumb"></div></td><td><div class="sk-block sk-line w80"></div></td><td><div class="sk-block sk-line w70"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w50"></div></td><td><div class="sk-block sk-line w50"></div></td><td><div class="sk-block sk-line w40"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w80"></div></td></tr>
+                        <tr class="skeleton-row" aria-hidden="true"><td><div class="sk-block sk-thumb"></div></td><td><div class="sk-block sk-line w70"></div></td><td><div class="sk-block sk-line w80"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w50"></div></td><td><div class="sk-block sk-line w50"></div></td><td><div class="sk-block sk-line w40"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w70"></div></td></tr>
+                        <tr class="skeleton-row" aria-hidden="true"><td><div class="sk-block sk-thumb"></div></td><td><div class="sk-block sk-line w80"></div></td><td><div class="sk-block sk-line w70"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w50"></div></td><td><div class="sk-block sk-line w50"></div></td><td><div class="sk-block sk-line w40"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w80"></div></td></tr>
+                        <tr class="skeleton-row" aria-hidden="true"><td><div class="sk-block sk-thumb"></div></td><td><div class="sk-block sk-line w70"></div></td><td><div class="sk-block sk-line w80"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w50"></div></td><td><div class="sk-block sk-line w50"></div></td><td><div class="sk-block sk-line w40"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w70"></div></td></tr>
+                        <tr class="skeleton-row" aria-hidden="true"><td><div class="sk-block sk-thumb"></div></td><td><div class="sk-block sk-line w80"></div></td><td><div class="sk-block sk-line w70"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w50"></div></td><td><div class="sk-block sk-line w50"></div></td><td><div class="sk-block sk-line w40"></div></td><td><div class="sk-block sk-line w60"></div></td><td><div class="sk-block sk-line w80"></div></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -150,7 +158,7 @@
                     </button>
                 </div>
                 <div class="form-actions">
-                    <button class="btn btn-success btn-lg" onclick="saveProduct()">
+                    <button class="btn btn-success btn-lg" onclick="saveProduct(this)">
                         <i class="fas fa-save"></i> Save Product
                     </button>
                     <button class="btn btn-outline btn-lg" onclick="closeModal('productModal')">Cancel</button>
@@ -186,7 +194,7 @@
                 <input type="text" id="stockRate" placeholder="e.g. ₹1,250">
             </div>
             <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button class="btn btn-success" style="flex: 1;" onclick="saveQuickStock()">
+                <button class="btn btn-success" style="flex: 1;" onclick="saveQuickStock(this)">
                     <i class="fas fa-check"></i> Update
                 </button>
                 <button class="btn btn-outline" onclick="closeModal('stockModal')">Cancel</button>

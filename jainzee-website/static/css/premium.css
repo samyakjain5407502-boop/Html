@@ -1,0 +1,318 @@
+/* ============================================================
+   JAINZEE PREMIUM UX LAYER
+   Skeleton loaders • Toasts • Motion (Framer-style easing) •
+   Lazy/fade-in images • Optimistic-UI button states.
+   Loaded AFTER style.css / admin.css on every page.
+   ============================================================ */
+
+/* ===== 1. SKELETON LOADERS ===== */
+
+@keyframes jzShimmer {
+    0%   { background-position: 120% 0; }
+    100% { background-position: -120% 0; }
+}
+
+.sk-block {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(90deg, #eee5d6 25%, #faf5ec 37%, #eee5d6 63%);
+    background-size: 400% 100%;
+    animation: jzShimmer 1.4s ease infinite;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.sk-line { height: 14px; width: 100%; }
+.sk-line.w40 { width: 40%; }
+.sk-line.w50 { width: 50%; }
+.sk-line.w60 { width: 60%; }
+.sk-line.w70 { width: 70%; }
+.sk-line.w80 { width: 80%; }
+.sk-line.w90 { width: 90%; }
+.sk-line.tall { height: 18px; }
+
+.sk-thumb {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+}
+
+/* --- Product grid skeleton cards (public site) --- */
+.skeleton-card {
+    background: var(--bg-light, #ffffff);
+    border: 1px solid rgba(255, 215, 0, 0.12);
+    border-radius: var(--radius, 16px);
+    overflow: hidden;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.05);
+    animation: jzFadeUp 0.4s ease both;
+    min-height: 470px;
+    display: flex;
+    flex-direction: column;
+}
+
+.skeleton-card .sk-image {
+    height: 240px;
+    border-radius: 0;
+}
+
+.skeleton-card .sk-line { margin: 12px 20px 0; }
+.skeleton-card .sk-cta {
+    height: 44px;
+    margin: auto 20px 20px;
+    border-radius: 12px;
+}
+
+.skeleton-card .sk-row {
+    display: flex;
+    gap: 10px;
+    margin: 14px 20px 0;
+}
+.skeleton-card .sk-row .sk-block { height: 14px; flex: 1; }
+
+@keyframes jzFadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* --- Admin table skeleton rows --- */
+.skeleton-row td { padding: 12px 10px; }
+.skeleton-row .sk-line { margin: 5px 0; min-width: 48px; }
+
+/* --- Admin stat number skeleton (dashboard) --- */
+.number.sk-num:empty::before {
+    content: '';
+    display: inline-block;
+    width: 72px;
+    height: 24px;
+    border-radius: 6px;
+    vertical-align: middle;
+    background: linear-gradient(90deg, #eee5d6 25%, #faf5ec 37%, #eee5d6 63%);
+    background-size: 400% 100%;
+    animation: jzShimmer 1.4s ease infinite;
+}
+
+/* --- Generic list / form skeleton blocks --- */
+.sk-list .sk-line { margin: 12px 0; }
+
+.settings-skeleton {
+    position: absolute;
+    inset: 0;
+    z-index: 60;
+    background: var(--bg, #f7f3ec);
+    padding: 24px;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.settings-skeleton .skeleton-card {
+    min-height: 0;
+    padding: 26px;
+    margin-bottom: 22px;
+    animation: none;
+}
+
+.settings-skeleton .sk-field { margin-bottom: 18px; }
+.settings-skeleton .sk-field .sk-line:first-child { margin-bottom: 8px; width: 30%; }
+.settings-skeleton .sk-field .sk-block.sk-input { height: 40px; width: 100%; border-radius: 8px; }
+
+.admin-content { position: relative; }
+
+/* ===== 2. TOAST NOTIFICATIONS ===== */
+
+.jz-toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: min(88vw, 380px);
+    padding: 13px 18px;
+    border-radius: 12px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+    animation: jzToastIn 0.45s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+    cursor: default;
+}
+
+.jz-toast .jz-toast-text { flex: 1; }
+.jz-toast .jz-toast-icon { font-size: 1.1em; opacity: 0.95; }
+
+.jz-toast.success { background: linear-gradient(135deg, #22a359, #14713b); }
+.jz-toast.error   { background: linear-gradient(135deg, #e5484d, #b4232a); }
+.jz-toast.warn    { background: linear-gradient(135deg, #dda20a, #a86e00); }
+.jz-toast.info    { background: linear-gradient(135deg, #3b7ddd, #1f4fa8); }
+
+.jz-toast-out { animation: jzToastOut 0.3s ease forwards; }
+
+@keyframes jzToastIn {
+    from { opacity: 0; transform: translateX(46px) scale(0.96); }
+    to   { opacity: 1; transform: none; }
+}
+
+
+/* ===== 3. PAGE & MOTION (Framer-style easing) ===== */
+
+/* Page entrance / exit transitions between navigations */
+@keyframes jzPageIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes jzPageOut { to { opacity: 0; } }
+
+body.jz-enter {
+    animation: jzPageIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+body.jz-leaving {
+    animation: jzPageOut 0.16s ease-in forwards;
+    pointer-events: none;
+}
+
+/* Product cards: staggered spring entrance.
+   fill-mode: backwards so the hover lift keeps working after the animation
+   ends (the inline animationDelay on each card provides the stagger). */
+@keyframes jzCardIn {
+    from { opacity: 0; transform: translateY(18px) scale(0.985); }
+    to   { opacity: 1; transform: none; }
+}
+
+.product-card {
+    animation: jzCardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    transition: transform 0.45s cubic-bezier(0.22, 1.4, 0.36, 1),
+                box-shadow 0.45s ease,
+                border-color 0.3s ease;
+    will-change: transform;
+}
+
+.product-card:hover {
+    border-color: rgba(212, 172, 13, 0.45);
+}
+
+.product-card:active {
+    transform: translateY(-4px) scale(0.99);
+    transition-duration: 0.1s;
+}
+
+/* Buttons: tactile press feedback + springy release */
+button,
+.btn,
+.btn-sm,
+a.whatsapp-share-btn,
+a.customer-panel-btn,
+a.admin-panel-btn,
+.lang-btn {
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.25s ease,
+                filter 0.25s ease,
+                opacity 0.25s ease;
+}
+
+button:active:not(:disabled),
+.btn:active:not(:disabled),
+.btn-sm:active:not(:disabled),
+a.whatsapp-share-btn:active,
+a.customer-panel-btn:active,
+a.admin-panel-btn:active {
+    transform: scale(0.96);
+}
+
+button:disabled { cursor: not-allowed; }
+
+/* Busy state for in-flight form submits / optimistic actions */
+.is-loading {
+    position: relative;
+    pointer-events: none;
+    cursor: progress;
+}
+
+.is-loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 1.05em;
+    height: 1.05em;
+    border-radius: 50%;
+    border: 2px solid rgba(0, 0, 0, 0.25);
+    border-top-color: currentColor;
+    background: rgba(255, 255, 255, 0.28);
+    animation: jzSpin 0.7s linear infinite;
+}
+
+@keyframes jzSpin { to { transform: rotate(360deg); } }
+
+/* Wishlist heart pop + cart badge pop */
+@keyframes jzHeartPop {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.45); }
+    65%  { transform: scale(0.92); }
+    100% { transform: scale(1); }
+}
+
+.wishlist-heart.jz-pop,
+.wishlist-heart.jz-pop i {
+    animation: jzHeartPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes jzBadgePop {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.45); }
+    100% { transform: scale(1); }
+}
+
+.cart-count-badge.jz-pop {
+    animation: jzBadgePop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.wishlist-heart { transition: color 0.25s ease, transform 0.18s ease; }
+.wishlist-heart:hover { transform: scale(1.18); }
+.wishlist-heart.is-active { color: #d4ac0d !important; }
+
+/* ===== 4. OPTIMIZED IMAGES (lazy + fade-in + error fallback) ===== */
+
+img.jz-img {
+    opacity: 0;
+    transition: opacity 0.45s ease;
+}
+
+img.jz-img.jz-img-loaded { opacity: 1; }
+
+img.jz-img.jz-img-error {
+    opacity: 1;
+    background: linear-gradient(135deg, #f3ecdf 0%, #e9dfcc 100%);
+    min-height: 60px;
+}
+
+/* ===== 5. ACCESSIBILITY: REDUCED MOTION ===== */
+
+@media (prefers-reduced-motion: reduce) {
+    body.jz-enter,
+    body.jz-leaving,
+    .product-card,
+    .skeleton-card,
+    .jz-toast,
+    .jz-toast-out,
+    .wishlist-heart.jz-pop,
+    .wishlist-heart.jz-pop i,
+    .cart-count-badge.jz-pop {
+        animation: none !important;
+    }
+
+    .product-card,
+    button,
+    .btn,
+    .btn-sm,
+    img.jz-img {
+        transition: none !important;
+    }
+
+    .sk-block,
+    .number.sk-num:empty::before {
+        animation: none !important;
+    }
+
+    img.jz-img { opacity: 1; }
+}
+
+@keyframes jzToastOut {
+    to { opacity: 0; transform: translateY(8px) scale(0.97); }
+}

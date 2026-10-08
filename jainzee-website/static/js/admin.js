@@ -6,7 +6,24 @@ let currentProducts = [];
 
 // ==================== TOAST NOTIFICATIONS ====================
 
+// Premium UX layer (premium.js): SWR cache, animated toasts, motion.
+// Graceful fallbacks keep everything working if premium.js fails to load.
+const jz = window.JZ || null;
+
+function swrFetch(url, opts = {}) {
+    if (jz && jz.swrFetch) return jz.swrFetch(url, opts);
+    return fetch(url).then(res => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+    });
+}
+
+function jzMutate(url) { if (jz && jz.mutate) jz.mutate(url); }
+function jzBusy(btn, busy) { if (jz && jz.btnBusy) jz.btnBusy(btn, busy); }
+
 function showToast(message, type = 'success') {
+    // premium.js renders the animated icon toast; fall back to the plain one.
+    if (jz && jz.toast) { jz.toast(message, type); return; }
     const container = document.getElementById('toastContainer');
     if (!container) return;
     const toast = document.createElement('div');
@@ -54,8 +71,8 @@ let uploadConfig = {
 
 async function loadUploadConfig() {
     try {
-        const res = await fetch('/admin/api/upload-config');
-        if (res.ok) uploadConfig = await res.json();
+        // Static per-deployment limits - cache for 10 minutes.
+        uploadConfig = await swrFetch('/admin/api/upload-config', { staleTime: 600000 });
     } catch (e) {
         // Keep permissive defaults - the server enforces the real limits.
     }
@@ -272,14 +289,34 @@ async function handleImageUpload(input, urlFieldId, previewId) {
 // ==================== PRODUCTS MANAGEMENT ====================
 
 async function loadProducts() {
+    const tbody = document.getElementById('productsTableBody');
     try {
-        const res = await fetch('/admin/api/products');
-        currentProducts = await res.json();
-        renderProductsTable();
-        updateDashboardStats();
+        // Paint instantly from cache when available; otherwise show shimmering
+        // skeleton rows while the first fetch runs.
+        const cached = (jz && jz.peek) ? jz.peek('/admin/api/products', { staleTime: 20000 }) : null;
+        if (cached && Array.isArray(cached) && cached.length) {
+            applyProducts(cached);
+        } else if (tbody && !tbody.childElementCount) {
+            tbody.innerHTML = (jz && jz.skeletonRows) ? jz.skeletonRows(6, 10) : '';
+        }
+
+        const data = await swrFetch('/admin/api/products', {
+            staleTime: 20000,
+            onUpdate: applyProducts // background refresh re-renders the table
+        });
+        applyProducts(data);
     } catch (e) {
+        if (tbody && tbody.childElementCount && !(currentProducts && currentProducts.length)) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px; color: #dc3545;">Failed to load products. Please refresh.</td></tr>';
+        }
         showToast('Failed to load products', 'error');
     }
+}
+
+function applyProducts(data) {
+    currentProducts = Array.isArray(data) ? data : [];
+    renderProductsTable();
+    updateDashboardStats();
 }
 
 function getStockStatus(stock) {
@@ -383,7 +420,7 @@ function openProductModal(id = null) {
     openModal('productModal');
 }
 
-async function saveProduct() {
+async function saveProduct(btn = null) {
     const nameEn = document.getElementById('pNameEn').value.trim();
     const nameHi = document.getElementById('pNameHi').value.trim();
     const stock = document.getElementById('pStock').value;
@@ -412,6 +449,7 @@ async function saveProduct() {
         grades: getGradesFromForm()
     };
 
+    jzBusy(btn, true);
     try {
         let res;
         if (editingProductId) {
@@ -433,11 +471,17 @@ async function saveProduct() {
             throw new Error(result.error || 'Failed to save product');
         }
 
+        // Invalidate cached product lists (admin + public storefront) so the
+        // fresh data is fetched on the next render.
+        jzMutate('/admin/api/products');
+        jzMutate('/api/products');
         showToast(editingProductId ? 'Product updated successfully!' : 'Product added successfully!');
         closeModal('productModal');
         loadProducts();
     } catch (e) {
         showToast(e.message, 'error');
+    } finally {
+        jzBusy(btn, false);
     }
 }
 
@@ -452,6 +496,8 @@ async function deleteProduct(id) {
         if (!res.ok) {
             throw new Error(result.error || 'Failed to delete product');
         }
+        jzMutate('/admin/api/products');
+        jzMutate('/api/products');
         showToast('Product deleted!');
         loadProducts();
     } catch (e) {
@@ -475,7 +521,7 @@ function openQuickStock(id) {
     openModal('stockModal');
 }
 
-async function saveQuickStock() {
+async function saveQuickStock(btn = null) {
     if (!quickStockProductId) return;
     const product = currentProducts.find(p => p.id === quickStockProductId);
     if (!product) return;
@@ -509,6 +555,7 @@ async function saveQuickStock() {
         grades: product.grades || '[]'
     };
 
+    jzBusy(btn, true);
     try {
         const res = await fetch(`/admin/api/products/${quickStockProductId}`, {
             method: 'PUT',
@@ -519,11 +566,15 @@ async function saveQuickStock() {
         if (!res.ok) {
             throw new Error(result.error || 'Failed to update stock');
         }
+        jzMutate('/admin/api/products');
+        jzMutate('/api/products');
         showToast('Stock updated successfully!');
         closeModal('stockModal');
         loadProducts();
     } catch (e) {
         showToast(e.message, 'error');
+    } finally {
+        jzBusy(btn, false);
     }
 }
 
@@ -618,60 +669,77 @@ function updateDashboardStats() {
 
 // ==================== SETTINGS MANAGEMENT ====================
 
-async function loadSettings() {
+async function loadSettings(forceFresh = false) {
+    const url = '/admin/api/site';
+    const skeleton = document.getElementById('settingsSkeleton');
+
     try {
-        const res = await fetch('/admin/api/site');
-        const result = await res.json();
-        // The API returns {success: true, data: {...}} - read the nested data object!
-        // Only fall back to result if data is missing entirely (not just empty)
-        const data = (result && result.data) ? result.data : result;
+        // Cached paint: the settings form fills instantly when a cached copy
+        // exists; only a truly cold load shows the shimmering skeleton.
+        if (forceFresh) jzMutate(url);
+        const cached = (jz && jz.peek) ? jz.peek(url, { staleTime: 30000 }) : null;
+        if (skeleton) skeleton.hidden = !!cached;
 
-        // Shop info
-        setVal('sShopNameEn', data.shop_name_en);
-        setVal('sShopNameHi', data.shop_name_hi);
-        setVal('sTaglineEn', data.tagline_en);
-        setVal('sTaglineHi', data.tagline_hi);
-        setVal('sAboutEn', data.about_en);
-        setVal('sAboutHi', data.about_hi);
-
-        // Contact
-        setVal('sAddressEn', data.address_en);
-        setVal('sAddressHi', data.address_hi);
-        setVal('sPhone', data.phone);
-        setVal('sWhatsapp', data.whatsapp);
-        setVal('sEmail', data.email);
-        setVal('sHoursEn', data.hours_en);
-        setVal('sHoursHi', data.hours_hi);
-
-        // Logo
-        setVal('sLogoUrl', data.logo || '');
-        if (data.logo) {
-            const preview = document.getElementById('sLogoPreview');
-            if (preview) {
-                preview.querySelector('img').src = data.logo;
-                preview.style.display = 'block';
-            }
-        }
-
-        // Discount & Payment
-        // Use global_discount_percent (canonical) with fallback to legacy global_discount
-        setVal('sGlobalDiscount', data.global_discount_percent || data.global_discount || '0');
-        setVal('sUpiId', data.upi_id || '');
-        setVal('sGstin', data.gstin || '');
-        setVal('sTaxPercent', data.tax_percent || '');
-        setVal('sShippingCharge', data.shipping_charge || '50');
-        setVal('sFreeShippingMin', data.free_shipping_min || '1000');
-        
-        // UPI QR Code preview (Base64 permanent storage)
-        if (data.upi_qr_data) {
-            const qrPreview = document.getElementById('upiQrPreview');
-            if (qrPreview) {
-                qrPreview.querySelector('img').src = data.upi_qr_data;
-                qrPreview.style.display = 'block';
-            }
-        }
+        const data = await swrFetch(url, {
+            staleTime: 30000,
+            onUpdate: applySettings // background refresh keeps previews current
+        });
+        applySettings(data);
     } catch (e) {
         showToast('Failed to load settings', 'error');
+    } finally {
+        if (skeleton) skeleton.hidden = true;
+    }
+}
+
+function applySettings(result) {
+    // The API returns {success: true, data: {...}} - read the nested data object!
+    // Only fall back to result if data is missing entirely (not just empty)
+    const data = (result && result.data) ? result.data : result;
+
+    // Shop info
+    setVal('sShopNameEn', data.shop_name_en);
+    setVal('sShopNameHi', data.shop_name_hi);
+    setVal('sTaglineEn', data.tagline_en);
+    setVal('sTaglineHi', data.tagline_hi);
+    setVal('sAboutEn', data.about_en);
+    setVal('sAboutHi', data.about_hi);
+
+    // Contact
+    setVal('sAddressEn', data.address_en);
+    setVal('sAddressHi', data.address_hi);
+    setVal('sPhone', data.phone);
+    setVal('sWhatsapp', data.whatsapp);
+    setVal('sEmail', data.email);
+    setVal('sHoursEn', data.hours_en);
+    setVal('sHoursHi', data.hours_hi);
+
+    // Logo
+    setVal('sLogoUrl', data.logo || '');
+    if (data.logo) {
+        const preview = document.getElementById('sLogoPreview');
+        if (preview) {
+            preview.querySelector('img').src = data.logo;
+            preview.style.display = 'block';
+        }
+    }
+
+    // Discount & Payment
+    // Use global_discount_percent (canonical) with fallback to legacy global_discount
+    setVal('sGlobalDiscount', data.global_discount_percent || data.global_discount || '0');
+    setVal('sUpiId', data.upi_id || '');
+    setVal('sGstin', data.gstin || '');
+    setVal('sTaxPercent', data.tax_percent || '');
+    setVal('sShippingCharge', data.shipping_charge || '50');
+    setVal('sFreeShippingMin', data.free_shipping_min || '1000');
+
+    // UPI QR Code preview (Base64 permanent storage)
+    if (data.upi_qr_data) {
+        const qrPreview = document.getElementById('upiQrPreview');
+        if (qrPreview) {
+            qrPreview.querySelector('img').src = data.upi_qr_data;
+            qrPreview.style.display = 'block';
+        }
     }
 }
 
@@ -681,12 +749,12 @@ function setVal(id, value) {
     if (el && value !== undefined && value !== null) el.value = value || '';
 }
 
-async function saveSettings() {
+async function saveSettings(btn = null) {
     // Guard: if the form contains NO data at all (e.g. failed loadSettings), abort - never wipe settings
     const shopNameEn = document.getElementById('sShopNameEn');
     if (!shopNameEn || shopNameEn.value.trim() === '') {
         showToast('❌ Settings form is empty. Please reload the page first - save ABORTED to protect your data.', 'error');
-        await loadSettings();
+        await loadSettings(true);
         return;
     }
 
@@ -723,6 +791,7 @@ async function saveSettings() {
         formData.append('upi_qr_code', qrInput.files[0]);
     }
 
+    jzBusy(btn, true);
     try {
         const res = await fetch('/admin/api/site', {
             method: 'POST',
@@ -738,6 +807,10 @@ async function saveSettings() {
         
         const result = await res.json();
         if (result.success) {
+            // Invalidate BOTH the admin settings cache and the public site
+            // cache so every page shows the new values immediately.
+            jzMutate('/admin/api/site');
+            jzMutate('/api/site');
             showToast('✅ Settings saved successfully!', 'success');
             
             // Clear QR input after successful upload
@@ -746,19 +819,21 @@ async function saveSettings() {
             }
             
             // Reload settings to show updated preview
-            await loadSettings();
+            await loadSettings(true);
         } else {
             throw new Error(result.error || 'Failed to save settings');
         }
     } catch (e) {
         showToast('❌ ' + e.message, 'error');
         console.error('Save settings error:', e);
+    } finally {
+        jzBusy(btn, false);
     }
 }
 
 // ==================== CHANGE PASSWORD ====================
 
-async function changePassword() {
+async function changePassword(btn = null) {
     const oldPw = document.getElementById('sOldPassword').value;
     const newPw = document.getElementById('sNewPassword').value;
 
@@ -771,6 +846,7 @@ async function changePassword() {
         return;
     }
 
+    jzBusy(btn, true);
     try {
         const res = await fetch('/admin/api/change-password', {
             method: 'POST',
@@ -786,6 +862,8 @@ async function changePassword() {
         document.getElementById('sNewPassword').value = '';
     } catch (e) {
         showToast(e.message, 'error');
+    } finally {
+        jzBusy(btn, false);
     }
 }
 
@@ -892,7 +970,7 @@ async function handleUpiQrUpload(input) {
 
 // ==================== GENERAL MEDIA (Factory & Company) ====================
 
-async function uploadGeneralMedia() {
+async function uploadGeneralMedia(btn = null) {
     const title = document.getElementById('generalMediaTitle').value;
     const category = document.getElementById('generalMediaCategory').value;
     const fileInput = document.getElementById('generalMediaFileInput');
@@ -917,6 +995,7 @@ async function uploadGeneralMedia() {
     formData.append('category', category);
 
     msgDiv.innerHTML = '<span style="color: #007bff;"><i class="fas fa-spinner fa-spin"></i> Uploading...</span>';
+    jzBusy(btn, true);
 
     try {
         const res = await fetch('/admin/api/general-media', {
@@ -929,12 +1008,16 @@ async function uploadGeneralMedia() {
             msgDiv.innerHTML = '<span style="color: #28a745;">✓ Media uploaded successfully!</span>';
             fileInput.value = '';
             document.getElementById('generalMediaTitle').value = '';
+            jzMutate('/admin/api/general-media');
+            jzMutate('/api/general-media');
             loadGeneralMedia();
         } else {
             msgDiv.innerHTML = '<span style="color: #dc3545;">❌ ' + (data.error || 'Upload failed') + '</span>';
         }
     } catch(err) {
         msgDiv.innerHTML = '<span style="color: #dc3545;">❌ Upload failed. Server issue.</span>';
+    } finally {
+        jzBusy(btn, false);
     }
 }
 
@@ -942,39 +1025,57 @@ async function loadGeneralMedia() {
     const mediaList = document.getElementById('generalMediaList');
     if (!mediaList) return;
     
-    mediaList.innerHTML = '<p style="color: var(--text-light);">Loading...</p>';
     try {
-        const res = await fetch('/admin/api/general-media');
-        const media = await res.json();
-        if (!media.length) {
-            mediaList.innerHTML = '<p style="color: var(--text-light);">No media uploaded yet.</p>';
+        const cached = (jz && jz.peek) ? jz.peek('/admin/api/general-media', { staleTime: 20000 }) : null;
+        if (cached && Array.isArray(cached) && cached.length) {
+            renderGeneralMedia(cached);
             return;
         }
-        mediaList.innerHTML = '';
-        media.forEach(m => {
-            const div = document.createElement('div');
-            div.style.cssText = 'position: relative; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,215,0,0.2);';
-            if (m.type === 'video') {
-                div.innerHTML = '<video controls style="width:100%; height:150px; object-fit:cover;"><source src="' + m.url + '" type="video/mp4"></video>';
-            } else {
-                div.innerHTML = '<img src="' + m.url + '" style="width:100%; height:150px; object-fit:cover;">';
-            }
-            const delBtn = document.createElement('button');
-            delBtn.innerHTML = '<i class="fas fa-trash"></i>';
-            delBtn.onclick = () => deleteGeneralMedia(m.id);
-            delBtn.style.cssText = 'position: absolute; top: 5px; right: 5px; background: rgba(220,53,69,0.8); color: white; border: none; width: 25px; height: 25px; border-radius: 50%; cursor: pointer;';
-            div.appendChild(delBtn);
-            mediaList.appendChild(div);
+        mediaList.innerHTML = (jz && jz.skeletonLines)
+            ? jz.skeletonLines(4)
+            : '<p style="color: var(--text-light);">Loading...</p>';
+        const media = await swrFetch('/admin/api/general-media', {
+            staleTime: 20000,
+            onUpdate: renderGeneralMedia
         });
+        renderGeneralMedia(media);
     } catch(e) {
         mediaList.innerHTML = '<p style="color: #dc3545;">Failed to load media.</p>';
     }
+}
+
+function renderGeneralMedia(media) {
+    const mediaList = document.getElementById('generalMediaList');
+    if (!mediaList) return;
+    media = Array.isArray(media) ? media : [];
+    if (!media.length) {
+        mediaList.innerHTML = '<p style="color: var(--text-light);">No media uploaded yet.</p>';
+        return;
+    }
+    mediaList.innerHTML = '';
+    media.forEach(m => {
+        const div = document.createElement('div');
+        div.style.cssText = 'position: relative; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,215,0,0.2);';
+        if (m.type === 'video') {
+            div.innerHTML = '<video controls style="width:100%; height:150px; object-fit:cover;"><source src="' + m.url + '" type="video/mp4"></video>';
+        } else {
+            div.innerHTML = '<img src="' + m.url + '" loading="lazy" decoding="async" style="width:100%; height:150px; object-fit:cover;">';
+        }
+        const delBtn = document.createElement('button');
+        delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+        delBtn.onclick = () => deleteGeneralMedia(m.id);
+        delBtn.style.cssText = 'position: absolute; top: 5px; right: 5px; background: rgba(220,53,69,0.8); color: white; border: none; width: 25px; height: 25px; border-radius: 50%; cursor: pointer;';
+        div.appendChild(delBtn);
+        mediaList.appendChild(div);
+    });
 }
 
 async function deleteGeneralMedia(mediaId) {
     if (!confirm('Delete this media?')) return;
     try {
         await fetch('/admin/api/general-media/' + mediaId, { method: 'DELETE' });
+        jzMutate('/admin/api/general-media');
+        jzMutate('/api/general-media');
         loadGeneralMedia();
     } catch(e) {}
 }

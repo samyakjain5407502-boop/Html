@@ -31,9 +31,27 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
-// Self-contained toast notification (main.js is not loaded together with
-// admin.js/customer.html, so define it here to avoid a missing-function error).
+// Premium UX layer (premium.js): SWR cache, animated toasts, motion.
+// Graceful fallbacks keep everything working if premium.js fails to load.
+const jz = window.JZ || null;
+
+function swrFetch(url, opts = {}) {
+    if (jz && jz.swrFetch) return jz.swrFetch(url, opts);
+    // Fallback: plain network fetch with the same signature.
+    return fetch(url).then(res => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+    });
+}
+
+function jzMutate(url) { if (jz && jz.mutate) jz.mutate(url); }
+function jzBusy(btn, busy) { if (jz && jz.btnBusy) jz.btnBusy(btn, busy); }
+function jzPop(el) { if (jz && jz.pop) jz.pop(el); }
+
+// Toast notification. premium.js renders the animated icon version; the
+// inline-style fallback below is only used if premium.js is unavailable.
 function showToast(message, type = 'success') {
+    if (jz && jz.toast) { jz.toast(message, type); return; }
     let container = document.getElementById('toastContainer');
     if (!container) {
         container = document.createElement('div');
@@ -158,60 +176,83 @@ function shareOnWhatsApp(event) {
 
 let cartCount = 0;
 
+// Paint the cart count into both desktop and mobile badges (with a pop
+// animation on the visible badge for optimistic add-to-cart feedback).
+function renderCartBadge(count) {
+    cartCount = count;
+    const cartLink = document.getElementById('cartLink');
+    if (cartLink) {
+        let badge = cartLink.querySelector('.cart-count-badge');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'cart-count-badge';
+            cartLink.appendChild(badge);
+        }
+        badge.textContent = count;
+        badge.style.display = count > 0 ? '' : 'none';
+        jzPop(badge);
+    }
+    // Update mobile cart badge
+    const mobileCartLink = document.getElementById('mobileCartLink');
+    if (mobileCartLink) {
+        let mobileBadge = mobileCartLink.querySelector('.cart-count-badge');
+        if (!mobileBadge) {
+            mobileBadge = document.createElement('span');
+            mobileBadge.className = 'cart-count-badge';
+            mobileCartLink.appendChild(mobileBadge);
+        }
+        mobileBadge.textContent = count;
+        mobileBadge.style.display = count > 0 ? '' : 'none';
+    }
+}
+
+// Optimistic badge update - paint instantly, reconcile with the server after.
+function bumpCartBadge(delta) {
+    const next = Math.max(0, (parseInt(cartCount, 10) || 0) + (parseInt(delta, 10) || 0));
+    renderCartBadge(next);
+}
+
 async function updateCartCount() {
     try {
         const res = await fetch('/api/cart/count');
         const data = await res.json();
-        cartCount = data.count;
-        const cartLink = document.getElementById('cartLink');
-        if (cartLink) {
-            let badge = cartLink.querySelector('.cart-count-badge');
-            if (!badge) {
-                badge = document.createElement('span');
-                badge.className = 'cart-count-badge';
-                cartLink.appendChild(badge);
-            }
-            badge.textContent = data.count;
-            badge.style.display = data.count > 0 ? '' : 'none';
-        }
-        // Update mobile cart badge
-        const mobileCartLink = document.getElementById('mobileCartLink');
-        if (mobileCartLink) {
-            let mobileBadge = mobileCartLink.querySelector('.cart-count-badge');
-            if (!mobileBadge) {
-                mobileBadge = document.createElement('span');
-                mobileBadge.className = 'cart-count-badge';
-                mobileCartLink.appendChild(mobileBadge);
-            }
-            mobileBadge.textContent = data.count;
-            mobileBadge.style.display = data.count > 0 ? '' : 'none';
-        }
+        renderCartBadge(data.count);
     } catch(e) {}
 }
 
-// Universal Add to Cart function for Product Cards
-async function addToCart(productId, gradeIndex = 0, quantity = 1) {
+// Universal Add to Cart function for Product Cards.
+// Optimistic UI: the badge bumps instantly and the button shows a spinner;
+// if the server rejects the add, the badge rolls back and an error toast shows.
+async function addToCart(productId, gradeIndex = 0, quantity = 1, btn = null) {
+    const qty = parseInt(quantity) || 1;
+    jzBusy(btn, true);
+    const prevCount = cartCount;
+    bumpCartBadge(qty); // optimistic - instant feedback while the request runs
     try {
         const res = await fetch('/api/cart', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 product_id: parseInt(productId),
-                quantity: parseInt(quantity) || 1,
+                quantity: qty,
                 grade_index: parseInt(gradeIndex) || 0
             })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to add to cart');
 
-        // Update cart badge immediately
+        // Reconcile with server truth (exact count)
         await updateCartCount();
-        
-        // Show success alert/toast
-        alert(currentLang === 'hi' ? 'कार्ट में जोड़ दिया गया!' : 'Added to cart!');
+
+        showToast(currentLang === 'hi' ? 'कार्ट में जोड़ दिया गया!' : 'Added to cart!', 'success');
     } catch(e) {
-        alert('Error: ' + e.message);
+        // Roll back the optimistic bump
+        cartCount = prevCount;
+        renderCartBadge(cartCount);
+        showToast(e.message, 'error');
         console.error('Add to cart error:', e);
+    } finally {
+        jzBusy(btn, false);
     }
 }
 
@@ -302,12 +343,16 @@ async function addToCartFromModal() {
     const productId = document.getElementById('modalProductId').value;
     const quantity = parseInt(document.getElementById('modalQuantity').value) || 1;
     const gradeIndex = parseInt(document.getElementById('modalGradeSelect').value) || 0;
+    const btn = document.querySelector('#productModal .modal-footer .btn-primary');
     
     if (quantity < 1) {
-        alert(currentLang === 'hi' ? 'कम से कम 1 चुनें' : 'Please select at least 1 item');
+        showToast(currentLang === 'hi' ? 'कम से कम 1 चुनें' : 'Please select at least 1 item', 'warn');
         return;
     }
-    
+
+    jzBusy(btn, true);
+    const prevCount = cartCount;
+    bumpCartBadge(qtySafe(quantity)); // optimistic badge bump
     try {
         const res = await fetch('/api/cart', {
             method: 'POST',
@@ -321,17 +366,22 @@ async function addToCartFromModal() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to add to cart');
         
-        // Update cart count immediately
+        // Reconcile with server truth, close modal and confirm with a toast
         await updateCartCount();
-        
-        // Close modal and show success
         closeProductModal();
-        alert(currentLang === 'hi' ? 'कार्ट में जोड़ दिया गया!' : 'Added to cart!');
+        showToast(currentLang === 'hi' ? 'कार्ट में जोड़ दिया गया!' : 'Added to cart!', 'success');
     } catch(e) {
-        alert('Error: ' + e.message);
+        // Roll back the optimistic bump
+        cartCount = prevCount;
+        renderCartBadge(cartCount);
+        showToast(e.message, 'error');
         console.error('Add to cart error:', e);
+    } finally {
+        jzBusy(btn, false);
     }
 }
+
+function qtySafe(n) { return parseInt(n, 10) || 0; }
 
 // ==================== AUTH STATUS CHECK ====================
 
@@ -624,8 +674,9 @@ async function loadMainBannerVideo() {
 
 async function fetchSiteData() {
     try {
-        const res = await fetch('/api/site');
-        siteData = await res.json();
+        // Cached for 2 minutes (sessionStorage-backed) so navigating back to
+        // the homepage paints instantly and revalidates in the background.
+        siteData = await swrFetch('/api/site', { staleTime: 120000, persist: true });
         applySiteData();
     } catch (e) {
         console.error('Failed to load site data:', e);
@@ -636,9 +687,10 @@ async function fetchSiteData() {
 // Uses the PUBLIC whitelisted settings endpoint (/api/site) - no admin data.
 async function loadSiteSettings() {
     try {
-        const res = await fetch('/api/site');
-        if (!res.ok) return;
-        const settings = await res.json();
+        // Same cached endpoint as fetchSiteData - the SWR layer dedupes the
+        // two calls into a single network request.
+        const settings = await swrFetch('/api/site', { staleTime: 120000, persist: true });
+        if (!settings) return;
 
         // Apply homepage video URL (hero background + banner card)
         if (settings.homepage_video_url) {
@@ -671,9 +723,19 @@ async function loadSiteSettings() {
 
 async function fetchProducts() {
     try {
-        const res = await fetch('/api/products');
-        if (!res.ok) throw new Error('Products API returned ' + res.status);
-        products = await res.json();
+        // SWR: a cached product list paints instantly on revisit/navigation;
+        // fresh data keeps arriving in the background via onUpdate.
+        const data = await swrFetch('/api/products', {
+            staleTime: 60000,
+            persist: true,
+            onUpdate: (fresh) => {
+                products = fresh || [];
+                productsLoadFailed = false;
+                productsLoaded = true;
+                renderProducts();
+            }
+        });
+        products = data || [];
         productsLoadFailed = false;
         productsLoaded = true;
         renderProducts();
@@ -785,8 +847,9 @@ let selectedRating = 0; // Separate variable for locked click selection
 
 async function loadProductReviews(productId) {
     try {
-        const res = await fetch(`/api/products/${productId}/reviews`);
-        const data = await res.json();
+        // Cached via the SWR layer: the ~12 per-product review requests that
+        // fire on every product re-render are deduped + reused for 30s.
+        const data = await swrFetch(`/api/products/${productId}/reviews`, { staleTime: 30000 });
         
         const reviewsContainer = document.getElementById(`reviews-${productId}`);
         if (!reviewsContainer) return;
@@ -874,8 +937,9 @@ async function loadReviewsIntoModal(productId) {
     reviewsContent.innerHTML = '<p style="text-align: center; padding: 20px; color: var(--text-light);">Loading reviews...</p>';
     
     try {
-        const res = await fetch(`/api/products/${productId}/reviews`);
-        const data = await res.json();
+        // Instant paint from the SWR cache when available (shared with the
+        // per-product card reviews); freshly mutated after a new review.
+        const data = await swrFetch(`/api/products/${productId}/reviews`, { staleTime: 30000 });
         
         if (!data.reviews || !data.reviews.length) {
             reviewsContent.innerHTML = '<p class="no-reviews">No reviews yet. Be the first to review!</p>';
@@ -943,15 +1007,16 @@ function resetStarDisplay() {
     updateStarDisplay(selectedRating);
 }
 
-async function submitReview() {
+async function submitReview(btn = null) {
     const rating = currentReviewRating;
     const reviewText = document.getElementById('reviewText').value.trim();
     
     if (rating === 0) {
-        alert('Please select a rating');
+        showToast(currentLang === 'hi' ? 'कृपया रेटिंग चुनें' : 'Please select a rating', 'warn');
         return;
     }
-    
+
+    jzBusy(btn, true);
     try {
         const res = await authFetch(`/api/products/${currentReviewProductId}/reviews`, {
             method: 'POST',
@@ -962,13 +1027,15 @@ async function submitReview() {
         const data = await res.json();
         if (!res.ok) {
             if (res.status === 401) {
-                alert('Please login to submit a review');
+                showToast(currentLang === 'hi' ? 'रिव्यू के लिए लॉगिन करें' : 'Please login to submit a review', 'error');
                 return;
             }
             throw new Error(data.error || 'Failed to submit review');
         }
-        
-        alert('Review submitted successfully!');
+
+        // Invalidate the cached reviews for this product, then refresh both views
+        jzMutate(`/api/products/${currentReviewProductId}/reviews`);
+        showToast(currentLang === 'hi' ? 'रिव्यू सबमिट हो गया!' : 'Review submitted successfully!', 'success');
         closeReviewModal();
         
         // Reload reviews on product card and in modal
@@ -976,8 +1043,10 @@ async function submitReview() {
         loadReviewsIntoModal(currentReviewProductId);
         
     } catch (e) {
-        alert('Error: ' + e.message);
+        showToast(e.message, 'error');
         console.error('Submit review error:', e);
+    } finally {
+        jzBusy(btn, false);
     }
 }
 
@@ -1063,16 +1132,42 @@ let wishlistProductIds = [];
 
 async function loadWishlistIds() {
     try {
-        const res = await fetch('/api/wishlist');
-        if (!res.ok) { wishlistProductIds = []; return; }
-        const data = await res.json();
+        // Short-lived SWR cache: instant hearts on re-render, always revalidated.
+        const data = await swrFetch('/api/wishlist', { staleTime: 10000 });
         wishlistProductIds = data.product_ids || [];
-        renderProducts();  // refresh hearts
+        syncWishlistHearts();
     } catch (e) { /* not logged in or offline - ignore */ }
+}
+
+// Update every wishlist heart in place (no full grid re-render - this is what
+// makes the optimistic toggle feel instant).
+function syncWishlistHearts() {
+    document.querySelectorAll('.wishlist-heart[data-product-id]').forEach(btn => {
+        const id = parseInt(btn.dataset.productId);
+        const inWishlist = wishlistProductIds.includes(id);
+        btn.classList.toggle('is-active', inWishlist);
+        btn.title = inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist';
+        const icon = btn.querySelector('i');
+        if (icon) {
+            icon.classList.toggle('fas', inWishlist);
+            icon.classList.toggle('far', !inWishlist);
+        }
+    });
 }
 
 async function toggleWishlist(productId, event) {
     if (event) event.stopPropagation();
+
+    // Optimistic flip: flip the heart NOW, roll back only if the server fails.
+    const prevIds = wishlistProductIds.slice();
+    if (wishlistProductIds.includes(productId)) {
+        wishlistProductIds = wishlistProductIds.filter(id => id !== productId);
+    } else {
+        wishlistProductIds.push(productId);
+    }
+    syncWishlistHearts();
+    jzPop(document.querySelector(`.wishlist-heart[data-product-id="${productId}"]`));
+
     try {
         const res = await fetch('/api/wishlist', {
             method: 'POST',
@@ -1081,19 +1176,29 @@ async function toggleWishlist(productId, event) {
         });
         const data = await res.json();
         if (res.status === 401) {
+            wishlistProductIds = prevIds;
+            syncWishlistHearts();
             showToast('Please login to use the wishlist', 'error');
             return;
         }
         if (data.in_wishlist !== undefined) {
+            // Trust the server's answer over the optimistic flip
             if (data.in_wishlist) {
                 if (!wishlistProductIds.includes(productId)) wishlistProductIds.push(productId);
             } else {
                 wishlistProductIds = wishlistProductIds.filter(id => id !== productId);
             }
+            syncWishlistHearts();
+            // Keep the "wishlist only" filter in sync if it is active
+            const wishlistFilter = document.getElementById('filterWishlist');
+            if (wishlistFilter && wishlistFilter.checked) renderProducts();
             showToast(data.message || 'Wishlist updated');
-            renderProducts();
         }
     } catch (e) {
+        // Roll back the optimistic flip
+        wishlistProductIds = prevIds;
+        syncWishlistHearts();
+        showToast('Wishlist update failed. Please try again.', 'error');
         console.error('Wishlist toggle failed:', e);
     }
 }
@@ -1103,15 +1208,19 @@ function renderProducts() {
     if (!grid) return;
     grid.innerHTML = '';
 
-    // Still loading - keep the clean loading spinner (never show "No products found" here)
+    // Still loading - show shimmering skeleton product cards (premium UX);
+    // falls back to the plain spinner if premium.js is unavailable.
     if (!productsLoaded) {
-        grid.innerHTML =
-            '<div class="products-loading">' +
+        grid.setAttribute('aria-busy', 'true');
+        grid.innerHTML = (jz && jz.skeletonCards)
+            ? jz.skeletonCards(6)
+            : '<div class="products-loading">' +
                 '<div class="loading-spinner"></div>' +
                 '<p>' + (currentLang === 'hi' ? 'प्रीमियम उत्पाद लोड हो रहे हैं...' : 'Loading premium products...') + '</p>' +
             '</div>';
         return;
     }
+    grid.setAttribute('aria-busy', 'false');
 
     // API request failed - show a clear retry message
     if (productsLoadFailed) {
@@ -1141,14 +1250,15 @@ function renderProducts() {
     visibleProducts.forEach((p, index) => {
         const card = document.createElement('div');
         card.className = 'product-card';
-        card.style.animationDelay = (index * 0.1) + 's';
+        // Staggered entrance animation (capped so filter re-renders stay fast)
+        card.style.animationDelay = Math.min(index * 0.06, 0.3) + 's';
 
         const name = currentLang === 'hi' ? (p.name_hi || p.name_en) : p.name_en;
         const desc = currentLang === 'hi' ? (p.description_hi || p.description_en) : p.description_en;
 
         let imageHtml = '';
         if (p.image) {
-            imageHtml = '<img src="' + p.image + '" alt="' + name + '" loading="lazy">';
+            imageHtml = '<img src="' + p.image + '" alt="' + name + '" loading="lazy" decoding="async">';
         } else {
             imageHtml = '<div class="product-image-placeholder">' + getProductIcon(name) + '</div>';
         }
@@ -1252,7 +1362,7 @@ function renderProducts() {
             <div class="product-info">
                 <h3 onclick="openProductModal(${JSON.stringify(p).replace(/"/g, '&quot;')})" style="cursor: pointer; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
                     <span>${escapeHtml(name)}</span>
-                    <button type="button" class="wishlist-heart" title="Add to Wishlist" style="background: none; border: none; cursor: pointer; font-size: 1.1rem; color: ${wishlistProductIds.includes(p.id) ? '#D4AC0D' : '#bbb'}; padding: 2px;" onclick="toggleWishlist(${p.id}, event)">
+                    <button type="button" class="wishlist-heart${wishlistProductIds.includes(p.id) ? ' is-active' : ''}" data-product-id="${p.id}" title="${wishlistProductIds.includes(p.id) ? 'Remove from Wishlist' : 'Add to Wishlist'}" style="background: none; border: none; cursor: pointer; font-size: 1.1rem; color: ${wishlistProductIds.includes(p.id) ? '#D4AC0D' : '#bbb'}; padding: 2px;" onclick="toggleWishlist(${p.id}, event)">
                         <i class="${wishlistProductIds.includes(p.id) ? 'fas' : 'far'} fa-heart"></i>
                     </button>
                 </h3>
@@ -1293,7 +1403,7 @@ function renderProducts() {
                     </select>
                 </div>
                 
-                <button class="btn btn-primary" style="width: 100%; margin-top: 10px; font-size: 0.9rem; padding: 12px;" onclick="event.stopPropagation(); addToCart(${p.id}, document.getElementById('${weightId}').value, document.getElementById('${qtyId}').value)" ${addDisabled}>
+                <button class="btn btn-primary" style="width: 100%; margin-top: 10px; font-size: 0.9rem; padding: 12px;" onclick="event.stopPropagation(); addToCart(${p.id}, document.getElementById('${weightId}').value, document.getElementById('${qtyId}').value, this)" ${addDisabled}>
                     <i class="fas fa-shopping-cart"></i> ${addBtnText}
                 </button>
             </div>
@@ -1304,7 +1414,8 @@ function renderProducts() {
         loadProductReviews(p.id);
     });
     
-    // Ensure all cards are visible after rendering
+    // Sync wishlist hearts with the latest state + ensure all cards are visible
+    syncWishlistHearts();
     document.querySelectorAll('.product-card').forEach(card => {
         card.style.opacity = '1';
         card.style.transform = 'translateY(0)';
@@ -1536,8 +1647,9 @@ async function loadGeneralMedia() {
     if (!mediaContainer) return;
     
     try {
-        const res = await fetch('/api/general-media');
-        const media = await res.json();
+        // Cached for 5 minutes - factory media rarely changes, and the section
+        // paints instantly on revisit instead of re-fetching every navigation.
+        const media = await swrFetch('/api/general-media', { staleTime: 300000, persist: true });
         
         if (!media.length) {
             // No real media exists - hide the whole factory/company media section
@@ -1555,7 +1667,7 @@ async function loadGeneralMedia() {
             if (m.type === 'video') {
                 mediaHtml = '<video controls preload="metadata" style="width:100%; height:300px; object-fit:cover;"><source src="' + escapeHtml(m.url) + '" type="video/mp4">Your browser does not support video.</video>';
             } else {
-                mediaHtml = '<img src="' + escapeHtml(m.url) + '" alt="' + escapeHtml(m.title || 'Company Photo') + '" style="width:100%; height:300px; object-fit:cover;">';
+                mediaHtml = '<img src="' + escapeHtml(m.url) + '" alt="' + escapeHtml(m.title || 'Company Photo') + '" loading="lazy" decoding="async" style="width:100%; height:300px; object-fit:cover;">';
             }
             
             card.innerHTML = mediaHtml + '<div class="media-card-caption"><h4>' + escapeHtml(m.title || 'Untitled') + '</h4><p>' + (m.category === 'factory' ? 'Factory Video' : 'Company Photo') + '</p></div>';

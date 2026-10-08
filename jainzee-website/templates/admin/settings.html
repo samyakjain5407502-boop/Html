@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings - Jainzee Admin</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/premium.css') }}?v=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="/static/js/csrf.js"></script>
+<script src="/static/js/premium.js?v=1.0"></script>
 </head>
 <body>
     <header class="admin-header">
@@ -158,7 +160,7 @@
                     <label>Upload Photo or Video</label>
                     <input type="file" id="mediaFileInput" accept="image/*,video/*">
                 </div>
-                <button class="btn btn-primary" style="margin-bottom: 20px;" onclick="uploadProductMedia()">
+                <button class="btn btn-primary" style="margin-bottom: 20px;" onclick="uploadProductMedia(this)">
                     <i class="fas fa-upload"></i> Upload Media
                 </button>
                 <div id="mediaUploadMsg" style="margin-top: 10px; font-size: 0.9rem;"></div>
@@ -194,7 +196,7 @@
                     <label>Upload Photo or Video</label>
                     <input type="file" id="generalMediaFileInput" accept="image/*,video/*">
                 </div>
-                <button class="btn btn-primary" style="margin-bottom: 20px;" onclick="uploadGeneralMedia()">
+                <button class="btn btn-primary" style="margin-bottom: 20px;" onclick="uploadGeneralMedia(this)">
                     <i class="fas fa-upload"></i> Upload Media
                 </button>
                 <div id="generalMediaUploadMsg" style="margin-top: 10px; font-size: 0.9rem;"></div>
@@ -280,19 +282,32 @@
                         <input type="password" id="sNewPassword" placeholder="New password (min 6 chars)">
                     </div>
                 </div>
-                <button class="btn btn-primary" style="margin-top: 20px;" onclick="changePassword()">
+                <button class="btn btn-primary" style="margin-top: 20px;" onclick="changePassword(this)">
                     <i class="fas fa-key"></i> Change Password
                 </button>
             </div>
         </div>
 
         <div style="display: flex; gap: 15px; margin-bottom: 40px;">
-            <button class="btn btn-success btn-lg" onclick="saveSettings()">
+            <button class="btn btn-success btn-lg" onclick="saveSettings(this)">
                 <i class="fas fa-save"></i> Save All Settings
             </button>
-            <button class="btn btn-outline btn-lg" onclick="loadSettings()">
+            <button class="btn btn-outline btn-lg" onclick="loadSettings(true)">
                 <i class="fas fa-sync-alt"></i> Reload
             </button>
+        </div>
+
+        <!-- Skeleton shown only while settings load on a cold visit -->
+        <div class="settings-skeleton" id="settingsSkeleton" hidden aria-hidden="true">
+            <div class="skeleton-card">
+                <div class="sk-field"><div class="sk-block sk-line"></div><div class="sk-block sk-input"></div></div>
+                <div class="sk-field"><div class="sk-block sk-line"></div><div class="sk-block sk-input"></div></div>
+                <div class="sk-field"><div class="sk-block sk-line"></div><div class="sk-block sk-input" style="height: 90px;"></div></div>
+            </div>
+            <div class="skeleton-card">
+                <div class="sk-field"><div class="sk-block sk-line"></div><div class="sk-block sk-input"></div></div>
+                <div class="sk-field"><div class="sk-block sk-line"></div><div class="sk-block sk-input"></div></div>
+            </div>
         </div>
     </main>
 
@@ -346,7 +361,7 @@
     }
 
     // Upload product media
-    async function uploadProductMedia() {
+    async function uploadProductMedia(btn = null) {
         const productId = document.getElementById('mediaProductId').value;
         const fileInput = document.getElementById('mediaFileInput');
         const msgDiv = document.getElementById('mediaUploadMsg');
@@ -372,6 +387,7 @@
         formData.append('file', uploadFile, uploadFile.name);
 
         msgDiv.innerHTML = '<span style="color: #007bff;"><i class="fas fa-spinner fa-spin"></i> Uploading...</span>';
+        if (window.JZ && JZ.btnBusy) JZ.btnBusy(btn, true);
 
         try {
             const res = await fetch('/admin/api/product-media/' + productId, {
@@ -382,6 +398,7 @@
             const data = await res.json();
             if (res.ok) {
                 msgDiv.innerHTML = '<span style="color: #28a745;">✓ Media uploaded successfully!</span>';
+                if (window.showToast) showToast('Media uploaded successfully!');
                 fileInput.value = '';
                 loadProductMedia(productId);
             } else {
@@ -389,6 +406,8 @@
             }
         } catch(err) {
             msgDiv.innerHTML = '<span style="color: #dc3545;">❌ Upload failed. Server issue.</span>';
+        } finally {
+            if (window.JZ && JZ.btnBusy) JZ.btnBusy(btn, false);
         }
     }
 
