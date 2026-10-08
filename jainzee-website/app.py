@@ -47,18 +47,20 @@ MAX_IMAGE_DIMENSION = 2000
 # invalid credentials fail the upload loudly with a machine-readable JSON
 # error instead of a bare 500 - never a local file write.
 def _find_blob_token():
-    for key in ('BLOB_READ_WRITE_TOKEN', 'HTML_BLOB_READ_WRITE_TOKEN', 'JAINZEE_BLOB_READ_WRITE_TOKEN'):
+    val = os.environ.get('BLOB_READ_WRITE_TOKEN', '').strip()
+    if val:
+        return val
+    for key in ('Jainzee_Foods_READ_WRITE_TOKEN', 'HTML_BLOB_READ_WRITE_TOKEN', 'JAINZEE_BLOB_READ_WRITE_TOKEN'):
         val = os.environ.get(key, '').strip()
         if val:
             return val
-    # Check any env var containing BLOB_READ_WRITE_TOKEN
     for key, val in os.environ.items():
-        if 'BLOB_READ_WRITE_TOKEN' in key and val.strip():
+        if (key.endswith('_READ_WRITE_TOKEN') or 'BLOB_READ_WRITE_TOKEN' in key or 'BLOB_TOKEN' in key) and val.strip():
             return val.strip()
     return ''
 
 BLOB_READ_WRITE_TOKEN = _find_blob_token()
-if BLOB_READ_WRITE_TOKEN and not os.environ.get('BLOB_READ_WRITE_TOKEN'):
+if BLOB_READ_WRITE_TOKEN:
     os.environ['BLOB_READ_WRITE_TOKEN'] = BLOB_READ_WRITE_TOKEN
 USE_BLOB_STORAGE = bool(BLOB_READ_WRITE_TOKEN)
 BLOB_URL_MARKER = '.blob.vercel-storage.com'
