@@ -717,7 +717,7 @@ function applySettings(result) {
     // Logo
     setVal('sLogoUrl', data.logo || '');
     if (data.logo) {
-        const preview = document.getElementById('sLogoPreview');
+        const preview = document.getElementById('logoPreview') || document.getElementById('sLogoPreview');
         if (preview) {
             preview.querySelector('img').src = data.logo;
             preview.style.display = 'block';

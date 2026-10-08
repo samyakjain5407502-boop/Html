@@ -632,8 +632,12 @@ function applyHomepageVideo(url) {
     const heroVideoContainer = document.getElementById('heroVideoContainer');
     const heroVideo = document.getElementById('heroVideo');
     const heroVideoSource = document.getElementById('heroVideoSource');
-    if (heroVideoContainer && heroVideo && heroVideoSource) {
-        heroVideoSource.src = bustedUrl;
+    if (heroVideoContainer && heroVideo) {
+        if (heroVideoSource) {
+            heroVideoSource.src = bustedUrl;
+        } else {
+            heroVideo.src = bustedUrl;
+        }
         heroVideo.load();
         heroVideo.play().catch(e => console.log('Video autoplay prevented:', e));
         heroVideoContainer.style.display = '';
@@ -651,13 +655,19 @@ function applyHomepageVideo(url) {
 }
 
 async function loadMainBannerVideo() {
-    // Prefer the URL saved by the admin. This works for Vercel Blob URLs
-    // (production) and any remote URL. Local disk storage was removed, so
-    // there is no /static/uploads fallback - the hero simply shows no video
-    // until the admin uploads one.
+    // Prefer the URL saved by the admin.
     if (siteData && siteData.homepage_video_url) {
         applyHomepageVideo(siteData.homepage_video_url);
         return;
+    }
+    try {
+        const res = await fetch('/static/uploads/main_banner_video.mp4', { method: 'HEAD' });
+        if (res.ok) {
+            applyHomepageVideo('/static/uploads/main_banner_video.mp4');
+            return;
+        }
+    } catch (e) {
+        // Default video not available
     }
     console.log('No banner video uploaded yet');
 }

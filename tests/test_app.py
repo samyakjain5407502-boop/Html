@@ -16,7 +16,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'jainzee-website'))
 
 os.environ['ADMIN_PASSWORD'] = 'test-admin-pass-123'
-os.environ.setdefault('SECRET_KEY', 'test-secret-key-for-pytest-only')
+os.environ.setdefault('SECRET_KEY', 'test-secret-key-for-pytest-only-32chars')
 
 
 @pytest.fixture()

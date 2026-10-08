@@ -13,11 +13,13 @@ from werkzeug.utils import secure_filename
 import jwt
 from dotenv import load_dotenv
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Load environment variables from .env file if present (local development).
 # In production, set real environment variables in the hosting dashboard.
-load_dotenv()  # Loads jainzee-website/.env for local dev (real env vars still win)
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+env_file = os.path.join(BASE_DIR, '.env')
+if os.path.exists(env_file):
+    load_dotenv(env_file)
+load_dotenv()
 # Allow tests / deployments to override the database location via environment.
 DB_PATH = os.environ.get('JAINZEE_DB_PATH', os.path.join(BASE_DIR, 'jainzee.db'))
 # PostgreSQL-ready configuration: set DATABASE_URL in production to use
@@ -644,28 +646,57 @@ class BlobStorageError(Exception):
     """Raised when an uploaded file cannot be persisted to media storage."""
 
 
+def _unique_upload_filename(filename):
+    """Return a collision-free filename (keeping the extension) for the local
+    fallback folder. Vercel Blob uses its own random suffix instead."""
+    safe = secure_filename(filename) or 'upload'
+    name, ext = os.path.splitext(safe)
+    candidate = safe
+    counter = 1
+    while os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], candidate)):
+        candidate = f'{name}_{counter}{ext}'
+        counter += 1
+    return candidate
+
+
 def save_uploaded_file(file, folder='uploads', multipart=False, filename=None):
-    """Upload to @vercel/blob with put() and return the public CDN URL.
+    """Persist an uploaded file and return a publicly reachable URL.
 
-    STRICT BLOB-BY-DEFAULT - no local-disk fallback. Vercel's filesystem is
-    read-only and every other deployment's disk is temporary, so every upload
-    (logo, product images/videos, general media, homepage video) MUST be
-    persisted to Vercel Blob. If BLOB_READ_WRITE_TOKEN is missing or the
-    upload fails, this raises a BlobStorageError; the
-    @app.errorhandler(BlobStorageError) handler turns it into a readable JSON
-    502 error the admin UI can show - never a bare 500 and never a local file
-    write.
+    Production (BLOB_READ_WRITE_TOKEN set): uploads to Vercel Blob and returns
+    the CDN URL the API returns.
 
-    `filename` forces a stored name (e.g. main_banner_video.mp4); otherwise
-    the SDK appends a random suffix so files never collide.
+    Development (no token): saves to static/uploads and returns a relative
+    /static/uploads/... URL, so local workflows are unchanged.
+
+    `filename` forces a specific name (e.g. the main banner video); otherwise a
+    collision-free name is derived from the upload.
     """
+    if filename:
+        local_name = os.path.basename(filename)
+    else:
+        local_name = _unique_upload_filename(file.filename)
+
     if not USE_BLOB_STORAGE:
-        raise BlobStorageError(
-            'Image upload failed: BLOB_READ_WRITE_TOKEN is not set, so '
-            'Vercel Blob is unavailable. Add the token under Project Settings '
-            '> Environment Variables and redeploy. Local disk storage is not '
-            'permitted on this deployment.'
-        )
+        # Vercel's filesystem is read-only, so never even attempt a local write
+        # there. Fail up front with an actionable message instead of letting a
+        # bare FileNotFoundError surface as Flask's HTML "Internal Server Error".
+        if os.environ.get('VERCEL') == '1':
+            raise BlobStorageError(
+                'Image upload failed: BLOB_READ_WRITE_TOKEN is not set, so '
+                'Vercel Blob is unavailable. Add the token under Project Settings '
+                '> Environment Variables and redeploy. Local disk storage is not '
+                'permitted on this deployment.'
+            )
+        target = os.path.join(app.config['UPLOAD_FOLDER'], local_name)
+        try:
+            file.save(target)
+        except OSError as exc:
+            raise BlobStorageError(
+                f'Could not write the uploaded file to disk: {exc}. Check that the '
+                f'upload folder "{app.config["UPLOAD_FOLDER"]}" exists and is '
+                'writable.'
+            ) from exc
+        return f'/static/uploads/{local_name}'
 
     try:
         import vercel_blob
@@ -703,18 +734,23 @@ def save_uploaded_file(file, folder='uploads', multipart=False, filename=None):
 
 
 def delete_uploaded_file(url):
-    """Best-effort delete of a previously uploaded file from Vercel Blob.
-
-    Local disk storage was removed - every upload URL is a Vercel Blob URL
-    (http + .blob.vercel-storage.com), so this only ever touches the Blob CDN.
-    """
-    if not url or not url.startswith('http') or BLOB_URL_MARKER not in url:
+    """Best-effort delete of a previously uploaded file (Vercel Blob or local)."""
+    if not url:
         return
-    try:
-        import vercel_blob
-        vercel_blob.delete([url])
-    except Exception as exc:
-        print(f'[WARNING] Could not delete Vercel Blob {url}: {exc}')
+    if url.startswith('http') and BLOB_URL_MARKER in url and USE_BLOB_STORAGE:
+        try:
+            import vercel_blob
+            vercel_blob.delete([url])
+        except Exception as exc:
+            print(f'[WARNING] Could not delete Vercel Blob {url}: {exc}')
+        return
+    if url.startswith('/static/uploads/'):
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(url))
+        if os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except OSError as exc:
+                print(f'[WARNING] Could not delete local upload {filepath}: {exc}')
 
 
 @app.errorhandler(BlobStorageError)
@@ -860,6 +896,10 @@ def api_products():
     rows = conn.execute('SELECT * FROM products ORDER BY id').fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
+
+@app.route('/static/uploads/<path:filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 # ---------------- CUSTOMER ROUTES ----------------
 
