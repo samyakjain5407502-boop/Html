@@ -88,12 +88,12 @@
                 <!-- Login Form -->
                 <div class="auth-form active" id="loginForm">
                     <div class="form-group">
-                        <label>Phone Number</label>
-                        <input type="text" id="loginPhone" placeholder="e.g. 9826000000">
+                        <label>Email or Phone Number</label>
+                        <input type="text" id="loginPhone" placeholder="Enter email or phone number" onkeydown="if(event.key==='Enter') customerLogin()">
                     </div>
                     <div class="form-group">
                         <label>Password</label>
-                        <input type="password" id="loginPassword" placeholder="Enter password">
+                        <input type="password" id="loginPassword" placeholder="Enter password" onkeydown="if(event.key==='Enter') customerLogin()">
                     </div>
                     <button class="btn btn-primary btn-block" onclick="customerLogin()">
                         <i class="fas fa-sign-in-alt"></i> Login
@@ -251,16 +251,18 @@
 
         async function customerLogin() {
             const identifier = document.getElementById('loginPhone').value.trim();
-            const isEmail = identifier.includes('@');
-            const data = {
-                phone: isEmail ? '' : identifier,
-                email: isEmail ? identifier : '',
-                password: document.getElementById('loginPassword').value
-            };
-            if (!identifier || !data.password) {
-                showToast('Phone/email and password are required!', 'error');
+            const password = document.getElementById('loginPassword').value;
+            if (!identifier || !password) {
+                showToast('Email/phone and password are required!', 'error');
                 return;
             }
+            const isEmail = identifier.includes('@');
+            const data = {
+                identifier: identifier,
+                phone: isEmail ? '' : identifier,
+                email: isEmail ? identifier : '',
+                password: password
+            };
             try {
                 const res = await fetch('/api/customer/login', {
                     method: 'POST',

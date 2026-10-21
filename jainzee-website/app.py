@@ -960,12 +960,40 @@ def api_customer_register():
     phone = phone_raw.strip() if phone_raw and phone_raw.strip() else None
     email = email_raw.strip().lower() if email_raw and email_raw.strip() else None
     password = data.get('password', '')
+
+    # Standardize phone number if provided (10 digits)
+    if phone:
+        p_digits = re.sub(r'\D', '', phone)
+        if len(p_digits) == 12 and p_digits.startswith('91'):
+            phone = p_digits[2:]
+        elif len(p_digits) == 11 and p_digits.startswith('0'):
+            phone = p_digits[1:]
+        elif len(p_digits) == 10:
+            phone = p_digits
+
     # Accept either phone OR email as the login identifier (simplified 3-field form)
     if not name or (not phone and not email) or not password:
         return jsonify({'error': 'Name, email/phone and password are required'}), 400
     if len(password) < 4:
         return jsonify({'error': 'Password must be at least 4 characters'}), 400
+
     conn = get_db()
+    # Check if already registered
+    existing = None
+    if phone and email:
+        existing = conn.execute(
+            'SELECT id FROM customers WHERE phone=? OR LOWER(email)=? LIMIT 1',
+            (phone, email)
+        ).fetchone()
+    elif phone:
+        existing = conn.execute('SELECT id FROM customers WHERE phone=? LIMIT 1', (phone,)).fetchone()
+    elif email:
+        existing = conn.execute('SELECT id FROM customers WHERE LOWER(email)=? LIMIT 1', (email,)).fetchone()
+
+    if existing:
+        conn.close()
+        return jsonify({'error': 'An account with this phone or email already exists. Please login.'}), 400
+
     try:
         cur = conn.execute(
             'INSERT INTO customers (name, phone, email, address, password_hash) VALUES (?, ?, ?, ?, ?)',
@@ -979,9 +1007,9 @@ def api_customer_register():
         token = generate_jwt_token(customer_id, name)
         conn.close()
         return jsonify({'id': customer_id, 'name': name, 'message': 'Registration successful', 'token': token}), 201
-    except sqlite3.IntegrityError:
+    except Exception:
         conn.close()
-        return jsonify({'error': 'Phone number already registered. Please login.'}), 400
+        return jsonify({'error': 'Registration failed. This phone or email may already be registered.'}), 400
 
 @app.route('/api/customer/login', methods=['POST'])
 def api_customer_login():
@@ -989,16 +1017,59 @@ def api_customer_login():
         return jsonify({'error': 'Too many login attempts. Please wait 5 minutes and try again.'}), 429
     data = request.get_json() or {}
     identifier = data.get('phone', '') or data.get('email', '') or data.get('identifier', '')
-    identifier = identifier.strip()
+    identifier = (identifier or '').strip()
     password = data.get('password', '')
     if not identifier or not password:
         return jsonify({'error': 'Email/phone and password are required'}), 400
+
+    clean_id = identifier.strip()
+    lower_id = clean_id.lower()
+
+    # Generate phone variants (+91, 91, 0, exact digits, 10-digit standard)
+    digits = re.sub(r'\D', '', clean_id)
+    digits_10 = digits[-10:] if len(digits) >= 10 else (digits if digits else None)
+
+    phone_variants = set([clean_id])
+    if digits:
+        phone_variants.add(digits)
+    if digits_10:
+        phone_variants.add(digits_10)
+        phone_variants.add(f"+91{digits_10}")
+        phone_variants.add(f"91{digits_10}")
+        phone_variants.add(f"0{digits_10}")
+
+    placeholders = ','.join(['?'] * len(phone_variants))
     conn = get_db()
-    # Login by phone OR email
-    row = conn.execute('SELECT * FROM customers WHERE phone=? OR email=?', (identifier, identifier)).fetchone()
+    # Search by phone variations OR case-insensitive email
+    sql = 'SELECT * FROM customers WHERE phone IN (' + placeholders + ') OR LOWER(email) = ? OR LOWER(phone) = ? LIMIT 1'
+    params = list(phone_variants) + [lower_id, lower_id]
+    row = conn.execute(sql, tuple(params)).fetchone()
+
+    # Secondary fallback: match stripped phone if DB stored spaces/dashes
+    if not row and digits_10 and len(digits_10) == 10:
+        try:
+            row = conn.execute(
+                "SELECT * FROM customers WHERE REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') LIKE ? LIMIT 1",
+                (f"%{digits_10}",)
+            ).fetchone()
+        except Exception:
+            pass
+
     conn.close()
-    if not row or not check_password_hash(row['password_hash'], password):
+
+    pw_ok = False
+    if row and row.get('password_hash'):
+        try:
+            pw_ok = check_password_hash(row['password_hash'], password)
+        except Exception:
+            pw_ok = False
+        # Backwards compatibility check
+        if not pw_ok and row['password_hash'] == password:
+            pw_ok = True
+
+    if not row or not pw_ok:
         return jsonify({'error': 'Invalid email/phone or password'}), 400
+
     rate_limit_clear('customer_login')
     session.permanent = True  # Keep logged in for 30 days
     session['customer_id'] = row['id']
