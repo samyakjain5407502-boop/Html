@@ -2172,12 +2172,16 @@ def api_order_invoice(order_id):
         fontName=BASE_FONT_BOLD
     )
     
-    # Format date
-    try:
-        dt = datetime.strptime(order['created_at'], '%Y-%m-%d %H:%M:%S')
-        formatted_date = dt.strftime('%d %b %Y, %I:%M %p')
-    except:
-        formatted_date = order['created_at']
+    # Format date safely for both SQLite (string) and PostgreSQL (datetime)
+    raw_date = order['created_at']
+    if isinstance(raw_date, datetime):
+        formatted_date = raw_date.strftime('%d %b %Y, %I:%M %p')
+    else:
+        try:
+            dt = datetime.strptime(str(raw_date).split('.')[0], '%Y-%m-%d %H:%M:%S')
+            formatted_date = dt.strftime('%d %b %Y, %I:%M %p')
+        except Exception:
+            formatted_date = str(raw_date or '')
     
     # Left side - Invoice details
     left_data = [
