@@ -135,7 +135,7 @@
 
             <div id="cartSummary" style="display: none;">
                 <div class="cart-summary-card">
-                    <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 25px; text-align: center;">
+                    <h3 style="color: #1a1a1a; font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 25px; text-align: center;">
                         <i class="fas fa-receipt"></i> <span data-i18n="order_summary">Order Summary</span>
                     </h3>
 
@@ -556,6 +556,8 @@
                     return;
                 }
                 appliedCoupon = { code: data.code, discount: data.discount, description: data.description };
+                // Persist applied coupon so checkout.html can auto-apply it
+                sessionStorage.setItem('jainzee_applied_coupon', JSON.stringify(appliedCoupon));
                 msg.style.display = 'none';
                 renderCart();
                 closeCouponModal();
@@ -575,6 +577,7 @@
 
         function removeCoupon() {
             appliedCoupon = null;
+            sessionStorage.removeItem('jainzee_applied_coupon');
             renderCart();
         }
 
@@ -637,6 +640,9 @@
         }
 
         function proceedToCheckout() {
+            if (appliedCoupon) {
+                sessionStorage.setItem('jainzee_applied_coupon', JSON.stringify(appliedCoupon));
+            }
             window.location.href = '/checkout';
         }
 
@@ -659,5 +665,21 @@
             if (cyEl) cyEl.textContent = new Date().getFullYear();
         });
     </script>
+
+    <!-- ===== FOOTER ===== -->
+    <footer style="background: #121212; color: #E0E0E0; text-align: center; padding: 30px 20px; margin-top: 60px; font-size: 0.9rem;">
+        <div style="max-width: 900px; margin: 0 auto;">
+            <div style="margin-bottom: 12px;">
+                <a href="/" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Home</a>
+                <a href="/#products" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Products</a>
+                <a href="/privacy" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Privacy Policy</a>
+                <a href="/terms" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Terms</a>
+                <a href="/refund" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Refund Policy</a>
+                <a href="/shipping" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Shipping Policy</a>
+                <a href="/#contact" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Contact</a>
+            </div>
+            <p style="color: #888; font-size: 0.8rem; margin: 0;">&copy; <span id="currentYear"></span> Jainzee Food Processing Industries. All rights reserved.</p>
+        </div>
+    </footer>
 </body>
 </html>

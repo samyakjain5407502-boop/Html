@@ -1357,7 +1357,7 @@ function renderProducts() {
         const weightOptions = availableWeights.map((w, i) => `<option value="${i}">${w}</option>`).join('');
         
         card.innerHTML = `
-            <div class="product-image" onclick="openProductModal(${JSON.stringify(p).replace(/"/g, '"')})">
+            <div class="product-image" onclick="openProductModal(${JSON.stringify(p).replace(/"/g, '&quot;')})">
                 ${imageHtml}
                 <span class="product-badge">${currentLang === 'hi' ? 'प्रीमियम' : 'Premium'}</span>
             </div>

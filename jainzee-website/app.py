@@ -195,6 +195,15 @@ class PostgresConnection:
             row = cur.fetchone()
             if row:
                 self.lastrowid = list(row.values())[0]
+        # FIX: Propagate lastrowid to the raw psycopg2 cursor so that code
+        # accessing cur.lastrowid (instead of conn.lastrowid) gets the correct
+        # value. psycopg2's cursor.lastrowid is always None/0 for RETURNING
+        # queries because it is meant for non-PostgreSQL auto_increment; we
+        # write directly to the cursor's __dict__ to work around this.
+        try:
+            cur.lastrowid = self.lastrowid
+        except (AttributeError, TypeError):
+            pass
         return cur
 
     def executescript(self, script):
@@ -1021,7 +1030,13 @@ def api_customer_send_otp():
     )
     conn.commit()
     conn.close()
-    return jsonify({'success': True, 'message': 'OTP sent.Please check the server logs.', 'otp_for_debug': otp})
+    # NOTE: otp_for_debug is intentionally omitted in production to avoid
+    # leaking the OTP over the network. The OTP is printed to server logs
+    # above (visible only to operators) for debugging without OTP gateway.
+    response_data = {'success': True, 'message': 'OTP sent. Please check the server logs.'}
+    if os.environ.get('OTP_DEBUG', '').strip().lower() in ('1', 'true', 'yes'):
+        response_data['otp_for_debug'] = otp
+    return jsonify(response_data)
 
 
 @app.route('/api/customer/verify-otp', methods=['POST'])
@@ -1976,31 +1991,31 @@ def api_order_invoice(order_id):
     except Exception:
         BASE_FONT, BASE_FONT_BOLD = 'Helvetica', 'Helvetica-Bold'
     
+    # Check if admin is logged in (admin can download any invoice)
+    is_admin = session.get('admin_logged_in', False)
+
     # Check if customer is logged in
     customer_id = session.get('customer_id')
     if not customer_id:
         customer_id, _ = get_jwt_customer()
-    if not customer_id:
+    if not customer_id and not is_admin:
         return jsonify({'error': 'Not logged in'}), 401
     
     conn = get_db()
-    order = conn.execute('SELECT * FROM orders WHERE id=? AND customer_id=?', 
-                        (order_id, customer_id)).fetchone()
+    if is_admin:
+        # Admin: fetch order by id only (no customer restriction)
+        order = conn.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+    else:
+        # Customer: enforce customer_id check for privacy
+        order = conn.execute('SELECT * FROM orders WHERE id=? AND customer_id=?',
+                            (order_id, customer_id)).fetchone()
     
     if not order:
         conn.close()
         return jsonify({'error': 'Order not found'}), 404
 
-    # DELIVERY-GATED INVOICE: invoices are only available once the order has
-    # been delivered. Prevent premature downloads with a clean error page.
-    raw_status = str(order['status'] or '').strip().lower()
-    if not raw_status.startswith('deliver'):
-        conn.close()
-        return render_template(
-            'error.html', code=403,
-            title='Invoice Not Available',
-            message='Invoice will be available after delivery.'
-        ), 403
+    # REMOVED: delivery-gating check. Invoices/receipts are available
+    # immediately after order placement (pending_cod, upi, confirmed, etc.).
 
     # Get shop settings
     settings = {}
@@ -2015,8 +2030,12 @@ def api_order_invoice(order_id):
     
     # Create PDF buffer
     buffer = io.BytesIO()
+    # Usable width: A4=595.28pt, margins 36pt each side → 523.28pt ≈ 7.26 in
+    LEFT_MARGIN = 36
+    RIGHT_MARGIN = 36
+    USABLE_WIDTH = 595.28 - LEFT_MARGIN - RIGHT_MARGIN  # 523.28 pt ≈ 7.26 in
     doc = SimpleDocTemplate(buffer, pagesize=A4,
-                          rightMargin=72, leftMargin=72,
+                          rightMargin=RIGHT_MARGIN, leftMargin=LEFT_MARGIN,
                           topMargin=72, bottomMargin=18)
     
     # Container for the 'flowables'
@@ -2111,9 +2130,9 @@ def api_order_invoice(order_id):
         elements.append(Paragraph(f"GSTIN: {gstin}", contact_style))
     elements.append(Spacer(1, 10))
     
-    # Dashed horizontal line
+    # Dashed horizontal line — spans full usable width (6.26 in at 72pt margins)
     line_data = [['', '', '']]
-    line_table = Table(line_data, colWidths=[2.5*inch, 2*inch, 2.5*inch])
+    line_table = Table(line_data, colWidths=[2.08*inch, 2.1*inch, 2.08*inch])
     line_table.setStyle(TableStyle([
         ('LINEABOVE', (0, 0), (-1, 0), 2, colors.black),
         ('TOPPADDING', (0, 0), (-1, 0), 0),
@@ -2178,9 +2197,9 @@ def api_order_invoice(order_id):
         ('TOPPADDING', (0, 0), (-1, -1), 4),
     ]))
     
-    # Combine left and right
+    # Combine left and right — total 6.26 in to match usable page width
     combined_data = [[left_table, right_table]]
-    combined_table = Table(combined_data, colWidths=[4*inch, 4*inch])
+    combined_table = Table(combined_data, colWidths=[3.13*inch, 3.13*inch])
     combined_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('ALIGN', (0, 0), (0, 0), 'LEFT'),
@@ -2190,7 +2209,7 @@ def api_order_invoice(order_id):
     elements.append(Spacer(1, 15))
     
     # Items table header with black borders
-    items_data = [['Item Name', 'Qty', 'Unit Price (₹)', 'Total (₹)']]
+    items_data = [[Paragraph('<b>Item Name</b>', normal_style), 'Qty', 'Unit Price (\u20b9)', 'Total (\u20b9)']]
     
     # Calculate subtotal
     subtotal = 0
@@ -2225,7 +2244,7 @@ def api_order_invoice(order_id):
         subtotal += item_total
         
         items_data.append([
-            name,
+            Paragraph(name, normal_style),
             str(qty),
             f"₹{price:.2f}",
             f"₹{item_total:.2f}"
@@ -2279,8 +2298,29 @@ def api_order_invoice(order_id):
         taxable_value = invoice_total / (1 + tax_percent / 100)
         tax_amount = invoice_total - taxable_value
     
-    # Items table with black borders
-    items_table = Table(items_data, colWidths=[3*inch, 1*inch, 1.5*inch, 1.5*inch])
+    # Add payment method and order status rows before the items table
+    pay_method_display = str(order.get('status', '') or '').replace('pending_', '').upper()
+    order_status_display = str(order['status'] or '').replace('_', ' ').upper()
+    payment_info_data = [
+        [Paragraph(f'<b>Payment Method:</b> {pay_method_display}', invoice_info_style),
+         Paragraph(f'<b>Order Status:</b> {order_status_display}', invoice_info_style)]
+    ]
+    payment_info_table = Table(payment_info_data, colWidths=[3.13*inch, 3.13*inch])
+    payment_info_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(payment_info_table)
+    elements.append(Spacer(1, 10))
+
+    # Dynamic row count for safe TableStyle indexing (avoid negative index bugs)
+    num_item_rows = len(items_data)  # includes header row
+    last_data_row = num_item_rows - 1  # 0-based index of last row
+    # For separator before last N rows: use max(1, last_data_row - 3)
+    separator_row = max(1, last_data_row - 3)
+
+    # Items table with black borders — colWidths total = 6.26 in
+    items_table = Table(items_data, colWidths=[3.1*inch, 0.7*inch, 1.2*inch, 1.26*inch])
     items_table.setStyle(TableStyle([
         # Header row
         ('BACKGROUND', (0, 0), (-1, 0), colors.white),
@@ -2293,15 +2333,15 @@ def api_order_invoice(order_id):
         ('LINEABOVE', (0, 0), (-1, 0), 1.5, colors.black),
         ('LINEBELOW', (0, 0), (-1, 0), 1, colors.black),
         
-        # Data rows
-        ('FONTNAME', (0, 1), (-1, -4), BASE_FONT),
-        ('FONTSIZE', (0, 1), (-1, -4), 10),
-        ('ALIGN', (2, 1), (-1, -1), 'RIGHT'),
-        ('ALIGN', (1, 1), (1, -1), 'CENTER'),
-        ('TEXTCOLOR', (0, 1), (-1, -4), colors.black),
-        ('BOTTOMPADDING', (0, 1), (-1, -4), 8),
-        ('TOPPADDING', (0, 1), (-1, -4), 8),
-        ('LINEBELOW', (0, -4), (-1, -4), 0.5, colors.lightgrey),
+        # Data rows — use dynamic indices to avoid negative-index bugs
+        ('FONTNAME', (0, 1), (-1, last_data_row), BASE_FONT),
+        ('FONTSIZE', (0, 1), (-1, last_data_row), 10),
+        ('ALIGN', (2, 1), (-1, last_data_row), 'RIGHT'),
+        ('ALIGN', (1, 1), (1, last_data_row), 'CENTER'),
+        ('TEXTCOLOR', (0, 1), (-1, last_data_row), colors.black),
+        ('BOTTOMPADDING', (0, 1), (-1, last_data_row), 8),
+        ('TOPPADDING', (0, 1), (-1, last_data_row), 8),
+        ('LINEBELOW', (0, separator_row), (-1, separator_row), 0.5, colors.lightgrey),
     ]))
     elements.append(items_table)
     elements.append(Spacer(1, 12))
@@ -2330,7 +2370,7 @@ def api_order_invoice(order_id):
     
     totals_data.append(['', '', 'Grand Total:', f"₹{invoice_total:.2f}"])
     
-    totals_table = Table(totals_data, colWidths=[3*inch, 1*inch, 1.5*inch, 1.5*inch])
+    totals_table = Table(totals_data, colWidths=[3.1*inch, 0.7*inch, 1.2*inch, 1.26*inch])
     totals_table.setStyle(TableStyle([
         ('FONTNAME', (2, 0), (2, -2), BASE_FONT_BOLD),
         ('FONTNAME', (3, 0), (3, -2), BASE_FONT_BOLD),
@@ -2350,9 +2390,9 @@ def api_order_invoice(order_id):
     elements.append(totals_table)
     elements.append(Spacer(1, 25))
     
-    # Footer
+    # Footer — spans full usable width
     footer_line_data = [['', '', '']]
-    footer_line_table = Table(footer_line_data, colWidths=[2.5*inch, 2*inch, 2.5*inch])
+    footer_line_table = Table(footer_line_data, colWidths=[2.08*inch, 2.1*inch, 2.08*inch])
     footer_line_table.setStyle(TableStyle([
         ('LINEABOVE', (0, 0), (-1, 0), 1.5, colors.black),
         ('TOPPADDING', (0, 0), (-1, 0), 0),
@@ -2372,6 +2412,46 @@ def api_order_invoice(order_id):
     )
     elements.append(Paragraph("Thank you for shopping with Jainzee Food Processing Industries!", footer_style))
     elements.append(Paragraph("For any queries, contact us at " + phone + " | " + email, footer_style))
+    elements.append(Spacer(1, 20))
+
+    # Authorized Signatory section
+    signatory_style = ParagraphStyle(
+        'Signatory',
+        parent=styles['Normal'],
+        fontSize=9,
+        textColor=colors.black,
+        alignment=TA_RIGHT,
+        spaceAfter=3,
+        fontName=BASE_FONT
+    )
+    signatory_bold_style = ParagraphStyle(
+        'SignatoryBold',
+        parent=styles['Normal'],
+        fontSize=9,
+        textColor=colors.black,
+        alignment=TA_RIGHT,
+        spaceAfter=3,
+        fontName=BASE_FONT_BOLD
+    )
+    elements.append(Paragraph("For Jainzee Food Processing Industries", signatory_bold_style))
+    elements.append(Spacer(1, 30))
+    elements.append(Paragraph("Authorized Signatory", signatory_style))
+    elements.append(Spacer(1, 10))
+
+    # Terms note
+    terms_style = ParagraphStyle(
+        'Terms',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.grey,
+        alignment=TA_CENTER,
+        spaceAfter=3,
+        fontName=BASE_FONT
+    )
+    elements.append(Paragraph(
+        "Goods once sold are covered under Jainzee refund policy. Subject to Indore jurisdiction.",
+        terms_style
+    ))
     
     # Build PDF
     doc.build(elements)

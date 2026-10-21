@@ -11,8 +11,9 @@
     --bg-light: #F8F9FA;
     --bg-cream: #F0F2F5;
     --dark: #121212;
-    --text: #FFFFFF;
+    --text: #1a1a1a;
     --text-light: #E0E0E0;
+    --text-muted: #666666;
     --white: #ffffff;
     --card-bg: #ffffff;
     --shadow: 0 10px 30px rgba(0,0,0,0.3);
@@ -621,35 +622,35 @@ body {
 }
 
 .btn-outline {
-    background: linear-gradient(135deg, #FFD700 0%, #D4AC0D 100%);
-    color: #000000;
+    background: transparent;
+    color: #b8860b;
     font-weight: 700;
-    border: none;
-    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5);
+    border: 2px solid #D4AC0D;
+    box-shadow: none;
 }
 
 .btn-outline:hover {
-    background: linear-gradient(135deg, #FFE259 0%, #FFD700 100%);
-    color: #000000;
+    background: rgba(212, 172, 13, 0.1);
+    color: #b8860b;
     transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.7);
+    box-shadow: 0 4px 15px rgba(212, 172, 13, 0.3);
 }
 
 .btn-whatsapp {
-    background: linear-gradient(135deg, #FFD700 0%, #D4AC0D 100%);
-    color: #000000;
+    background: #25D366 !important;
+    color: #ffffff !important;
     font-weight: 700;
     padding: 10px 25px;
     font-size: 0.9rem;
     margin-top: 12px;
-    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5);
+    box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
 }
 
 .btn-whatsapp:hover {
-    background: linear-gradient(135deg, #FFE259 0%, #FFD700 100%);
-    color: #000000;
+    background: #1da851 !important;
+    color: #ffffff !important;
     transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.7);
+    box-shadow: 0 8px 25px rgba(37, 211, 102, 0.5);
 }
 
 /* ===== SECTIONS ===== */

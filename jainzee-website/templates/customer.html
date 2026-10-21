@@ -238,6 +238,11 @@
                 }
                 
                 showToast('Registration successful! Welcome ' + result.name + '!');
+                const redir = new URLSearchParams(window.location.search).get('redirect');
+                if (redir === 'checkout') {
+                    window.location.href = '/checkout';
+                    return;
+                }
                 loadCustomerDashboard();
             } catch (e) {
                 showToast(e.message, 'error');
@@ -271,6 +276,11 @@
                 }
                 
                 showToast('Welcome back, ' + result.name + '!');
+                const redir = new URLSearchParams(window.location.search).get('redirect');
+                if (redir === 'checkout') {
+                    window.location.href = '/checkout';
+                    return;
+                }
                 loadCustomerDashboard();
             } catch (e) {
                 showToast(e.message, 'error');
@@ -382,14 +392,10 @@
                     try { items = JSON.parse(order.items); } catch(e) {}
                     const statusClass = 'status-' + (order.status || 'pending');
                     const statusText = (order.status || 'pending').toUpperCase();
-                    const isDelivered = String(order.status || '').toLowerCase().indexOf('deliver') >= 0;
-                    const invoiceBtn = isDelivered
-                        ? `<button type="button" style="width: 100%; margin-top: 10px; padding: 10px; background: linear-gradient(135deg,#FFD700 0%,#D4AC0D 100%); color: #121212; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;" onclick="window.open('/api/orders/${order.id}/invoice','_blank')">
-                                <i class="fas fa-download"></i> Download Invoice (PDF)
-                           </button>`
-                        : `<p style="width: 100%; margin-top: 10px; padding: 10px; font-size: 0.8rem; color: #8a7362; text-align: center;">
-                                <i class="fas fa-hourglass-half"></i> Invoice will be available after delivery.
-                           </p>`;
+                    // Invoice is available immediately after order placement
+                    const invoiceBtn = `<button type="button" style="width: 100%; margin-top: 10px; padding: 10px; background: linear-gradient(135deg,#FFD700 0%,#D4AC0D 100%); color: #121212; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;" onclick="window.open('/api/orders/${order.id}/invoice','_blank')">
+                                <i class="fas fa-download"></i> Download Invoice / Receipt (PDF)
+                           </button>`;
                     const card = document.createElement('div');
                     card.className = 'order-card';
                     card.innerHTML = `
@@ -398,8 +404,8 @@
                         <div class="order-items">
                             ${items.map(item => `
                                 <div class="order-item">
-                                    <span>${item.name} (${item.grade || 'Standard'}) x${item.qty}</span>
-                                    <span>${item.price}</span>
+                                    <span>${item.name_en || item.name || 'Product'} (${item.variant || item.grade || 'Standard'}) x${item.quantity || item.qty || 1}</span>
+                                    <span>&#8377;${((item.unit_price || item.price || 0) * (item.quantity || item.qty || 1)).toFixed(2)}</span>
                                 </div>
                             `).join('')}
                         </div>
@@ -421,7 +427,7 @@
 
         async function reorderFromPanel(orderId) {
             try {
-                const res = await fetch('/api/reorder', {
+                const res = await authFetch('/api/reorder', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ order_id: orderId })
@@ -454,5 +460,21 @@
             loadCustomerDashboard();
         });
     </script>
+
+    <!-- ===== FOOTER ===== -->
+    <footer style="background: #121212; color: #E0E0E0; text-align: center; padding: 30px 20px; margin-top: 60px; font-size: 0.9rem;">
+        <div style="max-width: 900px; margin: 0 auto;">
+            <div style="margin-bottom: 12px;">
+                <a href="/" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Home</a>
+                <a href="/#products" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Products</a>
+                <a href="/privacy" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Privacy Policy</a>
+                <a href="/terms" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Terms</a>
+                <a href="/refund" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Refund Policy</a>
+                <a href="/shipping" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Shipping Policy</a>
+                <a href="/#contact" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Contact</a>
+            </div>
+            <p style="color: #888; font-size: 0.8rem; margin: 0;">&copy; <span id="currentYear"></span> Jainzee Food Processing Industries. All rights reserved.</p>
+        </div>
+    </footer>
 </body>
 </html>

@@ -129,22 +129,22 @@
                 <div class="checkout-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
                     <!-- Checkout Form -->
                     <div class="checkout-form" style="background: var(--card-bg); border-radius: var(--radius); padding: 40px; border: 1px solid rgba(255,215,0,0.15); box-shadow: var(--shadow);">
-                        <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 25px;">
+                        <h3 style="color: #1a1a1a; font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 25px;">
                             <i class="fas fa-user"></i> <span data-i18n="checkout_title">Checkout</span>
                         </h3>
 
                         <div style="margin-bottom: 20px;">
-                            <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;" data-i18n="checkout_name">Full Name</label>
+                            <label style="display: block; color: #1a1a1a; font-weight: 600; margin-bottom: 8px;" data-i18n="checkout_name">Full Name</label>
                             <input type="text" id="checkoutName" placeholder="Enter your full name" style="width: 100%; padding: 14px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; background: #1a120c; color: var(--text); font-size: 1rem; transition: all 0.3s;">
                         </div>
 
                         <div style="margin-bottom: 20px;">
-                            <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;" data-i18n="checkout_phone">Phone Number</label>
+                            <label style="display: block; color: #1a1a1a; font-weight: 600; margin-bottom: 8px;" data-i18n="checkout_phone">Phone Number</label>
                             <input type="tel" id="checkoutPhone" placeholder="Enter your phone number" style="width: 100%; padding: 14px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; background: #1a120c; color: var(--text); font-size: 1rem; transition: all 0.3s;">
                         </div>
 
                         <div style="margin-bottom: 20px;">
-                            <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;" data-i18n="checkout_address">Delivery Address</label>
+                            <label style="display: block; color: #1a1a1a; font-weight: 600; margin-bottom: 8px;" data-i18n="checkout_address">Delivery Address</label>
                             <textarea id="checkoutAddress" rows="4" placeholder="Enter your full address" style="width: 100%; padding: 14px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; background: #1a120c; color: var(--text); font-size: 1rem; resize: vertical; transition: all 0.3s;"></textarea>
                         </div>
 
@@ -154,12 +154,12 @@
                                 <label style="flex: 1; display: flex; align-items: center; gap: 10px; padding: 15px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; cursor: pointer; transition: all 0.3s; background: #1a120c;">
                                     <input type="radio" name="payment" value="upi" id="payUpi" style="accent-color: var(--primary);">
                                     <i class="fas fa-mobile-alt" style="color: var(--primary); font-size: 1.5rem;"></i>
-                                    <span style="color: var(--text); font-weight: 600;" data-i18n="checkout_upi">Pay via UPI</span>
+                                    <span style="color: #1a1a1a !important; font-weight: 600;" data-i18n="checkout_upi">Pay via UPI</span>
                                 </label>
                                 <label style="flex: 1; display: flex; align-items: center; gap: 10px; padding: 15px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; cursor: pointer; transition: all 0.3s; background: #1a120c;">
                                     <input type="radio" name="payment" value="cod" id="payCod" style="accent-color: var(--primary);">
                                     <i class="fas fa-money-bill-wave" style="color: var(--primary); font-size: 1.5rem;"></i>
-                                    <span style="color: var(--text); font-weight: 600;" data-i18n="checkout_cod">Cash on Delivery (COD)</span>
+                                    <span style="color: #1a1a1a !important; font-weight: 600;" data-i18n="checkout_cod">Cash on Delivery (COD)</span>
                                 </label>
                             </div>
                         </div>
@@ -171,7 +171,7 @@
 
                     <!-- Order Summary -->
                     <div class="checkout-summary" style="background: var(--card-bg); border-radius: var(--radius); padding: 35px; border: 1px solid rgba(255,215,0,0.15); box-shadow: var(--shadow); height: fit;">
-                        <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 25px; text-align: center;">
+                        <h3 style="color: #1a1a1a; font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 25px; text-align: center;">
                             <i class="fas fa-receipt"></i> <span data-i18n="order_summary">Order Summary</span>
                         </h3>
 
@@ -230,7 +230,7 @@
                             <p style="color: var(--text-light); margin-bottom: 15px; font-size: 0.9rem;" data-i18n="checkout_upi_instructions">Scan QR code or click to pay via UPI</p>
                             <div id="upiQrCodeContainer" style="background: white; border-radius: 12px; padding: 20px; margin: 15px 0; border: 2px solid #e8e0d5;">
                                 <img id="upiQrCodeImage" src="" alt="UPI QR Code" style="max-width: 250px; max-height: 250px; border-radius: 8px; margin-bottom: 10px; display: none;">
-                                <p id="upiIdDisplay" style="color: var(--text); font-weight: 600; font-size: 0.9rem; margin-top: 10px;"></p>
+                                <p id="upiIdDisplay" style="color: #1a1a1a; font-weight: 600; font-size: 0.9rem; margin-top: 10px;"></p>
                                 <p style="color: var(--text-light); font-size: 0.85rem; margin-top: 5px;">Scan with any UPI app (GPay, PhonePe, Paytm)</p>
                             </div>
                         </div>
@@ -241,8 +241,8 @@
             <!-- Success Message -->
             <div id="checkoutSuccess" style="display: none; text-align: center; padding: 80px; background: var(--card-bg); border-radius: var(--radius); border: 1px solid rgba(255,215,0,0.15); box-shadow: var(--shadow);">
                 <i class="fas fa-check-circle" style="font-size: 5rem; color: #4ade80; margin-bottom: 25px; filter: drop-shadow(0 5px 20px rgba(74,222,128,0.3));"></i>
-                <h2 style="color: var(--text); font-family: var(--font-display); font-size: 2.5rem; margin-bottom: 20px;" data-i18n="order_success">Order Placed Successfully!</h2>
-                <p style="color: var(--text-light); font-size: 1.1rem; margin-bottom: 10px;" data-i18n="order_success_msg">Your order has been placed. Order ID:</p>
+                <h2 style="color: #1a1a1a; font-family: var(--font-display); font-size: 2.5rem; margin-bottom: 20px;" data-i18n="order_success">Order Placed Successfully!</h2>
+                <p style="color: #555555; font-size: 1.1rem; margin-bottom: 10px;" data-i18n="order_success_msg">Your order has been placed. Order ID:</p>
                 <p style="color: var(--primary); font-size: 1.5rem; font-weight: 700; margin-bottom: 30px;" id="successOrderId"></p>
                 <a href="/" class="btn btn-primary" style="padding: 14px 40px; font-size: 1rem;">
                     <i class="fas fa-home"></i> <span data-i18n="back_to_shop">Back to Shop</span>
@@ -687,7 +687,7 @@
                 
                 if (!authData.customer_logged_in) {
                     alert(currentLangCheckout === 'hi' ? 'कृपया ऑर्डर देने के लिए पहले लॉगिन करें' : 'Please login to place order');
-                    window.location.href = '/customer';
+                    window.location.href = '/customer?redirect=checkout';
                     return;
                 }
             } catch(e) {
@@ -720,6 +720,7 @@
                 if (!res.ok) throw new Error(data.error || 'Checkout failed');
 
                 // Show success
+                sessionStorage.removeItem('jainzee_applied_coupon');
                 document.getElementById('checkoutContent').style.display = 'none';
                 document.getElementById('successOrderId').textContent = data.order_id;
                 document.getElementById('checkoutSuccess').style.display = '';
@@ -742,10 +743,31 @@
         // Init
         document.addEventListener('DOMContentLoaded', () => {
             applyCheckoutTranslations();
+            // Restore coupon applied on cart page
+            const savedCoupon = sessionStorage.getItem('jainzee_applied_coupon');
+            if (savedCoupon) {
+                try { appliedCoupon = JSON.parse(savedCoupon); } catch(e) {}
+            }
             loadCheckout();
             const cyEl = document.getElementById('currentYear');
             if (cyEl) cyEl.textContent = new Date().getFullYear();
         });
     </script>
+
+    <!-- ===== FOOTER ===== -->
+    <footer style="background: #121212; color: #E0E0E0; text-align: center; padding: 30px 20px; margin-top: 60px; font-size: 0.9rem;">
+        <div style="max-width: 900px; margin: 0 auto;">
+            <div style="margin-bottom: 12px;">
+                <a href="/" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Home</a>
+                <a href="/#products" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Products</a>
+                <a href="/privacy" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Privacy Policy</a>
+                <a href="/terms" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Terms</a>
+                <a href="/refund" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Refund Policy</a>
+                <a href="/shipping" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Shipping Policy</a>
+                <a href="/#contact" style="color: #FFC000; text-decoration: none; margin: 0 12px;">Contact</a>
+            </div>
+            <p style="color: #888; font-size: 0.8rem; margin: 0;">&copy; <span id="currentYear"></span> Jainzee Food Processing Industries. All rights reserved.</p>
+        </div>
+    </footer>
 </body>
 </html>

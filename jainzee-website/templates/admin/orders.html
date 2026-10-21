@@ -150,6 +150,10 @@
                     const deleteBtn = `<button class="btn btn-sm" onclick="deleteOrder(${order.id})" style="background: #dc3545; color: white; padding: 6px 12px; font-size: 0.75rem;" title="Delete Permanently">
                         <i class="fas fa-trash"></i> Delete
                     </button>`;
+
+                    const invoiceBtn = `<button class="btn btn-sm btn-primary" onclick="window.open('/api/orders/${order.id}/invoice', '_blank')" title="Download Invoice" style="background: #b8860b; color: white; padding: 6px 12px; font-size: 0.75rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fas fa-file-invoice-dollar"></i> Invoice
+                    </button>`;
                     
                     tr.innerHTML = `
                         <td><strong>#${order.id}</strong>${isPending ? ' <span class="order-status-select" style="background:#ffc107; color:#000; font-size:0.7rem; border-radius:20px; padding:2px 8px; font-weight: bold;">NEW</span>' : ''}${isHidden ? ' <span style="background:#6c757d; color:white; font-size:0.7rem; border-radius:20px; padding:2px 8px;">ARCHIVED</span>' : ''}</td>
@@ -174,6 +178,7 @@
                         </td>
                         <td>
                             <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                ${invoiceBtn}
                                 ${hideBtn}
                                 ${deleteBtn}
                             </div>
