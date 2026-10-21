@@ -101,6 +101,20 @@ if os.environ.get('VERCEL') == '1' and not USE_BLOB_STORAGE:
 # by the app (PRAGMA table_info, INSERT OR IGNORE/REPLACE, ? placeholders)
 # so the same code runs on both engines.
 
+class _CursorWrapper:
+    """Lightweight wrapper over a raw cursor to ensure lastrowid is accessible."""
+    def __init__(self, cur, lastrowid):
+        self._cur = cur
+        self.lastrowid = lastrowid
+    def __getattr__(self, name):
+        return getattr(self._cur, name)
+    def __iter__(self):
+        return iter(self._cur)
+    def fetchone(self):
+        return self._cur.fetchone()
+    def fetchall(self):
+        return self._cur.fetchall()
+
 class PostgresConnection:
     """Thin compatibility wrapper over psycopg2 mimicking the sqlite3 API."""
 
@@ -200,11 +214,7 @@ class PostgresConnection:
         # value. psycopg2's cursor.lastrowid is always None/0 for RETURNING
         # queries because it is meant for non-PostgreSQL auto_increment; we
         # write directly to the cursor's __dict__ to work around this.
-        try:
-            cur.lastrowid = self.lastrowid
-        except (AttributeError, TypeError):
-            pass
-        return cur
+        return _CursorWrapper(cur, self.lastrowid)
 
     def executescript(self, script):
         for statement in script.split(';'):
@@ -962,7 +972,7 @@ def api_customer_register():
             (name, phone, email, data.get('address', ''), generate_password_hash(password))
         )
         conn.commit()
-        customer_id = cur.lastrowid
+        customer_id = cur.lastrowid or getattr(conn, 'lastrowid', 0)
         session.permanent = True  # Keep logged in for 30 days
         session['customer_id'] = customer_id
         session['customer_name'] = name
@@ -1446,7 +1456,7 @@ def api_customer_orders():
             (customer_id, name, phone, address, items_json, total)
         )
         conn.commit()
-        order_id = cur.lastrowid
+        order_id = cur.lastrowid or getattr(conn, 'lastrowid', 0)
         conn.close()
         return jsonify({'id': order_id, 'message': 'Order placed successfully!'}), 201
 
@@ -2299,7 +2309,7 @@ def api_order_invoice(order_id):
         tax_amount = invoice_total - taxable_value
     
     # Add payment method and order status rows before the items table
-    pay_method_display = str(order.get('status', '') or '').replace('pending_', '').upper()
+    pay_method_display = str(order['status'] or '').replace('pending_', '').upper()
     order_status_display = str(order['status'] or '').replace('_', ' ').upper()
     payment_info_data = [
         [Paragraph(f'<b>Payment Method:</b> {pay_method_display}', invoice_info_style),
@@ -2756,7 +2766,7 @@ def api_checkout():
         conn.execute('UPDATE coupons SET used_count = used_count + 1 WHERE id=?', (coupon_row['id'],))
     
     conn.commit()
-    order_id = cur.lastrowid
+    order_id = cur.lastrowid or getattr(conn, 'lastrowid', 0)
     conn.close()
     
     # Clear cart
