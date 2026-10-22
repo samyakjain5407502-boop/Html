@@ -3143,3 +3143,25 @@ button[onclick*="addToCart"] *,
     display: inline-block !important;
     transform: none !important;
 }
+
+/* ===== WHY CHOOSE JAINZEE (WHITE ON BLACK BACKGROUND) ===== */
+.features-section {
+    background: #121212 !important;
+}
+
+.features-section .section-header h2 {
+    color: #ffffff !important;
+}
+
+.features-section .section-header p {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.features-section .feature-card h3 {
+    color: #ffffff !important;
+}
+
+.features-section .feature-card p {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
