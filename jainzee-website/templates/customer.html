@@ -40,11 +40,13 @@
         .welcome-bar h2 { color: #2c1810; }
         .welcome-bar p { color: #8a7362; }
         .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px; }
-        .order-card { background: white; border-radius: 16px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
-        .order-card h3 { color: #2c1810; margin-bottom: 10px; }
+        .order-card { background: white; border-radius: 16px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #e8e0d5; }
+        .order-card h3 { color: #2c1810; margin-bottom: 10px; font-weight: 700; }
         .order-items { margin: 15px 0; }
-        .order-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0ece5; font-size: 0.9rem; }
-        .order-total { font-size: 1.2rem; font-weight: 700; color: #b8860b; margin-top: 10px; }
+        .order-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0ece5; font-size: 0.9rem; color: #2c1810; }
+        .order-item span:first-child { color: #2c1810; font-weight: 500; }
+        .order-item span:last-child { color: #1a1a1a; font-weight: 600; }
+        .order-total { font-size: 1.2rem; font-weight: 700; color: #b8860b !important; margin-top: 10px; }
         .order-status { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
         .status-pending { background: #fff3cd; color: #856404; }
         .status-confirmed { background: #d4edda; color: #155724; }
@@ -406,8 +408,8 @@
                         <div class="order-items">
                             ${items.map(item => `
                                 <div class="order-item">
-                                    <span>${item.name_en || item.name || 'Product'} (${item.variant || item.grade || 'Standard'}) x${item.quantity || item.qty || 1}</span>
-                                    <span>&#8377;${((item.unit_price || item.price || 0) * (item.quantity || item.qty || 1)).toFixed(2)}</span>
+                                    <span style="color: #2c1810; font-weight: 500;">${item.name_en || item.name || 'Product'} <span style="color: #666666; font-size: 0.85rem; font-weight: normal;">(${item.variant || item.grade || 'Standard'}) x${item.quantity || item.qty || 1}</span></span>
+                                    <span style="color: #1a1a1a; font-weight: 600;">&#8377;${((item.unit_price || item.price || 0) * (item.quantity || item.qty || 1)).toFixed(2)}</span>
                                 </div>
                             `).join('')}
                         </div>

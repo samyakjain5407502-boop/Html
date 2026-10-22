@@ -498,9 +498,9 @@ async function openMyOrdersModal() {
                     itemsHtml += `
                         <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(184,134,11,0.05); font-size: 0.9rem;">
                             <div style="flex: 1;">
-                                <span style="color: var(--text); font-weight: 500;">${item.name}</span>
-                                ${item.variant ? `<span style="color: var(--text-light); font-size: 0.85rem;"> (${item.variant})</span>` : ''}
-                                <span style="color: var(--text-light);"> x${item.quantity}</span>
+                                <span style="color: #1a1a1a; font-weight: 600;">${item.name}</span>
+                                ${item.variant ? `<span style="color: #555555; font-size: 0.85rem; font-weight: 500;"> (${item.variant})</span>` : ''}
+                                <span style="color: #555555; font-weight: 500;"> x${item.quantity}</span>
                             </div>
                             <span style="color: var(--text); font-weight: 600; margin-left: 10px;">${item.total}</span>
                         </div>
@@ -514,7 +514,7 @@ async function openMyOrdersModal() {
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                         <div>
                             <strong style="color: var(--dark); font-size: 1.1rem;">Order #${order.id}</strong>
-                            <p style="color: var(--text-light); font-size: 0.85rem; margin-top: 4px;">
+                            <p style="color: #666666; font-size: 0.85rem; margin-top: 4px;">
                                 <i class="far fa-clock"></i> ${order.formatted_date || order.created_at}
                             </p>
                         </div>
@@ -524,19 +524,15 @@ async function openMyOrdersModal() {
                     </div>
                     ${itemsHtml}
                     <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(184,134,11,0.1); margin-bottom: 10px;">
-                        <span style="color: var(--text-light); font-size: 0.9rem;">Total Amount</span>
-                        <strong style="color: var(--primary-dark); font-size: 1.2rem;">${order.total}</strong>
+                        <span style="color: #333333; font-size: 0.95rem; font-weight: 600;">Total Amount</span>
+                        <strong style="color: #b8860b; font-size: 1.2rem;">${order.total}</strong>
                     </div>
                     <button class="btn btn-outline" style="width: 100%; padding: 10px; font-size: 0.85rem; margin-top: 8px;" onclick="reorderOrder(${order.id})">
                         <i class="fas fa-rotate-right"></i> ${currentLang === 'hi' ? 'दोबारा ऑर्डर करें' : 'Add Again / Reorder'}
                     </button>
-                    ${String(order.status_display || order.status || '').toLowerCase().indexOf('deliver') >= 0
-                        ? `<button class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 0.85rem; margin-top: 8px;" onclick="downloadInvoice(${order.id})">
-                                <i class="fas fa-download"></i> Download Invoice (PDF)
-                           </button>`
-                        : `<p style="width: 100%; padding: 10px; font-size: 0.8rem; margin-top: 8px; color: #8a7362; text-align: center;">
-                                <i class="fas fa-hourglass-half"></i> Invoice will be available after delivery.
-                           </p>`}
+                    <button class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 0.85rem; margin-top: 8px;" onclick="downloadInvoice(${order.id})">
+                        <i class="fas fa-download"></i> Download Invoice (PDF)
+                    </button>
                 </div>
             `;
         });
@@ -1616,7 +1612,7 @@ function init() {
     loadWishlistIds();
 
     // Load data
-    fetchSiteData().then(() => fetchProducts());
+    Promise.all([fetchSiteData(), fetchProducts()]);
 
     // My Orders button click handler
     const myOrdersBtn = document.getElementById('myOrdersBtn');

@@ -2151,10 +2151,11 @@ def api_order_invoice(order_id):
     normal_style = ParagraphStyle(
         'CustomNormal',
         parent=styles['Normal'],
-        fontSize=10,
-        textColor=colors.HexColor('#4a3728'),
+        fontSize=9.5,
+        textColor=colors.HexColor('#2c1810'),
         alignment=TA_LEFT,
-        spaceAfter=4
+        spaceAfter=4,
+        fontName=BASE_FONT
     )
     
     # ===== RETAIL RECEIPT STYLE INVOICE =====
@@ -2211,9 +2212,9 @@ def api_order_invoice(order_id):
         elements.append(Paragraph(f"GSTIN: {gstin}", contact_style))
     elements.append(Spacer(1, 10))
     
-    # Dashed horizontal line — spans full usable width (6.26 in at 72pt margins)
+    # Dashed horizontal line — spans full usable width (7.26 in)
     line_data = [['', '', '']]
-    line_table = Table(line_data, colWidths=[2.08*inch, 2.1*inch, 2.08*inch])
+    line_table = Table(line_data, colWidths=[2.42*inch, 2.42*inch, 2.42*inch])
     line_table.setStyle(TableStyle([
         ('LINEABOVE', (0, 0), (-1, 0), 2, colors.black),
         ('TOPPADDING', (0, 0), (-1, 0), 0),
@@ -2222,24 +2223,24 @@ def api_order_invoice(order_id):
     elements.append(line_table)
     elements.append(Spacer(1, 12))
     
-    # Invoice Details Section - Two columns
+    # Invoice Details Section - Single unified 4-column Table
     invoice_info_style = ParagraphStyle(
         'InvoiceInfo',
         parent=styles['Normal'],
-        fontSize=10,
+        fontSize=9,
         textColor=colors.black,
         alignment=TA_LEFT,
-        spaceAfter=4,
+        spaceAfter=3,
         fontName=BASE_FONT
     )
     
     invoice_info_bold_style = ParagraphStyle(
         'InvoiceInfoBold',
         parent=styles['Normal'],
-        fontSize=10,
+        fontSize=9,
         textColor=colors.black,
         alignment=TA_LEFT,
-        spaceAfter=4,
+        spaceAfter=3,
         fontName=BASE_FONT_BOLD
     )
     
@@ -2254,43 +2255,68 @@ def api_order_invoice(order_id):
         except Exception:
             formatted_date = str(raw_date or '')
     
-    # Left side - Invoice details
-    left_data = [
-        [Paragraph("<b>Invoice No:</b>", invoice_info_bold_style), Paragraph(f"INV-{order['id']:06d}", invoice_info_style)],
-        [Paragraph("<b>Order No:</b>", invoice_info_bold_style), Paragraph(f"#{order['id']}", invoice_info_style)],
-        [Paragraph("<b>Date & Time:</b>", invoice_info_bold_style), Paragraph(formatted_date, invoice_info_style)],
+    # Accurate payment method and order status
+    raw_status = str(order['status'] or '').lower().strip()
+    if 'upi' in raw_status:
+        pay_method_display = 'UPI / Online'
+    elif 'cod' in raw_status:
+        pay_method_display = 'Cash on Delivery (COD)'
+    else:
+        pm = str(order['payment_method'] if 'payment_method' in order.keys() else '').lower()
+        if 'upi' in pm:
+            pay_method_display = 'UPI / Online'
+        else:
+            pay_method_display = 'Cash on Delivery (COD)'
+
+    if raw_status.startswith('pending'):
+        order_status_display = 'PENDING'
+    elif raw_status == 'confirmed':
+        order_status_display = 'CONFIRMED'
+    elif raw_status == 'shipped':
+        order_status_display = 'SHIPPED'
+    elif raw_status == 'delivered':
+        order_status_display = 'DELIVERED'
+    elif raw_status == 'cancelled':
+        order_status_display = 'CANCELLED'
+    else:
+        order_status_display = raw_status.replace('_', ' ').upper()
+
+    # Unified 4-column table: [1.2 in, 2.3 in, 1.2 in, 2.56 in] = 7.26 in total
+    details_data = [
+        [
+            Paragraph("<b>Invoice No:</b>", invoice_info_bold_style),
+            Paragraph(f"INV-{order['id']:06d}", invoice_info_style),
+            Paragraph("<b>Customer Name:</b>", invoice_info_bold_style),
+            Paragraph(str(order['customer_name'] or 'N/A'), invoice_info_style)
+        ],
+        [
+            Paragraph("<b>Order No:</b>", invoice_info_bold_style),
+            Paragraph(f"#{order['id']}", invoice_info_style),
+            Paragraph("<b>Phone:</b>", invoice_info_bold_style),
+            Paragraph(str(order['customer_phone'] or 'N/A'), invoice_info_style)
+        ],
+        [
+            Paragraph("<b>Date & Time:</b>", invoice_info_bold_style),
+            Paragraph(formatted_date, invoice_info_style),
+            Paragraph("<b>Address:</b>", invoice_info_bold_style),
+            Paragraph(str(order['customer_address'] or 'N/A'), invoice_info_style)
+        ],
+        [
+            Paragraph("<b>Payment Method:</b>", invoice_info_bold_style),
+            Paragraph(pay_method_display, invoice_info_style),
+            Paragraph("<b>Order Status:</b>", invoice_info_bold_style),
+            Paragraph(order_status_display, invoice_info_style)
+        ],
     ]
-    
-    left_table = Table(left_data, colWidths=[1.5*inch, 2.5*inch])
-    left_table.setStyle(TableStyle([
+    details_table = Table(details_data, colWidths=[1.2*inch, 2.3*inch, 1.2*inch, 2.56*inch])
+    details_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
     ]))
-    
-    # Right side - Customer details
-    right_data = [
-        [Paragraph("<b>Customer Name:</b>", invoice_info_bold_style), Paragraph(order['customer_name'], invoice_info_style)],
-        [Paragraph("<b>Phone:</b>", invoice_info_bold_style), Paragraph(order['customer_phone'], invoice_info_style)],
-        [Paragraph("<b>Address:</b>", invoice_info_bold_style), Paragraph(order['customer_address'], invoice_info_style)],
-    ]
-    
-    right_table = Table(right_data, colWidths=[1.3*inch, 2.7*inch])
-    right_table.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-    ]))
-    
-    # Combine left and right — total 6.26 in to match usable page width
-    combined_data = [[left_table, right_table]]
-    combined_table = Table(combined_data, colWidths=[3.13*inch, 3.13*inch])
-    combined_table.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
-    ]))
-    elements.append(combined_table)
+    elements.append(details_table)
     elements.append(Spacer(1, 15))
     
     # Items table header with black borders
@@ -2383,20 +2409,7 @@ def api_order_invoice(order_id):
         taxable_value = invoice_total / (1 + tax_percent / 100)
         tax_amount = invoice_total - taxable_value
     
-    # Add payment method and order status rows before the items table
-    pay_method_display = str(order['status'] or '').replace('pending_', '').upper()
-    order_status_display = str(order['status'] or '').replace('_', ' ').upper()
-    payment_info_data = [
-        [Paragraph(f'<b>Payment Method:</b> {pay_method_display}', invoice_info_style),
-         Paragraph(f'<b>Order Status:</b> {order_status_display}', invoice_info_style)]
-    ]
-    payment_info_table = Table(payment_info_data, colWidths=[3.13*inch, 3.13*inch])
-    payment_info_table.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-    ]))
-    elements.append(payment_info_table)
-    elements.append(Spacer(1, 10))
+
 
     # Dynamic row count for safe TableStyle indexing (avoid negative index bugs)
     num_item_rows = len(items_data)  # includes header row
@@ -2404,8 +2417,8 @@ def api_order_invoice(order_id):
     # For separator before last N rows: use max(1, last_data_row - 3)
     separator_row = max(1, last_data_row - 3)
 
-    # Items table with black borders — colWidths total = 6.26 in
-    items_table = Table(items_data, colWidths=[3.1*inch, 0.7*inch, 1.2*inch, 1.26*inch])
+    # Items table with black borders — colWidths total = 7.26 in
+    items_table = Table(items_data, colWidths=[3.7*inch, 0.7*inch, 1.4*inch, 1.46*inch])
     items_table.setStyle(TableStyle([
         # Header row
         ('BACKGROUND', (0, 0), (-1, 0), colors.white),
@@ -2455,7 +2468,7 @@ def api_order_invoice(order_id):
     
     totals_data.append(['', '', 'Grand Total:', f"₹{invoice_total:.2f}"])
     
-    totals_table = Table(totals_data, colWidths=[3.1*inch, 0.7*inch, 1.2*inch, 1.26*inch])
+    totals_table = Table(totals_data, colWidths=[3.7*inch, 0.7*inch, 1.4*inch, 1.46*inch])
     totals_table.setStyle(TableStyle([
         ('FONTNAME', (2, 0), (2, -2), BASE_FONT_BOLD),
         ('FONTNAME', (3, 0), (3, -2), BASE_FONT_BOLD),
@@ -2477,7 +2490,7 @@ def api_order_invoice(order_id):
     
     # Footer — spans full usable width
     footer_line_data = [['', '', '']]
-    footer_line_table = Table(footer_line_data, colWidths=[2.08*inch, 2.1*inch, 2.08*inch])
+    footer_line_table = Table(footer_line_data, colWidths=[2.42*inch, 2.42*inch, 2.42*inch])
     footer_line_table.setStyle(TableStyle([
         ('LINEABOVE', (0, 0), (-1, 0), 1.5, colors.black),
         ('TOPPADDING', (0, 0), (-1, 0), 0),
