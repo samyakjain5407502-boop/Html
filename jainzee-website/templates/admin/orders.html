@@ -16,6 +16,11 @@
         .order-items-list div { padding: 3px 0; }
         .order-customer { font-size: 0.9rem; }
         .order-customer strong { color: #2c1810; }
+        /* Quick filter tabs */
+        .order-tab-bar { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+        .order-tab { padding: 8px 18px; border-radius: 20px; border: 2px solid #e8e0d5; background: white; color: #8a7362; font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+        .order-tab.active { background: #b8860b; border-color: #b8860b; color: white; }
+        .order-tab:hover:not(.active) { border-color: #b8860b; color: #b8860b; }
     </style>
 <script src="/static/js/csrf.js"></script>
 </head>
@@ -53,6 +58,13 @@
                     <button class="btn btn-outline" onclick="loadOrders()"><i class="fas fa-sync-alt"></i> Refresh</button>
                 </div>
             </div>
+        <div class="order-tab-bar" id="orderTabBar">
+            <button class="order-tab active" id="tab-all"       onclick="setOrderTab('all')"><i class="fas fa-list"></i> All Orders</button>
+            <button class="order-tab"        id="tab-pending"   onclick="setOrderTab('pending')"><i class="fas fa-clock"></i> New / Pending</button>
+            <button class="order-tab"        id="tab-confirmed" onclick="setOrderTab('confirmed')"><i class="fas fa-check"></i> Confirmed</button>
+            <button class="order-tab"        id="tab-shipped"   onclick="setOrderTab('shipped')"><i class="fas fa-truck"></i> Shipped</button>
+            <button class="order-tab"        id="tab-delivered" onclick="setOrderTab('delivered')"><i class="fas fa-box"></i> Delivered</button>
+        </div>
             <div style="overflow-x: auto;">
                 <table class="admin-table" id="ordersTable">
                     <thead>
@@ -102,6 +114,16 @@
         }
 
         let currentFilter = 'active'; // 'active' or 'archived'
+        let activeTabFilter = 'all'; // quick status filter
+
+        function setOrderTab(tab) {
+            activeTabFilter = tab;
+            document.querySelectorAll('.order-tab').forEach(btn => btn.classList.remove('active'));
+            const btn = document.getElementById('tab-' + tab);
+            if (btn) btn.classList.add('active');
+            loadOrders();
+        }
+
         
         async function loadOrders() {
             try {
@@ -114,7 +136,23 @@
                     return;
                 }
                 tbody.innerHTML = '';
-                orders.forEach(order => {
+
+                // Apply quick-tab filter (client-side)
+                const tabStatus = activeTabFilter;
+                const filtered = tabStatus === 'all' ? orders : orders.filter(o => {
+                    const st = String(o.status || '').toLowerCase();
+                    if (tabStatus === 'pending')   return st.startsWith('pending') || st === 'pending';
+                    if (tabStatus === 'confirmed') return st === 'confirmed';
+                    if (tabStatus === 'shipped')   return st === 'shipped';
+                    if (tabStatus === 'delivered') return st.includes('deliver');
+                    return true;
+                });
+                if (!filtered.length) {
+                    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: #8a7362;">No ${tabStatus === 'all' ? currentFilter : tabStatus} orders</td></tr>`;
+                    return;
+                }
+
+                filtered.forEach(order => {
                     const tr = document.createElement('tr');
                     tr.setAttribute('data-order-id', order.id);
                     const isPending = String(order.status || '').startsWith('pending');
@@ -154,6 +192,10 @@
                     const invoiceBtn = `<button class="btn btn-sm btn-primary" onclick="window.open('/api/orders/${order.id}/invoice', '_blank')" title="Download Invoice" style="background: #b8860b; color: white; padding: 6px 12px; font-size: 0.75rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
                         <i class="fas fa-file-invoice-dollar"></i> Invoice
                     </button>`;
+
+                    const parcelBtn = `<button class="btn btn-sm" onclick="printParcelSticker(${JSON.stringify(order).replace(/"/g, '&quot;')})" title="Print Parcel Sticker" style="background: #6c3483; color: white; padding: 6px 12px; font-size: 0.75rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fas fa-shipping-fast"></i> Sticker
+                    </button>`;
                     
                     tr.innerHTML = `
                         <td><strong>#${order.id}</strong>${isPending ? ' <span class="order-status-select" style="background:#ffc107; color:#000; font-size:0.7rem; border-radius:20px; padding:2px 8px; font-weight: bold;">NEW</span>' : ''}${isHidden ? ' <span style="background:#6c757d; color:white; font-size:0.7rem; border-radius:20px; padding:2px 8px;">ARCHIVED</span>' : ''}</td>
@@ -179,6 +221,7 @@
                         <td>
                             <div style="display: flex; gap: 5px; flex-wrap: wrap;">
                                 ${invoiceBtn}
+                                ${parcelBtn}
                                 ${hideBtn}
                                 ${deleteBtn}
                             </div>
@@ -250,6 +293,73 @@
             } catch (e) {
                 showToast(e.message, 'error');
             }
+        }
+
+
+        // ===== PARCEL SHIPPING STICKER =====
+        function printParcelSticker(order) {
+            const shopName = 'JAINZEE FOOD PROCESSING INDUSTRIES';
+            const shopAddr = 'Siyaganj, Indore, Madhya Pradesh - 452001';
+            const shopPhone = '+91 98260 00000';
+            const payMethod = String(order.status || '').toLowerCase().includes('upi') ? 'PREPAID (UPI)' : 'COD';
+            const isCOD = payMethod === 'COD (CASH ON DELIVERY)';
+            const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Parcel Sticker - Order #${order.id}</title>
+<style>
+  @media print { body { margin: 0; } }
+  body { font-family: Arial, sans-serif; width: 4in; min-height: 6in; padding: 0.3in; box-sizing: border-box; border: 2px solid #000; margin: auto; }
+  .sticker-header { text-align: center; font-size: 13px; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
+  .sticker-header .brand { font-size: 15px; letter-spacing: 1px; }
+  .section-label { font-size: 9px; font-weight: bold; text-transform: uppercase; color: #555; margin-top: 10px; border-bottom: 1px dashed #999; padding-bottom: 2px; margin-bottom: 4px; }
+  .value { font-size: 12px; font-weight: 600; margin: 2px 0; }
+  .value.big { font-size: 16px; }
+  .order-id { font-size: 28px; font-weight: 900; text-align: center; margin: 12px 0 4px; letter-spacing: 2px; }
+  .pay-badge { text-align: center; padding: 8px 0; border: 3px solid #000; border-radius: 6px; font-size: 18px; font-weight: 900; margin: 10px 0; background: ${payMethod === 'PREPAID (UPI)' ? '#d4edda' : '#fff3cd'}; }
+  .footer { font-size: 9px; text-align: center; color: #555; margin-top: 14px; border-top: 1px dashed #999; padding-top: 6px; }
+  .items-list { font-size: 10px; margin: 4px 0; }
+</style>
+</head>
+<body>
+  <div class="sticker-header">
+    <div class="brand">${shopName}</div>
+    <div style="font-size:10px;">${shopAddr}</div>
+    <div style="font-size:10px;">Ph: ${shopPhone}</div>
+  </div>
+
+  <div class="section-label">From (Sender)</div>
+  <div class="value">${shopName}</div>
+  <div class="value">${shopAddr}</div>
+  <div class="value">Ph: ${shopPhone}</div>
+
+  <div class="section-label">To (Recipient)</div>
+  <div class="value big">${order.customer_name || '-'}</div>
+  <div class="value">${order.customer_address || '-'}</div>
+  <div class="value">Ph: ${order.customer_phone || '-'}</div>
+
+  <div class="order-id">ORDER #${order.id}</div>
+
+  <div class="pay-badge">${payMethod}</div>
+
+  <div class="section-label">Items</div>
+  <div class="items-list">${(order.items_parsed || []).map(i => `${i.name} x${i.quantity} = ${i.total}`).join('<br>') || order.items || '-'}</div>
+
+  <div class="section-label">Order Total</div>
+  <div class="value big" style="text-align:center; font-size:22px; font-weight:900;">${order.total || '-'}</div>
+
+  <div class="footer">
+    ${new Date().toLocaleString('en-IN')} | Jainzee Food Processing Industries<br>
+    Handle with care. Subject to Indore jurisdiction.
+  </div>
+</body>
+</html>`;
+            const win = window.open('', '_blank', 'width=500,height=700');
+            win.document.write(html);
+            win.document.close();
+            win.focus();
+            setTimeout(() => win.print(), 500);
         }
 
         document.addEventListener('DOMContentLoaded', () => {

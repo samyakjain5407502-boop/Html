@@ -522,6 +522,9 @@ async function openMyOrdersModal() {
                             ${order.status_display}
                         </span>
                     </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin: 12px 0 16px; position: relative;">
+                        ${buildModalTracker(order.status || order.status_display)}
+                    </div>
                     ${itemsHtml}
                     <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(184,134,11,0.1); margin-bottom: 10px;">
                         <span style="color: #333333; font-size: 0.95rem; font-weight: 600;">Total Amount</span>
@@ -1697,3 +1700,32 @@ document.addEventListener('DOMContentLoaded', function() {
         mutationObserver.observe(grid, { childList: true });
     }
 });
+
+function buildModalTracker(status) {
+    const s = String(status || '').toLowerCase();
+    const steps = [
+        { key: 'placed', label: 'Placed', icon: 'fa-receipt' },
+        { key: 'confirmed', label: 'Confirmed', icon: 'fa-check' },
+        { key: 'shipped', label: 'Shipped', icon: 'fa-truck' },
+        { key: 'delivered', label: 'Delivered', icon: 'fa-box-open' },
+    ];
+    let activeIdx = 0;
+    if (s.includes('confirm')) activeIdx = 1;
+    else if (s.includes('ship')) activeIdx = 2;
+    else if (s.includes('deliver')) activeIdx = 3;
+    else if (s.includes('cancel')) activeIdx = -1;
+
+    return steps.map((step, i) => {
+        const isDone = activeIdx !== -1 && i <= activeIdx;
+        const color = isDone ? '#b8860b' : '#ccc';
+        const bg = isDone ? '#fff8dc' : '#f5f5f5';
+        return `
+            <div style="display: flex; flex-direction: column; align-items: center; flex: 1; position: relative;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: ${bg}; border: 2px solid ${color}; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: ${color}; font-weight: bold; z-index: 1;">
+                    <i class="fas ${step.icon}"></i>
+                </div>
+                <span style="font-size: 0.72rem; color: ${isDone ? '#2c1810' : '#888'}; font-weight: 600; margin-top: 4px;">${step.label}</span>
+            </div>
+        `;
+    }).join('');
+}

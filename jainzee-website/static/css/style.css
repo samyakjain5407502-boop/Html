@@ -3137,3 +3137,9 @@ button[onclick*="addToCart"] *,
 }
 
 
+
+.contact-card i.fa-phone,
+.contact-card i.fa-phone-alt {
+    display: inline-block !important;
+    transform: none !important;
+}

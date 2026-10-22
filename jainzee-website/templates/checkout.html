@@ -135,33 +135,47 @@
 
                         <div style="margin-bottom: 20px;">
                             <label style="display: block; color: #1a1a1a; font-weight: 600; margin-bottom: 8px;" data-i18n="checkout_name">Full Name</label>
-                            <input type="text" id="checkoutName" placeholder="Enter your full name" style="width: 100%; padding: 14px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; background: #1a120c; color: var(--text); font-size: 1rem; transition: all 0.3s;">
+                            <input type="text" id="checkoutName" placeholder="Enter your full name" style="width: 100%; padding: 14px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; background: #ffffff; color: #1a1a1a; border: 2px solid #e0d5c8; font-size: 1rem; transition: all 0.3s;">
                         </div>
 
                         <div style="margin-bottom: 20px;">
                             <label style="display: block; color: #1a1a1a; font-weight: 600; margin-bottom: 8px;" data-i18n="checkout_phone">Phone Number</label>
-                            <input type="tel" id="checkoutPhone" placeholder="Enter your phone number" style="width: 100%; padding: 14px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; background: #1a120c; color: var(--text); font-size: 1rem; transition: all 0.3s;">
+                            <input type="tel" id="checkoutPhone" placeholder="Enter your phone number" style="width: 100%; padding: 14px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; background: #ffffff; color: #1a1a1a; border: 2px solid #e0d5c8; font-size: 1rem; transition: all 0.3s;">
                         </div>
 
                         <div style="margin-bottom: 20px;">
                             <label style="display: block; color: #1a1a1a; font-weight: 600; margin-bottom: 8px;" data-i18n="checkout_address">Delivery Address</label>
-                            <textarea id="checkoutAddress" rows="4" placeholder="Enter your full address" style="width: 100%; padding: 14px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; background: #1a120c; color: var(--text); font-size: 1rem; resize: vertical; transition: all 0.3s;"></textarea>
+                            <textarea id="checkoutAddress" rows="4" placeholder="Enter your full address" style="width: 100%; padding: 14px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; background: #ffffff; color: #1a1a1a; border: 2px solid #e0d5c8; font-size: 1rem; resize: vertical; transition: all 0.3s;"></textarea>
                         </div>
 
                         <div style="margin-bottom: 30px;">
                             <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 12px;" data-i18n="checkout_payment">Payment Method</label>
                             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                                <label style="flex: 1; display: flex; align-items: center; gap: 10px; padding: 15px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; cursor: pointer; transition: all 0.3s; background: #1a120c;">
+                                <label style="flex: 1; display: flex; align-items: center; gap: 10px; padding: 15px; border: 2px solid #e8e0d5; border-radius: 12px; cursor: pointer; transition: all 0.3s; background: #fdfaf6; color: #1a1a1a;">
                                     <input type="radio" name="payment" value="upi" id="payUpi" style="accent-color: var(--primary);">
                                     <i class="fas fa-mobile-alt" style="color: var(--primary); font-size: 1.5rem;"></i>
                                     <span style="color: #1a1a1a !important; font-weight: 600;" data-i18n="checkout_upi">Pay via UPI</span>
                                 </label>
-                                <label style="flex: 1; display: flex; align-items: center; gap: 10px; padding: 15px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; cursor: pointer; transition: all 0.3s; background: #1a120c;">
+                                <label style="flex: 1; display: flex; align-items: center; gap: 10px; padding: 15px; border: 2px solid #e8e0d5; border-radius: 12px; cursor: pointer; transition: all 0.3s; background: #fdfaf6; color: #1a1a1a;">
                                     <input type="radio" name="payment" value="cod" id="payCod" style="accent-color: var(--primary);">
                                     <i class="fas fa-money-bill-wave" style="color: var(--primary); font-size: 1.5rem;"></i>
                                     <span style="color: #1a1a1a !important; font-weight: 600;" data-i18n="checkout_cod">Cash on Delivery (COD)</span>
                                 </label>
                             </div>
+                        </div>
+
+
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; color: #1a1a1a; font-weight: 600; margin-bottom: 8px;">
+                                <i class="fas fa-map-pin" style="color: #b8860b;"></i> Pincode
+                                <span style="font-size: 0.75rem; font-weight: 400; color: #666; margin-left: 6px;">(for delivery estimate)</span>
+                            </label>
+                            <div style="display: flex; gap: 10px; align-items: flex-start;">
+                                <input type="text" id="checkoutPincode" placeholder="Enter 6-digit pincode" maxlength="6" inputmode="numeric"
+                                    style="flex: 1; padding: 14px; border: 2px solid rgba(255,215,0,0.3); border-radius: 12px; background: #ffffff; color: #1a1a1a; border: 2px solid #e0d5c8; font-size: 1rem; transition: all 0.3s;"
+                                    oninput="estimateDelivery(this.value)">
+                            </div>
+                            <div id="deliveryEstimate" style="display:none; margin-top: 10px; padding: 10px 14px; border-radius: 10px; font-size: 0.88rem; font-weight: 600; align-items: center; gap: 8px;"></div>
                         </div>
 
                         <button class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 18px;" onclick="placeOrder()">
@@ -679,6 +693,48 @@
             document.getElementById('checkoutTotal').textContent = formatPriceCart('₹' + total.toFixed(2));
         };
 
+
+        // ===== PINCODE DELIVERY ESTIMATOR =====
+        function estimateDelivery(pincode) {
+            const el = document.getElementById('deliveryEstimate');
+            if (!el) return;
+            const pin = String(pincode || '').trim();
+            if (pin.length !== 6 || !/^\d{6}$/.test(pin)) {
+                el.style.display = 'none';
+                return;
+            }
+            let msg = '', bg = '', icon = '';
+            const prefix = pin.substring(0, 3);
+            const num = parseInt(pin);
+
+            // Indore pincodes: 452001 – 452020 range and common codes
+            const indorePrefixes = ['452'];
+            // MP pincodes: 45XXXX (most of MP), some 48XXXX, 47XXXX
+            const mpPrefixes = ['450','451','452','453','454','455','456','457','458','459',
+                                '460','461','462','463','464','465','466','467','468','469',
+                                '470','471','472','473','474','475','476','477','478','479',
+                                '480','481','482','483','484','485','486','487','488','489'];
+
+            if (indorePrefixes.includes(prefix)) {
+                msg = '⚡ Same Day / Next Day Delivery (Indore)';
+                bg = 'linear-gradient(135deg, #d4edda, #c3e6cb)';
+                icon = '🚀';
+            } else if (mpPrefixes.includes(prefix)) {
+                msg = '📦 1–2 Days Delivery (Madhya Pradesh)';
+                bg = 'linear-gradient(135deg, #fff3cd, #ffeeba)';
+                icon = '🚚';
+            } else {
+                msg = '🌍 3–5 Days Delivery (Pan India)';
+                bg = 'linear-gradient(135deg, #cce5ff, #b8daff)';
+                icon = '✈️';
+            }
+            el.style.background = bg;
+            el.style.color = '#1a1a1a';
+            el.style.border = '1.5px solid rgba(0,0,0,0.1)';
+            el.innerHTML = `<span style="font-size:1.1rem;">${icon}</span> ${msg}`;
+            el.style.display = 'flex';
+        }
+
         async function placeOrder() {
             // Check if user is logged in
             try {
@@ -741,7 +797,38 @@
         });
 
         // Init
+        // Auto-prefill customer info if logged in
+        async function prefillCustomerInfo() {
+            try {
+                const res = await authFetch('/api/customer/me');
+                const data = await res.json();
+                if (data.logged_in && data.customer) {
+                    const c = data.customer;
+                    const nameInput = document.getElementById('checkoutName');
+                    const phoneInput = document.getElementById('checkoutPhone');
+                    const addrInput = document.getElementById('checkoutAddress');
+                    if (nameInput && !nameInput.value) nameInput.value = c.name || '';
+                    if (phoneInput && !phoneInput.value) phoneInput.value = c.phone || '';
+                    if (addrInput && !addrInput.value) addrInput.value = c.address || '';
+                    // Check if address has 6-digit pincode
+                    if (c.address) {
+                        const m = c.address.match(/\b\d{6}\b/);
+                        if (m) {
+                            const pinInput = document.getElementById('checkoutPincode');
+                            if (pinInput && !pinInput.value) {
+                                pinInput.value = m[0];
+                                estimateDelivery(m[0]);
+                            }
+                        }
+                    }
+                }
+            } catch(e) {
+                console.log('Customer info prefill skipped:', e);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            prefillCustomerInfo();
             applyCheckoutTranslations();
             // Restore coupon applied on cart page
             const savedCoupon = sessionStorage.getItem('jainzee_applied_coupon');

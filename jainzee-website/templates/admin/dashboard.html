@@ -31,6 +31,16 @@
     <main class="admin-content">
         <h1 class="page-title">Dashboard</h1>
 
+        <!-- LOW STOCK ALERT BANNER (shown when any product has stock ≤ 5) -->
+        <div id="lowStockBanner">
+            <div class="alert-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="alert-body">
+                <strong>⚠️ Critical Low Stock Alert!</strong>
+                <ul id="lowStockBannerList"></ul>
+            </div>
+            <a href="/admin/products" class="restock-btn"><i class="fas fa-plus-circle"></i> Restock Now</a>
+        </div>
+
         <div class="dashboard-stats">
             <div class="stat-card">
                 <div class="stat-icon"><i class="fas fa-rupee-sign"></i></div>
@@ -108,6 +118,32 @@
                 0%, 100% { transform: scale(1); }
                 50% { transform: scale(1.15); }
             }
+            /* Low Stock Alert Banner */
+            #lowStockBanner {
+                display: none;
+                background: linear-gradient(135deg, #dc3545, #c82333);
+                color: white;
+                border-radius: 12px;
+                padding: 16px 22px;
+                margin-bottom: 22px;
+                align-items: center;
+                gap: 14px;
+                box-shadow: 0 4px 15px rgba(220,53,69,0.35);
+                animation: alertPop 0.4s ease;
+            }
+            @keyframes alertPop {
+                from { transform: translateY(-8px); opacity: 0; }
+                to   { transform: translateY(0);    opacity: 1; }
+            }
+            #lowStockBanner .alert-icon { font-size: 1.8rem; flex-shrink: 0; }
+            #lowStockBanner .alert-body { flex: 1; }
+            #lowStockBanner .alert-body strong { display: block; font-size: 1rem; font-weight: 700; margin-bottom: 3px; }
+            #lowStockBanner .alert-body ul { margin: 0; padding-left: 18px; font-size: 0.85rem; opacity: 0.92; }
+            #lowStockBanner a.restock-btn {
+                background: white; color: #dc3545; font-weight: 700; border-radius: 8px;
+                padding: 8px 18px; text-decoration: none; font-size: 0.85rem; white-space: nowrap;
+                flex-shrink: 0;
+            }
         </style>
 
         <div class="dashboard-actions">
@@ -177,6 +213,21 @@
                                     <div style="font-size:0.75rem; color:#8a7362;">${o.status || ''}</div>
                                 </div>
                             </div>`).join('');
+                    }
+                }
+
+                // Low Stock Alert Banner (≤ 5 units is critical)
+                const criticalItems = (data.low_stock || []).filter(p => (p.stock || 0) <= 5);
+                const banner = document.getElementById('lowStockBanner');
+                const bannerList = document.getElementById('lowStockBannerList');
+                if (banner && bannerList) {
+                    if (criticalItems.length > 0) {
+                        bannerList.innerHTML = criticalItems.map(p =>
+                            `<li>${p.name_en || 'Product'} — only <strong>${p.stock}</strong> left</li>`
+                        ).join('');
+                        banner.style.display = 'flex';
+                    } else {
+                        banner.style.display = 'none';
                     }
                 }
 
