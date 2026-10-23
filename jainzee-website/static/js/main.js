@@ -136,7 +136,28 @@ const translations = {
         'quantity': 'Quantity',
         'cancel': 'Cancel',
         'total_amount': 'Total Amount',
-        'download_invoice': 'Download Invoice (PDF)'
+        'download_invoice': 'Download Invoice (PDF)',
+        'policy_privacy': 'Privacy Policy',
+        'policy_terms': 'Terms & Conditions',
+        'policy_shipping': 'Shipping & Delivery Policy',
+        'policy_refund': 'Refund & Cancellation Policy',
+        'view_apply_coupon': 'View & Apply Coupon',
+        'shipping_charge': 'Shipping Charge',
+        'remove': 'Remove',
+        'apply': 'Apply',
+        'coupon_choose_or': '— or choose from available coupons —',
+        'enter_coupon_code': 'Enter coupon code',
+        'no_orders_yet': 'No past orders found',
+        'product_reviews': 'Product Reviews',
+        'write_review': 'Write a Review',
+        'your_rating': 'Your Rating',
+        'your_review_optional': 'Your Review (Optional)',
+        'submit_review': 'Submit Review',
+        'customer_reviews': 'Customer Reviews',
+        'loading_orders': 'Loading orders...',
+        'loading_reviews': 'Loading reviews...',
+        'reorder_btn': 'Add Again / Reorder',
+        'total_amount_label': 'Total Amount'
     },
     hi: {
         'nav_home': 'होम',
@@ -199,7 +220,28 @@ const translations = {
         'quantity': 'मात्रा',
         'cancel': 'रद्द करें',
         'total_amount': 'कुल राशि',
-        'download_invoice': 'इनवॉयस डाउनलोड करें (PDF)'
+        'download_invoice': 'इनवॉयस डाउनलोड करें (PDF)',
+        'policy_privacy': 'गोपनीयता नीति',
+        'policy_terms': 'नियम और शर्तें',
+        'policy_shipping': 'शिपिंग और डिलीवरी नीति',
+        'policy_refund': 'रिफंड और रद्दीकरण नीति',
+        'view_apply_coupon': 'कूपन देखें और लागू करें',
+        'shipping_charge': 'शिपिंग शुल्क',
+        'remove': 'हटाएं',
+        'apply': 'लागू करें',
+        'coupon_choose_or': '— या उपलब्ध कूपन में से चुनें —',
+        'enter_coupon_code': 'कूपन कोड दर्ज करें',
+        'no_orders_yet': 'कोई पिछला ऑर्डर नहीं मिला',
+        'product_reviews': 'उत्पाद समीक्षाएं',
+        'write_review': 'समीक्षा लिखें',
+        'your_rating': 'आपकी रेटिंग',
+        'your_review_optional': 'आपकी समीक्षा (वैकल्पिक)',
+        'submit_review': 'समीक्षा सबमिट करें',
+        'customer_reviews': 'ग्राहक समीक्षाएं',
+        'loading_orders': 'ऑर्डर लोड हो रहे हैं...',
+        'loading_reviews': 'समीक्षाएं लोड हो रही हैं...',
+        'reorder_btn': 'दोबारा ऑर्डर करें',
+        'total_amount_label': 'कुल राशि'
     }
 };
 
@@ -364,7 +406,10 @@ function openProductModal(product) {
         if (sNum <= 0) {
             modalStockEl.innerHTML = '<span style="color:#dc3545;font-weight:700;font-size:0.85rem;"><i class="fas fa-times-circle"></i> Out of Stock</span>';
         } else if (sNum <= 10) {
-            modalStockEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;background:#fff3e0;color:#c62828;border:1.5px solid #ff9800;padding:4px 12px;border-radius:20px;font-weight:700;font-size:0.82rem;"><i class="fas fa-fire" style="color:#e65100;"></i> 🔥 Low Stock! Only ' + sNum + ' left — Order Fast!</span>';
+            const lowText = currentLang === 'hi'
+                ? '🔥 कम स्टॉक! सिर्फ ' + sNum + ' बचे हैं — जल्दी ऑर्डर करें!'
+                : '🔥 Low Stock! Only ' + sNum + ' left — Order Fast!';
+            modalStockEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;background:#fff3e0;color:#c62828;border:1.5px solid #ff9800;padding:4px 12px;border-radius:20px;font-weight:700;font-size:0.82rem;"><i class="fas fa-fire" style="color:#e65100;"></i> ' + lowText + '</span>';
         } else {
             modalStockEl.innerHTML = '<span style="color:#28a745;font-weight:600;font-size:0.85rem;"><i class="fas fa-check-circle"></i> In Stock</span>';
         }

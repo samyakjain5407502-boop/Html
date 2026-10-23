@@ -186,7 +186,11 @@
                 set('statTotalOrders', data.total_orders);
                 set('statPendingOrders', data.pending_orders);
                 set('statDeliveredOrders', data.delivered_orders);
-                set('statLowStock', data.low_stock_count);
+                set('statProducts', data.total_products != null ? data.total_products : (data.products_count || 0));
+                set('statLowStock', data.low_stock_count != null ? data.low_stock_count : (data.low_stock ? data.low_stock.length : 0));
+
+                // Remove all skeleton shimmer classes once stats are populated
+                document.querySelectorAll('.sk-num').forEach(el => el.classList.remove('sk-num'));
 
                 const countEl = document.getElementById('newOrdersCount');
                 const badge = document.getElementById('newOrdersBadge');
@@ -249,12 +253,17 @@
             const refreshStats = async () => {
                 try {
                     const res = await fetch('/admin/api/stats');
-                    if (!res.ok) return;
+                    if (!res.ok) {
+                        document.querySelectorAll('.sk-num').forEach(el => el.classList.remove('sk-num'));
+                        return;
+                    }
                     const data = await res.json();
                     // Cache it so the next dashboard visit paints instantly
                     if (window.JZ && JZ.set) JZ.set('/admin/api/stats', data);
                     applyStats(data);
-                } catch (e) {}
+                } catch (e) {
+                    document.querySelectorAll('.sk-num').forEach(el => el.classList.remove('sk-num'));
+                }
             };
 
             // Instant paint from the previous visit's cache (if any)...

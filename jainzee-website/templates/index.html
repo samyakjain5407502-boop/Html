@@ -338,10 +338,10 @@
                     <a href="#products" data-i18n="nav_products">Products</a>
                     <a href="#about" data-i18n="nav_about">About Us</a>
                     <a href="#contact" data-i18n="nav_contact">Contact</a>
-                    <a href="/privacy-policy">Privacy Policy</a>
-                    <a href="/terms">Terms &amp; Conditions</a>
-                    <a href="/shipping">Shipping &amp; Delivery Policy</a>
-                    <a href="/refund">Refund &amp; Cancellation Policy</a>
+                    <a href="/privacy-policy" data-i18n="policy_privacy">Privacy Policy</a>
+                    <a href="/terms" data-i18n="policy_terms">Terms &amp; Conditions</a>
+                    <a href="/shipping" data-i18n="policy_shipping">Shipping &amp; Delivery Policy</a>
+                    <a href="/refund" data-i18n="policy_refund">Refund &amp; Cancellation Policy</a>
                 </div>
                 <div class="footer-contact">
                     <h4 data-i18n="contact_info">Contact Info</h4>
@@ -366,7 +366,7 @@
     <div class="modal-overlay" id="myOrdersModal">
         <div class="modal-content" style="max-width: 800px; background: var(--card-bg); border: 1px solid rgba(255,215,0,0.3);">
             <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,215,0,0.15); padding-bottom: 20px;">
-                <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.5rem;">My Orders</h3>
+                <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.5rem;" data-i18n="my_orders">My Orders</h3>
                 <button class="btn-sm btn-sm-delete" onclick="closeMyOrdersModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light);">
                     <i class="fas fa-times"></i>
                 </button>
@@ -374,7 +374,7 @@
             <div class="modal-body" style="padding: 20px 0; max-height: 60vh; overflow-y: auto;">
                 <div id="myOrdersList">
                     <!-- Orders will be loaded here -->
-                    <p style="text-align: center; padding: 40px; color: var(--text-light);">Loading orders...</p>
+                    <p style="text-align: center; padding: 40px; color: var(--text-light);" data-i18n="loading_orders">Loading orders...</p>
                 </div>
             </div>
         </div>
@@ -384,7 +384,7 @@
     <div class="modal-overlay" id="reviewsModal">
         <div class="modal-content" style="max-width: 600px; background: var(--card-bg); border: 1px solid rgba(255,215,0,0.3);">
             <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,215,0,0.15); padding-bottom: 20px;">
-                <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.5rem;">Product Reviews</h3>
+                <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.5rem;" data-i18n="product_reviews">Product Reviews</h3>
                 <button class="btn-sm btn-sm-delete" onclick="closeReviewsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light);">
                     <i class="fas fa-times"></i>
                 </button>
@@ -392,12 +392,12 @@
             <div class="modal-body" style="padding: 20px 0; max-height: 60vh; overflow-y: auto;">
                 <!-- Write Review Form (Top) -->
                 <div style="padding: 0 20px 20px; border-bottom: 1px solid rgba(184,134,11,0.1); margin-bottom: 20px;">
-                    <h4 style="color: var(--dark); margin-bottom: 15px; font-size: 1.1rem;">Write a Review</h4>
+                    <h4 style="color: var(--dark); margin-bottom: 15px; font-size: 1.1rem;" data-i18n="write_review">Write a Review</h4>
                     <input type="hidden" id="reviewProductId">
                     <input type="hidden" id="reviewRating" value="0">
                     
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px; font-size: 0.9rem;">Your Rating</label>
+                        <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px; font-size: 0.9rem;" data-i18n="your_rating">Your Rating</label>
                         <div class="star-rating-input">
                             <span class="star" data-rating="1" onmouseenter="setRating(1)" onmouseleave="resetStarDisplay()" onclick="lockRating(1)"><i class="fas fa-star"></i></span>
                             <span class="star" data-rating="2" onmouseenter="setRating(2)" onmouseleave="resetStarDisplay()" onclick="lockRating(2)"><i class="fas fa-star"></i></span>
@@ -408,20 +408,20 @@
                     </div>
                     
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px; font-size: 0.9rem;">Your Review (Optional)</label>
+                        <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px; font-size: 0.9rem;" data-i18n="your_review_optional">Your Review (Optional)</label>
                         <textarea id="reviewText" class="review-textarea" placeholder="Share your experience with this product..." style="min-height: 60px;"></textarea>
                     </div>
                     
                     <button class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 0.9rem;" onclick="submitReview(this)">
-                        <i class="fas fa-check"></i> Submit Review
+                        <i class="fas fa-check"></i> <span data-i18n="submit_review">Submit Review</span>
                     </button>
                 </div>
                 
                 <!-- Reviews List (Bottom) -->
                 <div id="reviewsModalList" style="padding: 0 20px;">
-                    <h4 style="color: var(--dark); margin-bottom: 15px; font-size: 1.1rem;">Customer Reviews</h4>
+                    <h4 style="color: var(--dark); margin-bottom: 15px; font-size: 1.1rem;" data-i18n="customer_reviews">Customer Reviews</h4>
                     <div id="reviewsModalContent">
-                        <p style="text-align: center; padding: 20px; color: var(--text-light);">Loading reviews...</p>
+                        <p style="text-align: center; padding: 20px; color: var(--text-light);" data-i18n="loading_reviews">Loading reviews...</p>
                     </div>
                 </div>
             </div>

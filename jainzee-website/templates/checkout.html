@@ -208,7 +208,7 @@
 
                         <!-- Task 1: "View & Apply Coupon" replaces the inline coupon input -->
                         <button type="button" class="coupon-trigger-btn" onclick="openCouponModal()" style="margin-top: 4px;">
-                            <i class="fas fa-ticket-alt"></i> View &amp; Apply Coupon
+                            <i class="fas fa-ticket-alt"></i> <span data-i18n="view_apply_coupon">View &amp; Apply Coupon</span>
                         </button>
                         <div id="couponMsg" style="font-size: 0.8rem; margin-top: 4px; color: #b3261e; display: none;"></div>
 
@@ -221,12 +221,12 @@
                                     <small id="checkoutCouponDiscount" style="color: #1c5230; font-weight: 700;"></small>
                                 </div>
                             </div>
-                            <button type="button" class="remove-coupon-btn" onclick="removeCoupon()">Remove</button>
+                            <button type="button" class="remove-coupon-btn" onclick="removeCoupon()" data-i18n="remove">Remove</button>
                         </div>
 
                         <!-- Shipping charge -->
                         <div class="summary-row" style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,215,0,0.1);">
-                            <span>Shipping Charge</span>
+                            <span data-i18n="shipping_charge">Shipping Charge</span>
                             <span id="checkoutShipping">₹0</span>
                         </div>
 
@@ -269,15 +269,15 @@
     <div id="couponModal" role="dialog" aria-modal="true" aria-label="Apply coupon">
         <div class="coupon-modal-box">
             <div class="coupon-modal-header">
-                <h3>View &amp; Apply Coupon</h3>
+                <h3 data-i18n="view_apply_coupon">View &amp; Apply Coupon</h3>
                 <button type="button" class="coupon-modal-close" onclick="closeCouponModal()" aria-label="Close">&times;</button>
             </div>
             <div class="coupon-manual-wrap">
                 <input type="text" class="coupon-manual-input" id="couponManualInput" placeholder="Enter coupon code" autocomplete="off" aria-label="Coupon code" onkeydown="if(event.key==='Enter'){event.preventDefault();applyManualCoupon();}">
-                <button type="button" class="coupon-manual-apply" onclick="applyManualCoupon()">Apply</button>
+                <button type="button" class="coupon-manual-apply" onclick="applyManualCoupon()" data-i18n="apply">Apply</button>
             </div>
             <div class="coupon-manual-msg" id="couponManualMsg"></div>
-            <div class="coupon-modal-divider">— or choose from available coupons —</div>
+            <div class="coupon-modal-divider" data-i18n="coupon_choose_or">— or choose from available coupons —</div>
             <div class="coupon-modal-list" id="couponList"></div>
         </div>
     </div>
@@ -311,7 +311,17 @@
                 'back_to_shop': 'Back to Shop',
                 'checkout_name_placeholder': 'Enter your full name',
                 'checkout_phone_placeholder': 'Enter your phone number',
-                'checkout_address_placeholder': 'Enter your full address'
+                'checkout_address_placeholder': 'Enter your full address',
+                'view_apply_coupon': 'View & Apply Coupon',
+                'shipping_charge': 'Shipping Charge',
+                'remove': 'Remove',
+                'apply': 'Apply',
+                'coupon_choose_or': '— or choose from available coupons —',
+                'enter_coupon_code': 'Enter coupon code',
+                'policy_privacy': 'Privacy Policy',
+                'policy_terms': 'Terms & Conditions',
+                'policy_shipping': 'Shipping & Delivery Policy',
+                'policy_refund': 'Refund & Cancellation Policy'
             },
             hi: {
                 'cart_title': 'आपका कार्ट',
@@ -336,7 +346,17 @@
                 'back_to_shop': 'शॉप पर वापस जाएं',
                 'checkout_name_placeholder': 'अपना पूरा नाम दर्ज करें',
                 'checkout_phone_placeholder': 'अपना फ़ोन नंबर दर्ज करें',
-                'checkout_address_placeholder': 'अपना पूरा पता दर्ज करें'
+                'checkout_address_placeholder': 'अपना पूरा पता दर्ज करें',
+                'view_apply_coupon': 'कूपन देखें और लागू करें',
+                'shipping_charge': 'शिपिंग शुल्क',
+                'remove': 'हटाएं',
+                'apply': 'लागू करें',
+                'coupon_choose_or': '— या उपलब्ध कूपन में से चुनें —',
+                'enter_coupon_code': 'कूपन कोड दर्ज करें',
+                'policy_privacy': 'गोपनीयता नीति',
+                'policy_terms': 'नियम और शर्तें',
+                'policy_shipping': 'शिपिंग और डिलीवरी नीति',
+                'policy_refund': 'रिफंड और रद्दीकरण नीति'
             }
         };
 
@@ -392,10 +412,13 @@
                 return s > 0 && s <= 10;
             });
             if (hasLowStockInCheckout) {
+                const bannerText = currentLangCheckout === 'hi'
+                    ? '🔥 जल्दी करें! आपके ऑर्डर में कम स्टॉक वाले आइटम हैं। चेकआउट पूरा करें!'
+                    : '🔥 Hurry! Low stock items in your order. Complete checkout fast!';
                 html += `
                     <div style="display: flex; align-items: center; gap: 8px; background: #fff3cd; border: 1.5px solid #ffeeba; border-radius: 8px; padding: 10px 12px; margin-bottom: 15px; color: #856404; font-size: 0.85rem; font-weight: 700;">
                         <i class="fas fa-fire" style="color: #e65100;"></i>
-                        <span>🔥 Hurry! Low stock items in your order. Complete checkout fast!</span>
+                        <span>${bannerText}</span>
                     </div>
                 `;
             }
@@ -422,7 +445,7 @@
                         <div style="flex: 1;">
                             <div style="color: var(--text); font-weight: 600; font-size: 0.95rem;">${name}</div>
                             <div style="color: var(--text-light); font-size: 0.8rem;">${item.grade_name || ''} x ${item.quantity}</div>
-                            ${(parseInt(item.stock) > 0 && parseInt(item.stock) <= 10) ? `<div style="color: #d9534f; font-size: 0.74rem; font-weight: 700; margin-top: 2px;"><i class="fas fa-fire"></i> Only ${item.stock} left in stock!</div>` : ''}
+                            ${(parseInt(item.stock) > 0 && parseInt(item.stock) <= 10) ? `<div style="color: #d9534f; font-size: 0.74rem; font-weight: 700; margin-top: 2px;"><i class="fas fa-fire"></i> ${currentLangCheckout === 'hi' ? 'सिर्फ ' + item.stock + ' स्टॉक में बचे हैं!' : 'Only ' + item.stock + ' left in stock!'}</div>` : ''}
                         </div>
                         <div style="text-align: right;">
                             <div style="color: var(--primary); font-weight: 700;">${formatPriceCheckout(item.grade_price || item.base_price)}</div>
@@ -659,7 +682,7 @@
                         <div style="flex: 1;">
                             <div style="color: var(--text); font-weight: 600; font-size: 0.95rem;">${name}</div>
                             <div style="color: var(--text-light); font-size: 0.8rem;">${item.grade_name || ''} x ${item.quantity}</div>
-                            ${(parseInt(item.stock) > 0 && parseInt(item.stock) <= 10) ? `<div style="color: #d9534f; font-size: 0.74rem; font-weight: 700; margin-top: 2px;"><i class="fas fa-fire"></i> Only ${item.stock} left in stock!</div>` : ''}
+                            ${(parseInt(item.stock) > 0 && parseInt(item.stock) <= 10) ? `<div style="color: #d9534f; font-size: 0.74rem; font-weight: 700; margin-top: 2px;"><i class="fas fa-fire"></i> ${currentLangCheckout === 'hi' ? 'सिर्फ ' + item.stock + ' स्टॉक में बचे हैं!' : 'Only ' + item.stock + ' left in stock!'}</div>` : ''}
                         </div>
                         <div style="color: var(--primary); font-weight: 700;">${formatPriceCheckout(item.grade_price || item.base_price)}</div>
                     </div>

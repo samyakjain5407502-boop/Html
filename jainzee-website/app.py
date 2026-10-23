@@ -865,6 +865,7 @@ def get_jwt_customer():
 
 # ---------------- LEGAL / POLICY PAGES ----------------
 
+@app.route('/privacy')
 @app.route('/privacy-policy')
 def privacy_policy():
     return render_template('privacy.html')
@@ -1833,9 +1834,14 @@ def admin_logout():
 @app.route('/admin')
 @login_required
 def admin_dashboard():
-    # Render immediately without blocking on synchronous DB query;
-    # dashboard stats are hydrated instantly by client-side cached fetch
-    return render_template('admin/dashboard.html', product_count='')
+    product_count = 0
+    try:
+        conn = get_db()
+        product_count = int(conn.execute('SELECT COUNT(*) AS c FROM products').fetchone()['c'] or 0)
+        conn.close()
+    except Exception:
+        product_count = 0
+    return render_template('admin/dashboard.html', product_count=product_count)
 
 @app.route('/admin/products')
 @login_required
@@ -3433,12 +3439,23 @@ def admin_api_stats():
             })
 
         # Fast total sales calculation
-        sales_rows = conn.execute('SELECT total FROM orders WHERE is_hidden=0 LIMIT 500').fetchall()
         total_sales = 0.0
-        for row in sales_rows:
+        try:
+            sales_rows = conn.execute('SELECT total FROM orders WHERE is_hidden=0 OR is_hidden IS NULL LIMIT 500').fetchall()
+            for row in sales_rows:
+                try:
+                    total_sales += float(re.sub(r'[₹,\s]', '', str(row['total'] or '0')) or 0)
+                except (ValueError, TypeError):
+                    pass
+        except Exception:
             try:
-                total_sales += float(re.sub(r'[₹,\s]', '', str(row['total'] or '0')) or 0)
-            except (ValueError, TypeError):
+                sales_rows = conn.execute('SELECT total FROM orders LIMIT 500').fetchall()
+                for row in sales_rows:
+                    try:
+                        total_sales += float(re.sub(r'[₹,\s]', '', str(row['total'] or '0')) or 0)
+                    except (ValueError, TypeError):
+                        pass
+            except Exception:
                 pass
         conn.close()
 
