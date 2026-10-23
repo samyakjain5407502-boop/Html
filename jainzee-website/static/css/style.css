@@ -3168,7 +3168,7 @@ button[onclick*="addToCart"] *,
 /* ===== MOBILE HEADER GOLD BUTTONS (CART & ORDERS) VISIBILITY FIX ===== */
 @media (max-width: 768px) {
     .mobile-main-row {
-        min-height: 52px !important;
+        min-height: 54px !important;
         height: auto !important;
         padding: 6px 12px !important;
     }
@@ -3186,41 +3186,65 @@ button[onclick*="addToCart"] *,
         flex-direction: column !important;
         align-items: center !important;
         justify-content: center !important;
-        min-width: 50px !important;
+        min-width: 54px !important;
         width: auto !important;
-        max-width: 66px !important;
-        height: 44px !important;
-        padding: 3px 6px !important;
+        height: 46px !important;
+        padding: 4px 8px !important;
         gap: 2px !important;
         background: linear-gradient(135deg, #FFD700 0%, #D4AC0D 100%) !important;
         color: #000000 !important;
-        border-radius: 8px !important;
+        border-radius: 9px !important;
         box-sizing: border-box !important;
-        overflow: hidden !important;
-        box-shadow: 0 3px 12px rgba(255, 215, 0, 0.45) !important;
+        position: relative !important;
+        overflow: visible !important;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25), 0 0 10px rgba(255, 215, 0, 0.35) !important;
         text-decoration: none !important;
+        transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    }
+
+    .mobile-cart-btn:active,
+    .mobile-orders-btn:active {
+        transform: scale(0.96) !important;
     }
 
     .mobile-cart-btn i,
     .mobile-orders-btn i {
-        font-size: 1.1rem !important;
+        font-size: 1.15rem !important;
         color: #000000 !important;
         line-height: 1 !important;
         margin: 0 !important;
     }
 
     .mobile-btn-text {
-        font-size: 0.65rem !important;
+        font-size: 0.74rem !important;
         font-weight: 700 !important;
         line-height: 1 !important;
         white-space: nowrap !important;
         color: #000000 !important;
         text-align: center !important;
         max-width: 100% !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        letter-spacing: -0.2px !important;
+        letter-spacing: 0px !important;
         display: block !important;
+    }
+
+    .mobile-cart-btn .cart-count-badge {
+        position: absolute !important;
+        top: -5px !important;
+        right: -5px !important;
+        background: #e53935 !important;
+        color: #ffffff !important;
+        padding: 0 5px !important;
+        border-radius: 10px !important;
+        font-size: 0.68rem !important;
+        font-weight: 800 !important;
+        min-width: 18px !important;
+        height: 18px !important;
+        line-height: 16px !important;
+        text-align: center !important;
+        border: 2px solid #121212 !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4) !important;
+        z-index: 10 !important;
+        margin: 0 !important;
     }
 }
 
@@ -3235,22 +3259,23 @@ button[onclick*="addToCart"] *,
 
     .mobile-cart-btn,
     .mobile-orders-btn {
-        min-width: 44px !important;
+        min-width: 50px !important;
         width: auto !important;
-        max-width: 58px !important;
-        height: 40px !important;
-        padding: 2px 4px !important;
+        height: 44px !important;
+        padding: 3px 6px !important;
         gap: 1px !important;
+        border-radius: 8px !important;
     }
 
     .mobile-cart-btn i,
     .mobile-orders-btn i {
-        font-size: 0.95rem !important;
+        font-size: 1.05rem !important;
     }
 
     .mobile-btn-text {
-        font-size: 0.58rem !important;
-        letter-spacing: -0.3px !important;
+        font-size: 0.70rem !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.1px !important;
     }
 }
 
