@@ -66,6 +66,22 @@ USE_BLOB_STORAGE = bool(BLOB_READ_WRITE_TOKEN)
 BLOB_URL_MARKER = '.blob.vercel-storage.com'
 
 app = Flask(__name__)
+
+# Register robust JSON provider to safely serialize datetime, date and Decimal from Postgres
+from decimal import Decimal
+from datetime import datetime as _dt_cls, date as _date_cls
+try:
+    from flask.json.provider import DefaultJSONProvider
+    class CustomJSONProvider(DefaultJSONProvider):
+        def default(self, obj):
+            if isinstance(obj, (_dt_cls, _date_cls)):
+                return obj.isoformat()
+            if isinstance(obj, Decimal):
+                return float(obj)
+            return super().default(obj)
+    app.json = CustomJSONProvider(app)
+except Exception as _e:
+    pass
 # SECURITY: SECRET_KEY must come from the environment. In development (no
 # SECRET_KEY set) a random key is generated for the current process; set
 # SECRET_KEY in production so sessions survive restarts.
@@ -3376,53 +3392,81 @@ def api_reorder():
 @app.route('/admin/api/stats')
 @login_required
 def admin_api_stats():
-    conn = get_db()
-    # Query 1: Combined orders summary
-    order_stats = conn.execute('''
-        SELECT 
-            COUNT(*) AS total_orders,
-            COALESCE(SUM(CASE WHEN status LIKE 'pending%' THEN 1 ELSE 0 END), 0) AS pending_orders,
-            COALESCE(SUM(CASE WHEN status LIKE '%deliver%' THEN 1 ELSE 0 END), 0) AS delivered_orders
-        FROM orders
-    ''').fetchone()
-    total_orders = int(order_stats['total_orders'] or 0) if order_stats else 0
-    pending_orders = int(order_stats['pending_orders'] or 0) if order_stats else 0
-    delivered_orders = int(order_stats['delivered_orders'] or 0) if order_stats else 0
+    try:
+        conn = get_db()
+        total_orders = int(conn.execute('SELECT COUNT(*) AS c FROM orders').fetchone()['c'] or 0)
+        pending_orders = int(conn.execute("SELECT COUNT(*) AS c FROM orders WHERE status LIKE 'pending%'").fetchone()['c'] or 0)
+        delivered_orders = int(conn.execute("SELECT COUNT(*) AS c FROM orders WHERE status LIKE '%deliver%'").fetchone()['c'] or 0)
+        total_products = int(conn.execute('SELECT COUNT(*) AS c FROM products').fetchone()['c'] or 0)
 
-    # Query 2: Total products count
-    prod_row = conn.execute('SELECT COUNT(*) AS c FROM products').fetchone()
-    total_products = int(prod_row['c'] or 0) if prod_row else 0
+        # Low stock items (stock <= 10)
+        low_stock_rows = conn.execute(
+            'SELECT id, name_en, name_hi, stock FROM products WHERE stock <= 10 ORDER BY stock ASC'
+        ).fetchall()
+        low_stock_items = []
+        for r in low_stock_rows:
+            low_stock_items.append({
+                'id': r['id'],
+                'name_en': r['name_en'],
+                'name_hi': r['name_hi'],
+                'stock': int(r['stock'] or 0)
+            })
 
-    # Query 3: Low stock items (stock <= 10)
-    low_stock_items = conn.execute(
-        'SELECT id, name_en, name_hi, stock FROM products WHERE stock <= 10 ORDER BY stock ASC'
-    ).fetchall()
+        # Recent orders
+        recent_rows = conn.execute(
+            'SELECT id, customer_name, customer_phone, total, status, created_at FROM orders ORDER BY id DESC LIMIT 10'
+        ).fetchall()
+        recent_orders = []
+        for r in recent_rows:
+            raw_date = r['created_at'] if (isinstance(r, dict) or hasattr(r, '__getitem__')) else None
+            if isinstance(raw_date, (_dt_cls, _date_cls)):
+                date_str = raw_date.strftime('%d %b %Y, %I:%M %p')
+            else:
+                date_str = str(raw_date or '')
+            recent_orders.append({
+                'id': r['id'],
+                'customer_name': r['customer_name'] or 'Customer',
+                'customer_phone': r['customer_phone'] or '',
+                'total': str(r['total'] or '₹0'),
+                'status': str(r['status'] or 'pending'),
+                'created_at': date_str
+            })
 
-    # Query 4: Recent 10 orders
-    recent_orders = conn.execute(
-        'SELECT id, customer_name, customer_phone, total, status, created_at FROM orders ORDER BY id DESC LIMIT 10'
-    ).fetchall()
+        # Fast total sales calculation
+        sales_rows = conn.execute('SELECT total FROM orders WHERE is_hidden=0 LIMIT 500').fetchall()
+        total_sales = 0.0
+        for row in sales_rows:
+            try:
+                total_sales += float(re.sub(r'[₹,\s]', '', str(row['total'] or '0')) or 0)
+            except (ValueError, TypeError):
+                pass
+        conn.close()
 
-    # Query 5: Fast sales calculation
-    sales_rows = conn.execute('SELECT total FROM orders WHERE is_hidden=0 LIMIT 300').fetchall()
-    total_sales = 0.0
-    for row in sales_rows:
-        try:
-            total_sales += float(re.sub(r'[₹,\s]', '', str(row['total'] or '0')) or 0)
-        except (ValueError, TypeError):
-            pass
-
-    conn.close()
-    return jsonify({
-        'total_sales': round(total_sales, 2),
-        'total_orders': total_orders,
-        'pending_orders': pending_orders,
-        'delivered_orders': delivered_orders,
-        'total_products': total_products,
-        'low_stock_count': len(low_stock_items),
-        'low_stock': [dict(r) for r in low_stock_items],
-        'recent_orders': [dict(r) for r in recent_orders],
-    })
+        return jsonify({
+            'total_sales': round(total_sales, 2),
+            'total_orders': total_orders,
+            'pending_orders': pending_orders,
+            'delivered_orders': delivered_orders,
+            'total_products': total_products,
+            'low_stock_count': len(low_stock_items),
+            'low_stock': low_stock_items,
+            'recent_orders': recent_orders,
+        })
+    except Exception as e:
+        print(f"[admin_api_stats ERROR] {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'total_sales': 0.0,
+            'total_orders': 0,
+            'pending_orders': 0,
+            'delivered_orders': 0,
+            'total_products': 0,
+            'low_stock_count': 0,
+            'low_stock': [],
+            'recent_orders': [],
+            'error': str(e)
+        }), 200
 
 # ---------------- HEALTH & ERROR PAGES ----------------
 
