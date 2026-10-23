@@ -75,7 +75,7 @@
                 </a>
                 <a href="#" class="mobile-orders-btn" id="mobileOrdersBtn" title="My Orders">
                     <i class="fas fa-box"></i>
-                    <span class="mobile-btn-text">Orders</span>
+                    <span class="mobile-btn-text" data-i18n="orders_title">Orders</span>
                 </a>
             </div>
         </div>
@@ -247,7 +247,7 @@
                 'cart_subtitle': 'अपने आइटम देखें और चेकआउट करें',
                 'cart_empty': 'आपका कार्ट खाली है',
                 'order_summary': 'ऑर्डर सारांश',
-                'subtotal': 'जिओम',
+                'subtotal': 'सबटोटल',
                 'discount': 'छूट',
                 'you_save': 'आपको बचत मिलेगी',
                 'total': 'कुल',
@@ -346,7 +346,7 @@
             // Check if any cart item has low stock
             const hasLowStockInCart = cartItems.some(item => {
                 const s = parseInt(item.stock) || 0;
-                return s > 0 && s <= 5;
+                return s > 0 && s <= 10;
             });
             if (hasLowStockInCart) {
                 html += `
@@ -390,7 +390,7 @@
                         <div style="flex: 1;">
                             <h3 style="color: var(--text); font-family: var(--font-display); font-size: 1.3rem; margin-bottom: 5px;">${name}</h3>
                             <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 6px;">${t('qty')}: ${item.grade_name || item.weight || ''}</p>
-                            ${(parseInt(item.stock) > 0 && parseInt(item.stock) <= 5) ? `<div style="display:inline-flex;align-items:center;gap:5px;background:#fff3e0;color:#c62828;border:1px solid #ffb74d;padding:3px 8px;border-radius:6px;font-size:0.78rem;font-weight:700;margin-bottom:8px;"><i class="fas fa-fire" style="color:#e65100;"></i> Only ${item.stock} left in stock — Order Fast!</div>` : ''}
+                            ${(parseInt(item.stock) > 0 && parseInt(item.stock) <= 10) ? `<div style="display:inline-flex;align-items:center;gap:5px;background:#fff3e0;color:#c62828;border:1px solid #ffb74d;padding:3px 8px;border-radius:6px;font-size:0.78rem;font-weight:700;margin-bottom:8px;"><i class="fas fa-fire" style="color:#e65100;"></i> Only ${item.stock} left in stock — Order Fast!</div>` : ''}
                     <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
                         <span style="color: var(--primary-dark); font-weight: 700; font-size: 1.2rem;">${formatPriceCart(item.grade_price || item.base_price)}</span>
                         ${itemOldPrice > 0 ? '<span style="color: #999; text-decoration: line-through; font-size: 0.9rem;">' + formatPriceCart(item.old_price) + '</span>' : ''}

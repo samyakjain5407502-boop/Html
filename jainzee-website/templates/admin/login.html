@@ -27,7 +27,7 @@
                 {% endif %}
             {% endwith %}
 
-            <form method="POST" action="{{ url_for('admin_login') }}">
+            <form method="POST" action="{{ url_for('admin_login') }}" onsubmit="const b=this.querySelector('button'); b.disabled=true; b.innerHTML='<i class=\'fas fa-spinner fa-spin\'></i> Logging in...';">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <div class="form-group">
                     <label for="password">Admin Password</label>

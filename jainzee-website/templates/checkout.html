@@ -75,7 +75,7 @@
                 </a>
                 <a href="#" class="mobile-orders-btn" id="mobileOrdersBtn" title="My Orders">
                     <i class="fas fa-box"></i>
-                    <span class="mobile-btn-text">Orders</span>
+                    <span class="mobile-btn-text" data-i18n="orders_title">Orders</span>
                 </a>
             </div>
         </div>
@@ -327,7 +327,7 @@
                 'checkout_upi_instructions': 'QR कोड स्कैन करें या UPI के माध्यम से भुगतान करें',
                 'checkout_upi_placeholder': 'UPI QR यहाँ दिखेगा',
                 'order_summary': 'ऑर्डर सारांश',
-                'subtotal': 'जिओम',
+                'subtotal': 'सबटोटल',
                 'discount': 'छूट',
                 'you_save': 'आपको बचत मिलेगी',
                 'total': 'कुल',
@@ -389,7 +389,7 @@
             // Check for low stock items in checkout
             const hasLowStockInCheckout = checkoutItems.some(item => {
                 const s = parseInt(item.stock) || 0;
-                return s > 0 && s <= 5;
+                return s > 0 && s <= 10;
             });
             if (hasLowStockInCheckout) {
                 html += `
@@ -422,7 +422,7 @@
                         <div style="flex: 1;">
                             <div style="color: var(--text); font-weight: 600; font-size: 0.95rem;">${name}</div>
                             <div style="color: var(--text-light); font-size: 0.8rem;">${item.grade_name || ''} x ${item.quantity}</div>
-                            ${(parseInt(item.stock) > 0 && parseInt(item.stock) <= 5) ? `<div style="color: #d9534f; font-size: 0.74rem; font-weight: 700; margin-top: 2px;"><i class="fas fa-fire"></i> Only ${item.stock} left in stock!</div>` : ''}
+                            ${(parseInt(item.stock) > 0 && parseInt(item.stock) <= 10) ? `<div style="color: #d9534f; font-size: 0.74rem; font-weight: 700; margin-top: 2px;"><i class="fas fa-fire"></i> Only ${item.stock} left in stock!</div>` : ''}
                         </div>
                         <div style="text-align: right;">
                             <div style="color: var(--primary); font-weight: 700;">${formatPriceCheckout(item.grade_price || item.base_price)}</div>
@@ -659,7 +659,7 @@
                         <div style="flex: 1;">
                             <div style="color: var(--text); font-weight: 600; font-size: 0.95rem;">${name}</div>
                             <div style="color: var(--text-light); font-size: 0.8rem;">${item.grade_name || ''} x ${item.quantity}</div>
-                            ${(parseInt(item.stock) > 0 && parseInt(item.stock) <= 5) ? `<div style="color: #d9534f; font-size: 0.74rem; font-weight: 700; margin-top: 2px;"><i class="fas fa-fire"></i> Only ${item.stock} left in stock!</div>` : ''}
+                            ${(parseInt(item.stock) > 0 && parseInt(item.stock) <= 10) ? `<div style="color: #d9534f; font-size: 0.74rem; font-weight: 700; margin-top: 2px;"><i class="fas fa-fire"></i> Only ${item.stock} left in stock!</div>` : ''}
                         </div>
                         <div style="color: var(--primary); font-weight: 700;">${formatPriceCheckout(item.grade_price || item.base_price)}</div>
                     </div>

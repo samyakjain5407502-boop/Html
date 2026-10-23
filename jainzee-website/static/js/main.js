@@ -116,7 +116,27 @@ const translations = {
         'customer_login': 'Customer Login',
         'share_whatsapp': 'Share',
         'cart_title': 'Cart',
-        'products_loading': 'Loading premium products...'
+        'orders_title': 'Orders',
+        'my_orders': 'My Orders',
+        'products_loading': 'Loading premium products...',
+        'factory_media_title': 'Our Factory & Company',
+        'factory_media_subtitle': 'Take a look at our state-of-the-art facility',
+        'search_placeholder': 'Search products...',
+        'min_price': 'Min ₹',
+        'max_price': 'Max ₹',
+        'in_stock_only': 'In stock only',
+        'wishlist': 'Wishlist',
+        'read_reviews': 'Read Reviews',
+        'no_reviews': 'No reviews',
+        'choose_grade': 'Choose Grade:',
+        'add_to_cart': 'Add to Cart',
+        'out_of_stock': 'Out of Stock',
+        'in_stock': 'In Stock',
+        'weight_grade': 'Weight / Grade',
+        'quantity': 'Quantity',
+        'cancel': 'Cancel',
+        'total_amount': 'Total Amount',
+        'download_invoice': 'Download Invoice (PDF)'
     },
     hi: {
         'nav_home': 'होम',
@@ -128,25 +148,25 @@ const translations = {
         'explore_products': 'उत्पाद देखें',
         'contact_us': 'संपर्क करें',
         'our_products': 'हमारे प्रीमियम उत्पाद',
-        'products_subtitle': 'चुने हुए, स्वच्छ प्रोसेस्ड और प्रीमियम गुणवत्ता वाले ड्राई फ्रूट्स',
-        'why_choose': 'जैनज़ी ही क्यों?',
+        'products_subtitle': 'हाथ से चुने, स्वच्छ प्रसंस्कृत एवं प्रीमियम गुणवत्ता वाले सूखे मेवे',
+        'why_choose': 'जैनज़ी को क्यों चुनें?',
         'feature_pure': '100% शुद्ध',
-        'feature_pure_desc': 'कोई मिलावट नहीं, केवल शुद्ध और प्राकृतिक ड्राई फ्रूट्स',
-        'feature_hygienic': 'स्वच्छ प्रोसेसिंग',
-        'feature_hygienic_desc': 'आधुनिक फूड-ग्रेड प्रोसेसिंग सुविधा',
-        'feature_price': 'सबसे अच्छी कीमतें',
-        'feature_price_desc': 'सीधे प्रोसेसर से, बिना बिचौलियों के',
-        'feature_delivery': 'थोक और रिटेल',
-        'feature_delivery_desc': 'घर, व्यापार और थोक ऑर्डर के लिए उपलब्ध',
+        'feature_pure_desc': 'कोई मिलावट नहीं, सिर्फ शुद्ध और प्राकृतिक सूखे मेवे',
+        'feature_hygienic': 'स्वच्छ प्रसंस्करण',
+        'feature_hygienic_desc': 'आधुनिक खाद्य-ग्रेड प्रसंस्करण सुविधा',
+        'feature_price': 'सर्वोत्तम मूल्य',
+        'feature_price_desc': 'सीधे प्रोसेसर से, कोई बिचौलिया नहीं',
+        'feature_delivery': 'थोक एवं खुदरा',
+        'feature_delivery_desc': 'घर, व्यवसाय और थोक ऑर्डर के लिए उपलब्ध',
         'about_us': 'जैनज़ी के बारे में',
-        'about_li1': 'प्रीमियम गुणवत्ता वाले ड्राई फ्रूट्स',
-        'about_li2': 'स्वच्छ खाद्य प्रोसेसिंग',
-        'about_li3': 'हजारों ग्राहकों का विश्वास',
-        'about_li4': 'थोक और रिटेल उपलब्ध',
+        'about_li1': 'प्रीमियम गुणवत्ता वाले सूखे मेवे',
+        'about_li2': 'स्वच्छ खाद्य प्रसंस्करण',
+        'about_li3': 'हजारों ग्राहकों का भरोसा',
+        'about_li4': 'थोक एवं खुदरा उपलब्ध',
         'contact_us_title': 'संपर्क करें',
-        'contact_subtitle': 'हमारी दुकान पर आएं या हमसे जुड़ें',
+        'contact_subtitle': 'हमारे स्टोर पर आएं या हमसे संपर्क करें',
         'our_address': 'हमारा पता',
-        'view_map': 'मानचित्र देखें',
+        'view_map': 'मानचित्र पर देखें',
         'call_us': 'कॉल करें',
         'whatsapp_us': 'व्हाट्सएप करें',
         'opening_hours': 'खुलने का समय',
@@ -155,11 +175,31 @@ const translations = {
         'contact_info': 'संपर्क जानकारी',
         'all_rights': 'सर्वाधिकार सुरक्षित।',
         'admin_login': 'एडमिन',
-        'edit_website': 'वेबसाइट एडिट करें',
+        'edit_website': 'वेबसाइट संपादित करें',
         'customer_login': 'ग्राहक लॉगिन',
         'share_whatsapp': 'शेयर करें',
         'cart_title': 'कार्ट',
-        'products_loading': 'प्रीमियम उत्पाद लोड हो रहे हैं...'
+        'orders_title': 'ऑर्डर',
+        'my_orders': 'मेरे ऑर्डर',
+        'products_loading': 'प्रीमियम उत्पाद लोड हो रहे हैं...',
+        'factory_media_title': 'हमारी फैक्ट्री और कंपनी',
+        'factory_media_subtitle': 'हमारी अत्याधुनिक प्रसंस्करण सुविधा देखें',
+        'search_placeholder': 'उत्पाद खोजें...',
+        'min_price': 'न्यूनतम ₹',
+        'max_price': 'अधिकतम ₹',
+        'in_stock_only': 'केवल स्टॉक में',
+        'wishlist': 'विशलिस्ट',
+        'read_reviews': 'समीक्षाएं देखें',
+        'no_reviews': 'कोई समीक्षा नहीं',
+        'choose_grade': 'ग्रेड चुनें:',
+        'add_to_cart': 'कार्ट में जोड़ें',
+        'out_of_stock': 'स्टॉक खत्म',
+        'in_stock': 'स्टॉक में उपलब्ध',
+        'weight_grade': 'वजन / ग्रेड',
+        'quantity': 'मात्रा',
+        'cancel': 'रद्द करें',
+        'total_amount': 'कुल राशि',
+        'download_invoice': 'इनवॉयस डाउनलोड करें (PDF)'
     }
 };
 
@@ -323,7 +363,7 @@ function openProductModal(product) {
         const sNum = parseInt(product.stock) || 0;
         if (sNum <= 0) {
             modalStockEl.innerHTML = '<span style="color:#dc3545;font-weight:700;font-size:0.85rem;"><i class="fas fa-times-circle"></i> Out of Stock</span>';
-        } else if (sNum <= 5) {
+        } else if (sNum <= 10) {
             modalStockEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;background:#fff3e0;color:#c62828;border:1.5px solid #ff9800;padding:4px 12px;border-radius:20px;font-weight:700;font-size:0.82rem;"><i class="fas fa-fire" style="color:#e65100;"></i> 🔥 Low Stock! Only ' + sNum + ' left — Order Fast!</span>';
         } else {
             modalStockEl.innerHTML = '<span style="color:#28a745;font-weight:600;font-size:0.85rem;"><i class="fas fa-check-circle"></i> In Stock</span>';
@@ -1295,7 +1335,7 @@ function renderProducts() {
         if (stockNum <= 0) {
             const outText = currentLang === 'hi' ? 'स्टॉक खत्म' : 'Out of Stock';
             stockHtml = '<span class="stock-badge stock-out" style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;"><i class="fas fa-times-circle"></i> ' + outText + '</span>';
-        } else if (stockNum <= 5) {
+        } else if (stockNum <= 10) {
             const lowText = currentLang === 'hi'
                 ? '🔥 कम स्टॉक! सिर्फ ' + stockNum + ' बचे हैं - जल्दी ऑर्डर करें!'
                 : '🔥 Low Stock! Only ' + stockNum + ' left - Order Fast!';
@@ -1315,10 +1355,10 @@ function renderProducts() {
                     <i class="fas fa-star star-empty"></i>
                     <i class="fas fa-star star-empty"></i>
                 </div>
-                <span class="rating-text">No reviews</span>
+                <span class="rating-text">${currentLang === 'hi' ? 'कोई समीक्षा नहीं' : 'No reviews'}</span>
             </div>
             <button class="btn btn-outline" style="width: 100%; margin-top: 8px; padding: 6px; font-size: 0.8rem; border: 1px solid var(--primary); color: var(--primary);" onclick="event.stopPropagation(); openReviewsModal(${p.id})">
-                <i class="fas fa-comments"></i> Read Reviews
+                <i class="fas fa-comments"></i> ${currentLang === 'hi' ? 'समीक्षाएं देखें' : 'Read Reviews'}
             </button>
         `;
 
@@ -1402,10 +1442,10 @@ function renderProducts() {
                             <i class="fas fa-star star-empty"></i>
                             <i class="fas fa-star star-empty"></i>
                         </div>
-                        <span class="rating-text">No reviews</span>
+                        <span class="rating-text">${currentLang === 'hi' ? 'कोई समीक्षा नहीं' : 'No reviews'}</span>
                     </div>
                     <button class="btn btn-outline" style="width: 100%; padding: 6px; font-size: 0.8rem; border: 1px solid var(--primary); color: var(--primary); background: transparent;" onclick="event.stopPropagation(); openReviewsModal(${p.id})">
-                        <i class="fas fa-comments"></i> Read Reviews
+                        <i class="fas fa-comments"></i> ${currentLang === 'hi' ? 'समीक्षाएं देखें' : 'Read Reviews'}
                     </button>
                 </div>
                 
@@ -1478,6 +1518,14 @@ function setLanguage(lang) {
         const key = el.dataset.i18n;
         if (translations[lang] && translations[lang][key]) {
             el.textContent = translations[lang][key];
+        }
+    });
+
+    // Apply translations to input placeholders
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.dataset.i18nPlaceholder;
+        if (translations[lang] && translations[lang][key]) {
+            el.placeholder = translations[lang][key];
         }
     });
 
