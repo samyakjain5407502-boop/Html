@@ -317,6 +317,19 @@ function openProductModal(product) {
     // Set max quantity based on stock
     document.getElementById('modalQuantity').max = product.stock || 999;
     
+    // Low stock urgency badge in product modal
+    const modalStockEl = document.getElementById('modalProductStock');
+    if (modalStockEl) {
+        const sNum = parseInt(product.stock) || 0;
+        if (sNum <= 0) {
+            modalStockEl.innerHTML = '<span style="color:#dc3545;font-weight:700;font-size:0.85rem;"><i class="fas fa-times-circle"></i> Out of Stock</span>';
+        } else if (sNum <= 5) {
+            modalStockEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;background:#fff3e0;color:#c62828;border:1.5px solid #ff9800;padding:4px 12px;border-radius:20px;font-weight:700;font-size:0.82rem;"><i class="fas fa-fire" style="color:#e65100;"></i> 🔥 Low Stock! Only ' + sNum + ' left — Order Fast!</span>';
+        } else {
+            modalStockEl.innerHTML = '<span style="color:#28a745;font-weight:600;font-size:0.85rem;"><i class="fas fa-check-circle"></i> In Stock</span>';
+        }
+    }
+    
     // Show image
     const img = document.getElementById('modalProductImage');
     if (product.image) {
@@ -1276,15 +1289,20 @@ function renderProducts() {
                 </div>`;
         }
 
-        // Stock badge
+        // Stock badge with urgency when low stock
         let stockHtml = '';
         const stockNum = parseInt(p.stock) || 0;
-        if (stockNum > 0) {
-            const stockText = currentLang === 'hi' ? 'स्टॉक में' : 'In Stock';
-            stockHtml = '<span class="stock-badge stock-in" style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;"><i class="fas fa-check-circle"></i> ' + stockText + '</span>';
-        } else {
+        if (stockNum <= 0) {
             const outText = currentLang === 'hi' ? 'स्टॉक खत्म' : 'Out of Stock';
             stockHtml = '<span class="stock-badge stock-out" style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;"><i class="fas fa-times-circle"></i> ' + outText + '</span>';
+        } else if (stockNum <= 5) {
+            const lowText = currentLang === 'hi'
+                ? '🔥 कम स्टॉक! सिर्फ ' + stockNum + ' बचे हैं - जल्दी ऑर्डर करें!'
+                : '🔥 Low Stock! Only ' + stockNum + ' left - Order Fast!';
+            stockHtml = '<span class="stock-badge stock-low" style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;background:#fff3e0;color:#c62828;border:1.5px solid #ff9800;font-weight:700;padding:5px 12px;border-radius:20px;font-size:0.78rem;box-shadow:0 2px 8px rgba(255,152,0,0.25);"><i class="fas fa-fire" style="color:#e65100;"></i> ' + lowText + '</span>';
+        } else {
+            const stockText = currentLang === 'hi' ? 'स्टॉक में' : 'In Stock';
+            stockHtml = '<span class="stock-badge stock-in" style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;"><i class="fas fa-check-circle"></i> ' + stockText + '</span>';
         }
 
         // Rating display (compact - just average and count)
