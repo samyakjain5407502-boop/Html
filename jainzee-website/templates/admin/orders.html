@@ -62,9 +62,11 @@
         <div class="order-tab-bar" id="orderTabBar">
             <button class="order-tab active" id="tab-all"       onclick="setOrderTab('all')"><i class="fas fa-list"></i> All Orders</button>
             <button class="order-tab"        id="tab-pending"   onclick="setOrderTab('pending')"><i class="fas fa-clock"></i> New / Pending</button>
-            <button class="order-tab"        id="tab-confirmed" onclick="setOrderTab('confirmed')"><i class="fas fa-check"></i> Confirmed</button>
+            <button class="order-tab"        id="tab-confirmed" onclick="setOrderTab('confirmed')"><i class="fas fa-check" aria-hidden="true"></i> Confirmed</button>
+            <button class="order-tab"        id="tab-processing" onclick="setOrderTab('processing')"><i class="fas fa-box-open" aria-hidden="true"></i> Processing</button>
             <button class="order-tab"        id="tab-shipped"   onclick="setOrderTab('shipped')"><i class="fas fa-truck"></i> Shipped</button>
             <button class="order-tab"        id="tab-delivered" onclick="setOrderTab('delivered')"><i class="fas fa-box"></i> Delivered</button>
+            <button class="order-tab"        id="tab-cancelled" onclick="setOrderTab('cancelled')"><i class="fas fa-times" aria-hidden="true"></i> Cancelled</button>
         </div>
             <div style="overflow-x: auto;">
                 <table class="admin-table" id="ordersTable">
@@ -76,7 +78,7 @@
                             <th>Address</th>
                             <th>Items</th>
                             <th>Total</th>
-                            <th>Date</th>
+                            <th>Placed (IST)</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -116,6 +118,10 @@
 
         let currentFilter = 'active'; // 'active' or 'archived'
         let activeTabFilter = 'all'; // quick status filter
+        let orderLoadId = 0;
+        const escapeOrderText = (value) => String(value ?? '').replace(/[&<>"']/g, char => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[char]);
 
         function setOrderTab(tab) {
             activeTabFilter = tab;
@@ -127,11 +133,14 @@
 
         
         async function loadOrders() {
+            const loadId = ++orderLoadId;
+            const tbody = document.getElementById('ordersTableBody');
             try {
                 const url = currentFilter === 'archived' ? '/admin/api/orders?show_hidden=true' : '/admin/api/orders';
                 const res = await fetch(url);
+                if (!res.ok) throw new Error('Orders request failed');
                 const orders = await res.json();
-                const tbody = document.getElementById('ordersTableBody');
+                if (loadId !== orderLoadId) return;
                 if (!orders.length) {
                     tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: #8a7362;">No ${currentFilter} orders</td></tr>`;
                     return;
@@ -140,14 +149,7 @@
 
                 // Apply quick-tab filter (client-side)
                 const tabStatus = activeTabFilter;
-                const filtered = tabStatus === 'all' ? orders : orders.filter(o => {
-                    const st = String(o.status || '').toLowerCase();
-                    if (tabStatus === 'pending')   return st.startsWith('pending') || st === 'pending';
-                    if (tabStatus === 'confirmed') return st === 'confirmed';
-                    if (tabStatus === 'shipped')   return st === 'shipped';
-                    if (tabStatus === 'delivered') return st.includes('deliver');
-                    return true;
-                });
+                const filtered = tabStatus === 'all' ? orders : orders.filter(order => order.state === tabStatus);
                 if (!filtered.length) {
                     tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: #8a7362;">No ${tabStatus === 'all' ? currentFilter : tabStatus} orders</td></tr>`;
                     return;
@@ -156,7 +158,7 @@
                 filtered.forEach(order => {
                     const tr = document.createElement('tr');
                     tr.setAttribute('data-order-id', order.id);
-                    const isPending = String(order.status || '').startsWith('pending');
+                    const isPending = order.state === 'pending';
                     const isHidden = order.is_hidden === 1;
                     tr.style.cssText = isPending ? 'background: #fff8e1;' : (isHidden ? 'background: #f5f5f5; opacity: 0.8;' : '');
                     
@@ -165,16 +167,16 @@
                     if (order.items_parsed && order.items_parsed.length > 0) {
                         itemsHtml = order.items_parsed.map(item => `
                             <div style="padding: 4px 0; border-bottom: 1px solid #f0e8d8;">
-                                <strong style="color: #2c1810;">${item.name}</strong>
-                                ${item.variant ? `<span style="color: #8a7362; font-size: 0.8rem;"> (${item.variant})</span>` : ''}
-                                <br><span style="color: #8a7362; font-size: 0.85rem;">Qty: ${item.quantity} × ${item.unit_price} = <strong>${item.total}</strong></span>
+                                <strong style="color: #2c1810;">${escapeOrderText(item.name)}</strong>
+                                ${item.variant ? `<span style="color: #8a7362; font-size: 0.8rem;"> (${escapeOrderText(item.variant)})</span>` : ''}
+                                <br><span style="color: #8a7362; font-size: 0.85rem;">Qty: ${escapeOrderText(item.quantity)} × ${escapeOrderText(item.unit_price)} = <strong>${escapeOrderText(item.total)}</strong></span>
                             </div>
                         `).join('');
                     } else {
                         // Fallback to raw items
                         let items = [];
                         try { items = JSON.parse(order.items || '[]'); } catch(e) {}
-                        itemsHtml = items.map(item => `<div>• ${item.name || 'Item'} x${item.quantity || 1}</div>`).join('');
+                        itemsHtml = items.map(item => `<div>• ${escapeOrderText(item.name || 'Item')} x${escapeOrderText(item.quantity || 1)}</div>`).join('');
                     }
                     
                     // Actions column
@@ -194,29 +196,31 @@
                         <i class="fas fa-file-invoice-dollar"></i> Invoice
                     </button>`;
 
-                    const parcelBtn = `<button class="btn btn-sm" onclick="printParcelSticker(${JSON.stringify(order).replace(/"/g, '&quot;')})" title="Print Parcel Sticker" style="background: #6c3483; color: white; padding: 6px 12px; font-size: 0.75rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                    const parcelBtn = `<button class="btn btn-sm" type="button" data-print-sticker title="Print Parcel Sticker" style="background: #6c3483; color: white; padding: 6px 12px; font-size: 0.75rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
                         <i class="fas fa-shipping-fast"></i> Sticker
                     </button>`;
                     
                     tr.innerHTML = `
                         <td><strong>#${order.id}</strong>${isPending ? ' <span class="order-status-select" style="background:#ffc107; color:#000; font-size:0.7rem; border-radius:20px; padding:2px 8px; font-weight: bold;">NEW</span>' : ''}${isHidden ? ' <span style="background:#6c757d; color:white; font-size:0.7rem; border-radius:20px; padding:2px 8px;">ARCHIVED</span>' : ''}</td>
-                        <td class="order-customer"><strong>${order.customer_name || '-'}</strong></td>
-                        <td>${order.customer_phone || '-'}</td>
-                        <td style="max-width: 200px; font-size: 0.85rem;">${order.customer_address || '-'}</td>
+                        <td class="order-customer"><strong>${escapeOrderText(order.customer_name || '-')}</strong></td>
+                        <td>${escapeOrderText(order.customer_phone || '-')}</td>
+                        <td style="max-width: 200px; font-size: 0.85rem;">${escapeOrderText(order.customer_address || '-')}</td>
                         <td class="order-items-list" style="min-width: 250px;">
                             ${itemsHtml || '<span style="color: #8a7362;">No items</span>'}
                         </td>
-                        <td><strong style="color: #b8860b; font-size: 1rem;">${order.total}</strong></td>
+                        <td><strong style="color: #b8860b; font-size: 1rem;">${escapeOrderText(order.total)}</strong></td>
                         <td style="font-size: 0.8rem; white-space: nowrap;">
-                            <i class="far fa-clock"></i> ${order.formatted_date || order.created_at}
+                            <i class="far fa-clock"></i> ${escapeOrderText(order.formatted_date || order.created_at)}
                         </td>
                         <td>
-                            <select class="order-status-select" onchange="updateOrderStatus(${order.id}, this.value)">
-                                <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Pending</option>
-                                <option value="confirmed" ${order.status === 'confirmed' ? 'selected' : ''}>Confirmed</option>
-                                <option value="shipped" ${order.status === 'shipped' ? 'selected' : ''}>Shipped</option>
-                                <option value="delivered" ${order.status === 'delivered' ? 'selected' : ''}>Delivered</option>
-                                <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                            <select class="order-status-select" aria-label="Status for order ${order.id}" onchange="updateOrderStatus(${order.id}, this.value)">
+                                <option value="pending" ${order.state === 'pending' ? 'selected' : ''}>Pending</option>
+                                <option value="confirmed" ${order.state === 'confirmed' ? 'selected' : ''}>Confirmed</option>
+                                <option value="processing" ${order.state === 'processing' ? 'selected' : ''}>Processing</option>
+                                ${order.state === 'other' ? '<option value="" selected disabled>Other status</option>' : ''}
+                                <option value="shipped" ${order.state === 'shipped' ? 'selected' : ''}>Shipped</option>
+                                <option value="delivered" ${order.state === 'delivered' ? 'selected' : ''}>Delivered</option>
+                                <option value="cancelled" ${order.state === 'cancelled' ? 'selected' : ''}>Cancelled</option>
                             </select>
                         </td>
                         <td>
@@ -228,9 +232,12 @@
                             </div>
                         </td>
                     `;
+                    tr.querySelector('[data-print-sticker]').addEventListener('click', () => printParcelSticker(order));
                     tbody.appendChild(tr);
                 });
             } catch (e) {
+                if (loadId !== orderLoadId) return;
+                tbody.innerHTML = '<tr><td colspan="9" style="padding: 24px" role="alert">Orders could not be loaded. Use Refresh to try again.</td></tr>';
                 showToast('Failed to load orders', 'error');
             }
         }
@@ -291,8 +298,10 @@
                 const result = await res.json();
                 if (!res.ok) throw new Error(result.error || 'Failed to update');
                 showToast('Order status updated to ' + status);
+                loadOrders();
             } catch (e) {
                 showToast(e.message, 'error');
+                loadOrders();
             }
         }
 
@@ -336,19 +345,19 @@
   <div class="value">Ph: ${shopPhone}</div>
 
   <div class="section-label">To (Recipient)</div>
-  <div class="value big">${order.customer_name || '-'}</div>
-  <div class="value">${order.customer_address || '-'}</div>
-  <div class="value">Ph: ${order.customer_phone || '-'}</div>
+  <div class="value big">${escapeOrderText(order.customer_name || '-')}</div>
+  <div class="value">${escapeOrderText(order.customer_address || '-')}</div>
+  <div class="value">Ph: ${escapeOrderText(order.customer_phone || '-')}</div>
 
   <div class="order-id">ORDER #${order.id}</div>
 
   <div class="pay-badge">${payMethod}</div>
 
   <div class="section-label">Items</div>
-  <div class="items-list">${(order.items_parsed || []).map(i => `${i.name} x${i.quantity} = ${i.total}`).join('<br>') || order.items || '-'}</div>
+  <div class="items-list">${(order.items_parsed || []).map(i => `${escapeOrderText(i.name)} x${escapeOrderText(i.quantity)} = ${escapeOrderText(i.total)}`).join('<br>') || escapeOrderText(order.items || '-')}</div>
 
   <div class="section-label">Order Total</div>
-  <div class="value big" style="text-align:center; font-size:22px; font-weight:900;">${order.total || '-'}</div>
+  <div class="value big" style="text-align:center; font-size:22px; font-weight:900;">${escapeOrderText(order.total || '-')}</div>
 
   <div class="footer">
     ${new Date().toLocaleString('en-IN')} | Jainzee™ Food Processing Industries<br>

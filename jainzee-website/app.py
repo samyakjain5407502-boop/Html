@@ -14,6 +14,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import timedelta, datetime, date
 from functools import wraps
+from contextlib import closing
+from dashboard_stats import PERIODS, collect_dashboard, order_state, shop_timestamp
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash, send_from_directory, g
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -248,7 +250,8 @@ class PostgresConnection:
         if special == '__COLUMNS__' or special:
             self._last_columns = self._columns(special) if special else []
             return _CursorStub(self._last_columns)
-        cur.execute(translated, params)
+        # Passing an empty tuple makes psycopg2 parse literal SQL percent signs as placeholders.
+        cur.execute(translated, params or None)
         # Only read back a row when RETURNING was actually appended. Queries
         # without RETURNING (e.g. settings inserts, which have no 'id' column)
         # produce no result set, and calling fetchone() on them raises
@@ -512,7 +515,7 @@ def send_email_otp(recipient_email, otp_code):
         print(f"[EMAIL OTP ERROR] {e}")
         return False, str(e)
 
-def get_db():
+def get_db(*, require_primary=False):
     if USE_POSTGRES:
         import psycopg2
         import psycopg2.extras
@@ -527,12 +530,16 @@ def get_db():
             conn.cursor_factory = psycopg2.extras.RealDictCursor
             return PostgresConnection(conn)
         except Exception as e:
+            if require_primary:
+                raise
             print(f"[POSTGRES ERROR] {e}. Falling back to SQLite.")
     try:
         conn = sqlite3.connect(DB_PATH, timeout=10)
         conn.row_factory = sqlite3.Row
         return conn
-    except Exception as e:
+    except Exception:
+        if require_primary:
+            raise
         import tempfile
         tmp_db = os.path.join(tempfile.gettempdir(), 'jainzee.db')
         conn = sqlite3.connect(tmp_db, timeout=10)
@@ -2576,7 +2583,7 @@ def admin_orders_page():
 @app.route('/admin/api/orders', methods=['GET'])
 @login_required
 def admin_api_orders():
-    conn = get_db()
+    conn = get_db(require_primary=True)
     
     # Check if show_hidden parameter is present
     show_hidden = request.args.get('show_hidden', 'false').lower() == 'true'
@@ -2594,6 +2601,7 @@ def admin_api_orders():
     enriched_orders = []
     for order in rows:
         order_dict = dict(order)
+        order_dict['state'] = order_state(order_dict.get('status'))
         
         # Parse items and enrich with product details
         try:
@@ -2659,12 +2667,8 @@ def admin_api_orders():
         except:
             order_dict['items_parsed'] = []
         
-        # Format date/time
-        try:
-            dt = datetime.strptime(order_dict.get('created_at', ''), '%Y-%m-%d %H:%M:%S')
-            order_dict['formatted_date'] = dt.strftime('%d %b %Y, %I:%M %p')
-        except:
-            order_dict['formatted_date'] = order_dict.get('created_at', 'N/A')
+        stamp = shop_timestamp(order_dict.get('created_at'))
+        order_dict['formatted_date'] = stamp.strftime('%d %b %Y, %I:%M %p') if stamp else 'Date unavailable'
         
         enriched_orders.append(order_dict)
     
@@ -2760,14 +2764,11 @@ def admin_logout():
 @app.route('/admin')
 @login_required
 def admin_dashboard():
-    product_count = 0
-    try:
-        conn = get_db()
-        product_count = int(conn.execute('SELECT COUNT(*) AS c FROM products').fetchone()['c'] or 0)
-        conn.close()
-    except Exception:
-        product_count = 0
-    return render_template('admin/dashboard.html', product_count=product_count)
+    period = dashboard_period()
+    snapshot = load_dashboard(period)
+    template = 'admin/dashboard_snapshot.html' if request.args.get('snapshot') == '1' else 'admin/dashboard.html'
+    return render_template(template, snapshot=snapshot, period=period, periods=PERIODS), 200 if snapshot else 503
+
 
 @app.route('/admin/products')
 @login_required
@@ -4748,95 +4749,28 @@ def api_reorder():
 
 # ---------------- ADMIN DASHBOARD STATS ----------------
 
+def dashboard_period():
+    period = request.args.get('period', 'all')
+    return period if period in PERIODS else 'all'
+
+
+def load_dashboard(period):
+    try:
+        with closing(get_db(require_primary=True)) as conn:
+            return collect_dashboard(conn, period)
+    except Exception:
+        app.logger.exception('Could not read admin dashboard data')
+        return None
+
+
 @app.route('/admin/api/stats')
 @login_required
 def admin_api_stats():
-    try:
-        conn = get_db()
-        total_orders = int(conn.execute('SELECT COUNT(*) AS c FROM orders').fetchone()['c'] or 0)
-        pending_orders = int(conn.execute("SELECT COUNT(*) AS c FROM orders WHERE status LIKE 'pending%'").fetchone()['c'] or 0)
-        delivered_orders = int(conn.execute("SELECT COUNT(*) AS c FROM orders WHERE status LIKE '%deliver%'").fetchone()['c'] or 0)
-        total_products = int(conn.execute('SELECT COUNT(*) AS c FROM products').fetchone()['c'] or 0)
+    snapshot = load_dashboard(dashboard_period())
+    if snapshot is None:
+        return jsonify({'error': 'Dashboard figures are temporarily unavailable.'}), 503
+    return jsonify(snapshot)
 
-        # Low stock items (stock <= 10)
-        low_stock_rows = conn.execute(
-            'SELECT id, name_en, name_hi, stock FROM products WHERE stock <= 10 ORDER BY stock ASC'
-        ).fetchall()
-        low_stock_items = []
-        for r in low_stock_rows:
-            low_stock_items.append({
-                'id': r['id'],
-                'name_en': r['name_en'],
-                'name_hi': r['name_hi'],
-                'stock': int(r['stock'] or 0)
-            })
-
-        # Recent orders
-        recent_rows = conn.execute(
-            'SELECT id, customer_name, customer_phone, total, status, created_at FROM orders ORDER BY id DESC LIMIT 10'
-        ).fetchall()
-        recent_orders = []
-        for r in recent_rows:
-            raw_date = r['created_at'] if (isinstance(r, dict) or hasattr(r, '__getitem__')) else None
-            if isinstance(raw_date, (_dt_cls, _date_cls)):
-                date_str = raw_date.strftime('%d %b %Y, %I:%M %p')
-            else:
-                date_str = str(raw_date or '')
-            recent_orders.append({
-                'id': r['id'],
-                'customer_name': r['customer_name'] or 'Customer',
-                'customer_phone': r['customer_phone'] or '',
-                'total': str(r['total'] or '₹0'),
-                'status': str(r['status'] or 'pending'),
-                'created_at': date_str
-            })
-
-        # Fast total sales calculation
-        total_sales = 0.0
-        try:
-            sales_rows = conn.execute('SELECT total FROM orders WHERE is_hidden=0 OR is_hidden IS NULL LIMIT 500').fetchall()
-            for row in sales_rows:
-                try:
-                    total_sales += float(re.sub(r'[₹,\s]', '', str(row['total'] or '0')) or 0)
-                except (ValueError, TypeError):
-                    pass
-        except Exception:
-            try:
-                sales_rows = conn.execute('SELECT total FROM orders LIMIT 500').fetchall()
-                for row in sales_rows:
-                    try:
-                        total_sales += float(re.sub(r'[₹,\s]', '', str(row['total'] or '0')) or 0)
-                    except (ValueError, TypeError):
-                        pass
-            except Exception:
-                pass
-        conn.close()
-
-        return jsonify({
-            'total_sales': round(total_sales, 2),
-            'total_orders': total_orders,
-            'pending_orders': pending_orders,
-            'delivered_orders': delivered_orders,
-            'total_products': total_products,
-            'low_stock_count': len(low_stock_items),
-            'low_stock': low_stock_items,
-            'recent_orders': recent_orders,
-        })
-    except Exception as e:
-        print(f"[admin_api_stats ERROR] {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({
-            'total_sales': 0.0,
-            'total_orders': 0,
-            'pending_orders': 0,
-            'delivered_orders': 0,
-            'total_products': 0,
-            'low_stock_count': 0,
-            'low_stock': [],
-            'recent_orders': [],
-            'error': str(e)
-        }), 200
 
 # ---------------- HEALTH & ERROR PAGES ----------------
 

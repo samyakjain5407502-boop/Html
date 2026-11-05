@@ -1,0 +1,104 @@
+{% if snapshot %}
+<div class="dash-metadata"><span class="dash-dot" aria-hidden="true"></span> Shop database <span aria-hidden="true">·</span> Updated {{ snapshot.updated_at }}</div>
+<div class="dash-metrics" aria-label="Store metrics">
+    <article class="dash-metric dash-metric-sales">
+        <h2>Delivered sales</h2>
+        <p class="dash-figure">{{ snapshot.sales_display }}</p>
+        <p>Delivered orders placed in this period</p>
+    </article>
+    <article class="dash-metric">
+        <h2>Order value</h2>
+        <p class="dash-figure">{{ snapshot.order_value_display }}</p>
+        <p>Excludes cancelled and refunded orders</p>
+    </article>
+    <article class="dash-metric">
+        <h2>Total orders</h2>
+        <p class="dash-figure">{{ snapshot.total_orders }}</p>
+        <p>{{ snapshot.delivered_orders }} delivered · {{ periods[period] }}</p>
+    </article>
+    <article class="dash-metric">
+        <h2>Needs fulfilment</h2>
+        <p class="dash-figure">{{ snapshot.needs_fulfilment }}</p>
+        <p>Active pending, confirmed, processing and shipped</p>
+    </article>
+</div>
+
+{% if snapshot.invalid_totals %}
+<p class="dash-notice">{{ snapshot.invalid_totals }} order(s) have missing or invalid totals. Their amounts are omitted from the figures above.</p>
+{% endif %}
+
+<div class="dash-columns">
+    <section class="dash-panel" aria-labelledby="trend-title">
+        <div class="dash-panel-head">
+            <div><h2 id="trend-title">Order activity</h2><p>Last 7 days · India time</p></div>
+        </div>
+        <ul class="dash-chart" aria-label="Orders per day">
+            {% for day in snapshot.trend %}
+            <li title="{{ day.label }}, {{ day.date }} · {{ day.orders }} orders">
+                <span class="dash-bar-track" aria-hidden="true"><span style="--bar-height: {{ day.height }}%"></span></span>
+                <strong>{{ day.orders }}</strong>
+                <span class="dash-chart-date">{{ day.date }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        <ul class="dash-statuses" aria-label="Order status breakdown for {{ periods[period] }}">
+            {% for state in snapshot.statuses if state.count %}
+            <li><span class="dash-status dash-status-{{ state.state }}">{{ state.label }} <strong>{{ state.count }}</strong></span></li>
+            {% else %}
+            <li class="dash-empty-inline">No orders in the selected period.</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section class="dash-panel" aria-labelledby="inventory-title">
+        <div class="dash-panel-head">
+            <div><h2 id="inventory-title">Inventory watch</h2><p>Current stock · {{ snapshot.low_stock_count }} products at 10 units or fewer</p></div>
+            <a href="{{ url_for('admin_products_page') }}">Products ↗</a>
+        </div>
+        <dl class="dash-inventory-metrics">
+            <div><dt>Products</dt><dd>{{ snapshot.total_products }}</dd></div>
+            <div><dt>Stock units</dt><dd>{{ snapshot.stock_units }}</dd></div>
+            <div><dt>Out of stock</dt><dd>{{ snapshot.out_of_stock }}</dd></div>
+        </dl>
+        {% if snapshot.low_stock %}
+        <ul class="dash-stock-list">
+            {% for product in snapshot.low_stock[:5] %}
+            <li><span>{{ product.name_en }}</span><strong class="dash-status {% if product.stock <= 0 %}dash-status-cancelled{% else %}dash-status-pending{% endif %}">{% if product.stock <= 0 %}Out of stock{% else %}{{ product.stock }} left{% endif %}</strong></li>
+            {% endfor %}
+        </ul>
+        {% if snapshot.low_stock_count > 5 %}<p class="dash-empty-inline">{{ snapshot.low_stock_count - 5 }} more stock alerts in Products &amp; stock.</p>{% endif %}
+        {% elif snapshot.total_products %}
+        <p class="dash-empty">All products have more than 10 units in stock.</p>
+        {% else %}
+        <p class="dash-empty">No products have been added.</p>
+        {% endif %}
+    </section>
+</div>
+
+<section class="dash-panel dash-recent" aria-labelledby="recent-title">
+    <div class="dash-panel-head">
+        <div><h2 id="recent-title">Recent orders</h2><p>Latest unarchived orders · {{ periods[period] }}</p></div>
+        <a href="{{ url_for('admin_orders_page') }}">View all ↗</a>
+    </div>
+    {% if snapshot.recent_orders %}
+    <div class="dash-table-scroll" tabindex="0" role="region" aria-label="Recent orders table">
+        <table class="dash-table">
+            <thead><tr><th scope="col">Order</th><th scope="col">Customer</th><th scope="col" class="dash-order-date">Placed (IST)</th><th scope="col">Status</th><th scope="col">Total</th></tr></thead>
+            <tbody>
+            {% for order in snapshot.recent_orders %}
+            <tr><th scope="row">#{{ order.id }}</th><td>{{ order.customer_name }}</td><td class="dash-order-date">{{ order.created_at }}</td><td><span class="dash-status dash-status-{{ order.state }}">{{ order.status_label }}</span></td><td>{{ order.total }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="dash-empty">No active orders in the selected period.</p>
+    {% endif %}
+</section>
+{% else %}
+<section class="dash-panel dash-unavailable" role="alert">
+    <h2>Dashboard figures are unavailable</h2>
+    <p>The shop database could not be read. Refresh to try again.</p>
+    <a class="dash-button" href="{{ url_for('admin_dashboard', period=period) }}">Reload dashboard</a>
+</section>
+{% endif %}

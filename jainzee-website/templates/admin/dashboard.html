@@ -1,281 +1,55 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Jainzee</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v=catalog-20261104">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/premium.css') }}?v=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=2">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<script src="/static/js/csrf.js"></script>
-<script src="/static/js/premium.js?v=1.0"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script defer src="{{ url_for('static', filename='js/dashboard.js') }}?v=1"></script>
 </head>
-<body>
+<body class="dashboard-page">
     <header class="admin-header">
-        <div class="brand">
-            <i class="fas fa-seedling"></i>
-            <span>Jainzee Admin Panel</span>
-        </div>
-        <nav class="admin-nav">
-            <a href="{{ url_for('admin_dashboard') }}" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-            <a href="{{ url_for('admin_products_page') }}"><i class="fas fa-box-open"></i> Products & Stock</a>
-            <a href="{{ url_for('admin_coupons_page') }}"><i class="fas fa-tags"></i> Coupons</a>
-            <a href="{{ url_for('admin_gallery_page') }}"><i class="fas fa-images"></i> Gallery</a>
-            <a href="{{ url_for('admin_settings_page') }}"><i class="fas fa-cog"></i> Settings</a>
-            <a href="/" target="_blank"><i class="fas fa-external-link-alt"></i> View Site</a>
-            <a href="{{ url_for('admin_logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        <a class="dash-brand" href="{{ url_for('admin_dashboard') }}"><span>J</span> Jainzee Admin</a>
+        <nav class="admin-nav" aria-label="Admin navigation">
+            <a href="{{ url_for('admin_dashboard') }}" class="active" aria-current="page">Overview</a>
+            <a href="{{ url_for('admin_orders_page') }}">Orders</a>
+            <a href="{{ url_for('admin_products_page') }}">Products &amp; stock</a>
+            <a href="{{ url_for('admin_coupons_page') }}">Coupons</a>
+            <a href="{{ url_for('admin_gallery_page') }}">Gallery</a>
+            <a href="{{ url_for('admin_settings_page') }}">Settings</a>
+            <a href="/" target="_blank" rel="noopener">View site ↗</a>
+            <a href="{{ url_for('admin_logout') }}">Log out</a>
         </nav>
     </header>
 
-    <main class="admin-content">
-        <h1 class="page-title">Dashboard</h1>
+    <main class="dash-main">
+        <header class="dash-hero">
+            <div>
+                <p class="dash-kicker">Jainzee · Store operations</p>
+                <h1>Store overview</h1>
+                <p>Track orders, delivered sales and inventory in one place.</p>
+            </div>
+            <a class="dash-button dash-button-primary" href="{{ url_for('admin_orders_page') }}">Manage orders <span aria-hidden="true">↗</span></a>
+        </header>
 
-        <!-- LOW STOCK ALERT BANNER (shown when any product has stock ≤ 5) -->
-        <div id="lowStockBanner">
-            <div class="alert-icon"><i class="fas fa-exclamation-triangle"></i></div>
-            <div class="alert-body">
-                <strong>⚠️ Critical Low Stock Alert!</strong>
-                <ul id="lowStockBannerList"></ul>
-            </div>
-            <a href="/admin/products" class="restock-btn"><i class="fas fa-plus-circle"></i> Restock Now</a>
-        </div>
-
-        <div class="dashboard-stats">
-            <div class="stat-card">
-                <div class="stat-icon"><i class="fas fa-rupee-sign"></i></div>
-                <div class="stat-info">
-                    <h3>Total Sales</h3>
-                    <div class="number sk-num" id="statTotalSales"></div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon blue"><i class="fas fa-receipt"></i></div>
-                <div class="stat-info">
-                    <h3>Total Orders</h3>
-                    <div class="number sk-num" id="statTotalOrders"></div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon red"><i class="fas fa-hourglass-half"></i></div>
-                <div class="stat-info">
-                    <h3>Pending Orders</h3>
-                    <div class="number sk-num" id="statPendingOrders"></div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon green"><i class="fas fa-truck"></i></div>
-                <div class="stat-info">
-                    <h3>Delivered Orders</h3>
-                    <div class="number sk-num" id="statDeliveredOrders"></div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon"><i class="fas fa-box-open"></i></div>
-                <div class="stat-info">
-                    <h3>Total Products</h3>
-                    <div class="number sk-num" id="statProducts">{{ product_count }}</div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon blue"><i class="fas fa-exclamation-triangle"></i></div>
-                <div class="stat-info">
-                    <h3>Low Stock Items</h3>
-                    <div class="number sk-num" id="statLowStock"></div>
-                </div>
-            </div>
-            <div class="stat-card" id="newOrdersCard" style="cursor: pointer; position: relative;" onclick="window.location.href='/admin/orders'">
-                <div class="stat-icon red"><i class="fas fa-bell"></i></div>
-                <div class="stat-info">
-                    <h3>New / Pending Orders</h3>
-                    <div class="number sk-num" id="newOrdersCount"></div>
-                </div>
-                <span class="new-orders-badge pulse" id="newOrdersBadge" style="display:none; position: absolute; top: 12px; right: 12px; background: #dc3545; color: white; border-radius: 50px; padding: 2px 10px; font-size: 0.75rem; font-weight: 700;">0</span>
+        <div class="dash-toolbar">
+            <nav class="dash-periods" aria-label="Order date range">
+                {% for key, label in periods.items() %}
+                <a href="{{ url_for('admin_dashboard', period=key) }}" {% if period == key %}aria-current="page"{% endif %}>{{ label }}</a>
+                {% endfor %}
+            </nav>
+            <div class="dash-refresh">
+                <span id="dashboard-refresh-status" role="status"></span>
+                <button id="dashboard-refresh" class="dash-button" type="button" hidden>Refresh figures</button>
             </div>
         </div>
 
-        <!-- Recent Orders & Low Stock -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; margin-top: 30px;">
-            <div class="admin-card">
-                <div class="admin-card-header">
-                    <h2><i class="fas fa-clock"></i> Recent Orders</h2>
-                    <a href="/admin/orders" style="color: #b8860b; font-size: 0.85rem;">View all →</a>
-                </div>
-                <div style="padding: 16px;" id="recentOrdersList"><div class="sk-list" aria-hidden="true"><div class="sk-block sk-line w90"></div><div class="sk-block sk-line w70"></div><div class="sk-block sk-line w80"></div><div class="sk-block sk-line w50"></div></div></div>
-            </div>
-            <div class="admin-card">
-                <div class="admin-card-header">
-                    <h2><i class="fas fa-exclamation-triangle"></i> Low Stock Warning (≤ 10)</h2>
-                </div>
-                <div style="padding: 16px;" id="lowStockList"><div class="sk-list" aria-hidden="true"><div class="sk-block sk-line w80"></div><div class="sk-block sk-line w60"></div><div class="sk-block sk-line w70"></div></div></div>
-            </div>
-        </div>
-
-        <style>
-            .stat-icon.red { background: #dc3545; }
-            .new-orders-badge.pulse { animation: badgePulse 1.5s infinite; }
-            @keyframes badgePulse {
-                0%, 100% { transform: scale(1); }
-                50% { transform: scale(1.15); }
-            }
-            /* Low Stock Alert Banner */
-            #lowStockBanner {
-                display: none;
-                background: linear-gradient(135deg, #dc3545, #c82333);
-                color: white;
-                border-radius: 12px;
-                padding: 16px 22px;
-                margin-bottom: 22px;
-                align-items: center;
-                gap: 14px;
-                box-shadow: 0 4px 15px rgba(220,53,69,0.35);
-                animation: alertPop 0.4s ease;
-            }
-            @keyframes alertPop {
-                from { transform: translateY(-8px); opacity: 0; }
-                to   { transform: translateY(0);    opacity: 1; }
-            }
-            #lowStockBanner .alert-icon { font-size: 1.8rem; flex-shrink: 0; }
-            #lowStockBanner .alert-body { flex: 1; }
-            #lowStockBanner .alert-body strong { display: block; font-size: 1rem; font-weight: 700; margin-bottom: 3px; }
-            #lowStockBanner .alert-body ul { margin: 0; padding-left: 18px; font-size: 0.85rem; opacity: 0.92; }
-            #lowStockBanner a.restock-btn {
-                background: white; color: #dc3545; font-weight: 700; border-radius: 8px;
-                padding: 8px 18px; text-decoration: none; font-size: 0.85rem; white-space: nowrap;
-                flex-shrink: 0;
-            }
-        </style>
-
-        <div class="dashboard-actions">
-            <a href="{{ url_for('admin_orders_page') }}" class="action-card">
-                <i class="fas fa-shopping-cart"></i>
-                <h3>View Orders</h3>
-                <p>Review, confirm and update customer orders</p>
-            </a>
-            <a href="{{ url_for('admin_products_page') }}" class="action-card">
-                <i class="fas fa-box-open"></i>
-                <h3>Manage Products</h3>
-                <p>Add, edit, delete products, update stock & rates</p>
-            </a>
-            <a href="{{ url_for('admin_settings_page') }}" class="action-card">
-                <i class="fas fa-cog"></i>
-                <h3>Website Settings</h3>
-                <p>Edit shop name, address, contact details & logo</p>
-            </a>
-            <a href="/" target="_blank" class="action-card">
-                <i class="fas fa-globe"></i>
-                <h3>View Website</h3>
-                <p>Preview your live website</p>
-            </a>
+        <div id="dashboard-snapshot">
+            {% include 'admin/dashboard_snapshot.html' %}
         </div>
     </main>
-
-    <div class="toast-container" id="toastContainer"></div>
-
-    <script src="{{ url_for('static', filename='js/admin.js') }}?v=catalog-20261104"></script>
-    <script>
-        // Load dashboard stats, recent orders and low-stock warnings.
-        // A cached copy paints instantly on revisit; the network refresh keeps
-        // everything current (SWR-style stale-while-revalidate).
-        document.addEventListener('DOMContentLoaded', () => {
-            const applyStats = (data) => {
-                const money = (v) => '₹' + Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
-                const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-
-                set('statTotalSales', money(data.total_sales));
-                set('statTotalOrders', data.total_orders);
-                set('statPendingOrders', data.pending_orders);
-                set('statDeliveredOrders', data.delivered_orders);
-                set('statProducts', data.total_products != null ? data.total_products : (data.products_count || 0));
-                set('statLowStock', data.low_stock_count != null ? data.low_stock_count : (data.low_stock ? data.low_stock.length : 0));
-
-                // Remove all skeleton shimmer classes once stats are populated
-                document.querySelectorAll('.sk-num').forEach(el => el.classList.remove('sk-num'));
-
-                const countEl = document.getElementById('newOrdersCount');
-                const badge = document.getElementById('newOrdersBadge');
-                if (countEl) countEl.textContent = data.pending_orders;
-                if (badge) {
-                    badge.textContent = data.pending_orders;
-                    badge.style.display = data.pending_orders > 0 ? 'inline-block' : 'none';
-                }
-
-                // Recent orders
-                const recentEl = document.getElementById('recentOrdersList');
-                if (recentEl) {
-                    if (!data.recent_orders.length) {
-                        recentEl.innerHTML = '<p style="color: #8a7362;">No orders yet.</p>';
-                    } else {
-                        recentEl.innerHTML = data.recent_orders.map(o => `
-                            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(184,134,11,0.15);">
-                                <div>
-                                    <strong>#${o.id}</strong> ${o.customer_name || ''}
-                                    <div style="font-size:0.8rem; color:#8a7362;">${o.created_at || ''}</div>
-                                </div>
-                                <div style="text-align:right;">
-                                    <div style="font-weight:700; color:#b8860b;">${o.total || '₹0'}</div>
-                                    <div style="font-size:0.75rem; color:#8a7362;">${o.status || ''}</div>
-                                </div>
-                            </div>`).join('');
-                    }
-                }
-
-                // Low Stock Alert Banner (≤ 5 units is critical)
-                const criticalItems = (data.low_stock || []).filter(p => (p.stock || 0) <= 5);
-                const banner = document.getElementById('lowStockBanner');
-                const bannerList = document.getElementById('lowStockBannerList');
-                if (banner && bannerList) {
-                    if (criticalItems.length > 0) {
-                        bannerList.innerHTML = criticalItems.map(p =>
-                            `<li>${p.name_en || 'Product'} — only <strong>${p.stock}</strong> left</li>`
-                        ).join('');
-                        banner.style.display = 'flex';
-                    } else {
-                        banner.style.display = 'none';
-                    }
-                }
-
-                // Low stock list
-                const lowEl = document.getElementById('lowStockList');
-                if (lowEl) {
-                    if (!data.low_stock.length) {
-                        lowEl.innerHTML = '<p style="color:#28a745;"><i class="fas fa-check-circle"></i> All products are well stocked.</p>';
-                    } else {
-                        lowEl.innerHTML = data.low_stock.map(p => `
-                            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(220,53,69,0.2);">
-                                <span><i class="fas fa-box-open"></i> ${p.name_en || 'Product'} <span style="color:#8a7362;">(stock: ${p.stock})</span></span>
-                                <a href="/admin/products" style="color:#dc3545; font-size:0.8rem; font-weight:600;">Restock →</a>
-                            </div>`).join('');
-                    }
-                }
-            };
-
-            const refreshStats = async () => {
-                try {
-                    const res = await fetch('/admin/api/stats');
-                    if (!res.ok) {
-                        document.querySelectorAll('.sk-num').forEach(el => el.classList.remove('sk-num'));
-                        return;
-                    }
-                    const data = await res.json();
-                    // Cache it so the next dashboard visit paints instantly
-                    if (window.JZ && JZ.set) JZ.set('/admin/api/stats', data);
-                    applyStats(data);
-                } catch (e) {
-                    document.querySelectorAll('.sk-num').forEach(el => el.classList.remove('sk-num'));
-                }
-            };
-
-            // Instant paint from the previous visit's cache (if any)...
-            if (window.JZ && JZ.peek) {
-                const cached = JZ.peek('/admin/api/stats', { allowStale: true });
-                if (cached) applyStats(cached);
-            }
-            // ...then refresh from the network (and every 15 seconds after).
-            refreshStats();
-            setInterval(refreshStats, 15000);
-        });
-    </script>
 </body>
 </html>

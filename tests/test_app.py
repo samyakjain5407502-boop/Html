@@ -50,6 +50,88 @@ def admin_login(client):
     assert r.status_code == 302
 
 
+def test_dashboard_reads_complete_history_and_current_stock(client):
+    from datetime import datetime, timezone
+    from dashboard_stats import SHOP_TIME
+
+    app, c = client
+    admin_login(c)
+    midnight = datetime.now(SHOP_TIME).replace(hour=0, minute=0, second=0, microsecond=0)
+    today = midnight.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+    yesterday = (midnight - timedelta(seconds=1)).astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+    records = [('Pending buyer', '₹10.10', 'pending_cod', 0, today)] * 505
+    records += [
+        ('<b>Delivered buyer</b>', '₹1,23,456.78', 'delivered', 0, today),
+        ('Archived buyer', '200', 'delivered', 1, yesterday),
+        ('Online buyer', '120', 'paid_razorpay', 0, today),
+        ('Cancelled buyer', '999', 'cancelled', 0, today),
+        ('Incomplete amount', '', 'processing', 0, today),
+        ('Refunded buyer', '500', 'refunded', 0, today),
+        ('Dispatched buyer', '60', 'out_for_delivery', 0, today),
+    ]
+    conn = app.get_db()
+    conn.executemany('INSERT INTO orders (customer_name, total, status, is_hidden, created_at) VALUES (?, ?, ?, ?, ?)', records)
+    conn.execute('UPDATE products SET stock=22')
+    for product_id, stock in [(1, 0), (2, 3), (3, 10), (4, 11)]:
+        conn.execute('UPDATE products SET stock=? WHERE id=?', (stock, product_id))
+    conn.commit()
+    conn.close()
+
+    figures = c.get('/admin/api/stats').get_json()
+    assert figures['total_orders'] == 512
+    assert figures['pending_orders'] == 505
+    assert figures['needs_fulfilment'] == 508
+    assert figures['total_sales'] == 123656.78
+    assert figures['order_value'] == 128937.28
+    assert figures['invalid_totals'] == 1
+    assert [p['stock'] for p in figures['low_stock']] == [0, 3, 10]
+    assert figures['out_of_stock'] == 1
+    assert figures['stock_units'] == 90
+    assert all(o['customer_name'] != 'Archived buyer' for o in figures['recent_orders'])
+
+    today_figures = c.get('/admin/api/stats?period=today').get_json()
+    assert today_figures['total_orders'] == 511
+    assert today_figures['total_sales'] == 123456.78
+    assert today_figures['trend'][-2]['orders'] == 1
+    assert today_figures['trend'][-1]['orders'] == 511
+    html = c.get('/admin?period=today').get_data(as_text=True)
+    assert '₹1,23,456.78' in html
+    assert '&lt;b&gt;Delivered buyer&lt;/b&gt;' in html
+
+    orders = c.get('/admin/api/orders').get_json()
+    assert next(o for o in orders if o['status'] == 'paid_razorpay')['state'] == 'confirmed'
+
+
+def test_dashboard_database_failure_is_not_zero_sales(client, monkeypatch):
+    app, c = client
+    admin_login(c)
+
+    def unavailable(*, require_primary):
+        assert require_primary
+        raise OSError('database unavailable')
+
+    monkeypatch.setattr(app, 'get_db', unavailable)
+    response = c.get('/admin/api/stats')
+    assert response.status_code == 503
+    assert 'total_sales' not in response.get_json()
+    page = c.get('/admin')
+    assert page.status_code == 503
+    assert b'Dashboard figures are unavailable' in page.data
+
+
+def test_postgres_adapter_preserves_literal_percent_signs(client):
+    from unittest.mock import Mock
+
+    app, _ = client
+    driver = Mock()
+    connection = app.PostgresConnection(driver)
+    sql = "SELECT id FROM orders WHERE status LIKE 'pending%'"
+    connection.execute(sql)
+    driver.cursor.return_value.execute.assert_called_once_with(sql, None)
+    connection.execute('SELECT id FROM orders WHERE status LIKE ?', ('pending%',))
+    driver.cursor.return_value.execute.assert_called_with('SELECT id FROM orders WHERE status LIKE %s', ('pending%',))
+
+
 # ---------------- REGISTRATION / LOGIN ----------------
 
 def test_customer_register_and_login(client):
